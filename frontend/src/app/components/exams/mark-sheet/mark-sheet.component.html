@@ -12,7 +12,7 @@
       <div class="ms-hero-left">
         <span class="ms-hero-icon" aria-hidden="true">📊</span>
         <div>
-          <span class="ms-hero-eyebrow">Examinations</span>
+          <span class="ms-hero-eyebrow">Exams · Mark sheet</span>
           <h1>Mark Sheet</h1>
           <p class="ms-hero-sub">Generate class mark sheets by class and exam type — export PDF or Excel.</p>
         </div>
@@ -22,6 +22,10 @@
         <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="selectedTerm">{{ selectedTerm }}</span>
         <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="selectedExamType">{{ getExamTypeLabel() }}</span>
       </aside>
+      <div class="ms-hero__actions">
+        <a routerLink="/exams" class="ms-hero-btn ms-hero-btn--white">← Enter marks</a>
+        <a routerLink="/results-analysis" class="ms-hero-btn ms-hero-btn--accent">Results</a>
+      </div>
     </div>
 
     <nav class="ms-cross-links" aria-label="Related exam pages">
@@ -29,36 +33,31 @@
       <a routerLink="/results-analysis">Results analysis</a>
       <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
       <a routerLink="/check_mark_progess">Marks progress</a>
+      <a routerLink="/classes">Classes</a>
     </nav>
 
     <div class="ms-hero-stats" *ngIf="markSheetData">
       <article class="ms-stat">
-        <span class="ms-stat__icon" aria-hidden="true">👥</span>
         <span class="ms-stat__value">{{ statistics.totalStudents }}</span>
         <span class="ms-stat__label">Students</span>
       </article>
-      <article class="ms-stat ms-stat--sky">
-        <span class="ms-stat__icon" aria-hidden="true">📊</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ statistics.averageScore }}%</span>
         <span class="ms-stat__label">Class average</span>
       </article>
-      <article class="ms-stat ms-stat--mint">
-        <span class="ms-stat__icon" aria-hidden="true">✅</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ statistics.passRate }}%</span>
         <span class="ms-stat__label">Pass rate</span>
       </article>
-      <article class="ms-stat ms-stat--amber">
-        <span class="ms-stat__icon" aria-hidden="true">🏆</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ statistics.highestScore }}%</span>
         <span class="ms-stat__label">Highest avg</span>
       </article>
       <article class="ms-stat">
-        <span class="ms-stat__icon" aria-hidden="true">🎯</span>
         <span class="ms-stat__value">{{ statistics.highAchieversPercent }}%</span>
         <span class="ms-stat__label">≥ 70%</span>
       </article>
-      <article class="ms-stat ms-stat--muted">
-        <span class="ms-stat__icon" aria-hidden="true">📚</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ orderedSubjects.length }}</span>
         <span class="ms-stat__label">Subjects</span>
       </article>
@@ -172,40 +171,34 @@
         </div>
       </div>
       <div class="ms-result-actions">
-        <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="exportToExcel()" [disabled]="loading">Excel</button>
-        <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="downloadPDF()" [disabled]="loading">Download PDF</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="exportToExcel()" [disabled]="loading">Excel</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="downloadPDF()" [disabled]="loading">Download PDF</button>
         <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="printMarkSheet()" [disabled]="loading">Print preview</button>
       </div>
     </div>
 
     <div *ngIf="showStatistics" class="ms-stats-grid">
       <article class="ms-stat-card">
-        <span class="ms-stat-card__icon" aria-hidden="true">👥</span>
         <span class="ms-stat-card__value">{{ statistics.totalStudents }}</span>
         <span class="ms-stat-card__label">Total students</span>
       </article>
       <article class="ms-stat-card">
-        <span class="ms-stat-card__icon" aria-hidden="true">📊</span>
         <span class="ms-stat-card__value">{{ statistics.averageScore }}%</span>
         <span class="ms-stat-card__label">Class average (core)</span>
       </article>
       <article class="ms-stat-card">
-        <span class="ms-stat-card__icon" aria-hidden="true">🏆</span>
         <span class="ms-stat-card__value">{{ statistics.highestScore }}%</span>
         <span class="ms-stat-card__label">Highest average</span>
       </article>
-      <article class="ms-stat-card ms-stat-card--mint">
-        <span class="ms-stat-card__icon" aria-hidden="true">✅</span>
+      <article class="ms-stat-card">
         <span class="ms-stat-card__value">{{ statistics.passRate }}%</span>
         <span class="ms-stat-card__label">Pass rate (core ≥ 70%)</span>
       </article>
       <article class="ms-stat-card">
-        <span class="ms-stat-card__icon" aria-hidden="true">🎯</span>
         <span class="ms-stat-card__value">{{ statistics.highAchieversPercent }}%</span>
         <span class="ms-stat-card__label">Students ≥ 70%</span>
       </article>
-      <article class="ms-stat-card ms-stat-card--amber">
-        <span class="ms-stat-card__icon" aria-hidden="true">⚠️</span>
+      <article class="ms-stat-card">
         <span class="ms-stat-card__value">{{ statistics.lowPerformersPercent }}%</span>
         <span class="ms-stat-card__label">Below 70% in core</span>
       </article>

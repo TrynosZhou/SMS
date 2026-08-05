@@ -126,6 +126,18 @@ export class InvoiceSyncRemediationComponent implements OnInit, OnDestroy {
     return this.activeStudent.payments.filter((p) => p.selected && p.canReverse);
   }
 
+  get paymentCount(): number {
+    if (this.activeStudent) return this.activeStudent.payments.length;
+    return this.students.reduce((sum, s) => sum + (s.payments?.length || 0), 0);
+  }
+
+  get reversibleCount(): number {
+    const payments = this.activeStudent
+      ? this.activeStudent.payments
+      : this.students.flatMap((s) => s.payments || []);
+    return payments.filter((p) => p.canReverse).length;
+  }
+
   get selectedCreditInvoice(): RemediationInvoice | null {
     if (!this.activeStudent || !this.creditForm.invoiceId) return null;
     return (

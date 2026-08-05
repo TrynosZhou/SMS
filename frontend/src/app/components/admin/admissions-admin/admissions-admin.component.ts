@@ -36,6 +36,18 @@ export class AdmissionsAdminComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly load$ = new Subject<void>();
 
+  get pendingCount(): number {
+    return this.applications.filter((a) => a.status === 'pending').length;
+  }
+
+  get reviewCount(): number {
+    return this.applications.filter((a) => a.status === 'under_review').length;
+  }
+
+  get acceptedCount(): number {
+    return this.applications.filter((a) => a.status === 'accepted').length;
+  }
+
   constructor(
     public admissionService: AdmissionService,
     private cdr: ChangeDetectorRef

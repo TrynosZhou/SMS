@@ -1,7 +1,7 @@
-<div class="manage-students-page manage-students-page--modern">
+<div class="manage-students-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="students-toast-stack" *ngIf="error">
-    <div class="students-toast students-toast--error" *ngIf="error" role="alert">
+  <div class="students-toast-stack" *ngIf="error">
+    <div class="students-toast students-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="students-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -12,7 +12,7 @@
       <div class="manage-students-hero-left">
         <span class="manage-students-hero-icon" aria-hidden="true">{{ pageIcon }}</span>
         <div>
-          <span class="manage-students-hero-eyebrow">{{ isLogisticsView ? 'Logistics' : 'Students' }}</span>
+          <span class="manage-students-hero-eyebrow">{{ isLogisticsView ? 'Logistics' : 'Students · Registry' }}</span>
           <h1>{{ managePageTitle }}</h1>
           <p class="manage-students-hero-sub">{{ pageSubtitle }}</p>
         </div>
@@ -24,32 +24,44 @@
           (click)="refreshStudents()"
           [disabled]="loading"
           title="Refresh list"
-          aria-label="Refresh students">↻</button>
-        <a routerLink="/students/new" class="manage-students-hero-add" *ngIf="!isTeacher" title="Add student">+ Add Student</a>
+          aria-label="Refresh students">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a routerLink="/students/enroll" class="ms-hero-btn" *ngIf="!isTeacher && !isLogisticsView">Enroll</a>
+        <a routerLink="/students/new" class="ms-hero-btn ms-hero-btn--solid" *ngIf="!isTeacher" title="Add student">+ Add Student</a>
       </div>
     </div>
+
+    <nav class="ms-cross-links" aria-label="Related student pages" *ngIf="!isLogisticsView">
+      <a routerLink="/students/new">Register</a>
+      <a routerLink="/students/enroll">Enroll</a>
+      <a routerLink="/students/transfer">Transfer</a>
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/admin/admissions">Admissions</a>
+    </nav>
+
     <div class="manage-students-stats" *ngIf="!loading || pagination.total > 0">
       <article class="students-stat-card">
         <span class="students-stat-card__value">{{ dashboardStats.total }}</span>
         <span class="students-stat-card__label">Total</span>
       </article>
-      <article class="students-stat-card students-stat-card--day" *ngIf="!isLogisticsView">
+      <article class="students-stat-card" *ngIf="!isLogisticsView">
         <span class="students-stat-card__value">{{ dashboardStats.dayScholars }}</span>
         <span class="students-stat-card__label">Day scholars</span>
       </article>
-      <article class="students-stat-card students-stat-card--boarder" *ngIf="!isLogisticsView">
+      <article class="students-stat-card" *ngIf="!isLogisticsView">
         <span class="students-stat-card__value">{{ dashboardStats.boarders }}</span>
         <span class="students-stat-card__label">Boarders</span>
       </article>
-      <article class="students-stat-card students-stat-card--male">
+      <article class="students-stat-card">
         <span class="students-stat-card__value">{{ dashboardStats.male }}</span>
         <span class="students-stat-card__label">Male (shown)</span>
       </article>
-      <article class="students-stat-card students-stat-card--female">
+      <article class="students-stat-card">
         <span class="students-stat-card__value">{{ dashboardStats.female }}</span>
         <span class="students-stat-card__label">Female (shown)</span>
       </article>
-      <article class="students-stat-card students-stat-card--muted">
+      <article class="students-stat-card">
         <span class="students-stat-card__value">{{ dashboardStats.classes }}</span>
         <span class="students-stat-card__label">Classes</span>
       </article>
@@ -67,7 +79,7 @@
           placeholder="Search by name, ID, or phone…"
           (input)="onSearchChange()"
           aria-label="Search students" />
-        <span class="manage-students-search-icon" aria-hidden="true">🔍</span>
+        <span class="manage-students-search-icon" aria-hidden="true">⌕</span>
       </div>
 
       <div class="manage-students-filter-wrap" *ngIf="!isLogisticsView">
@@ -136,21 +148,19 @@
           <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
         </select>
       </div>
-
-      <a routerLink="/students/new" class="manage-students-add-btn" *ngIf="!isTeacher" title="Add student" aria-label="Add student">+</a>
     </div>
 
     <div class="manage-students-toolbar manage-students-toolbar--secondary">
       <div class="manage-students-filters-row">
         <label class="filter-chip" *ngIf="!isLogisticsView">
           <input type="checkbox" [(ngModel)]="filterUsesTransport" [ngModelOptions]="{standalone: true}" (change)="onLogisticsFilterChange()" />
-          <span>🚌 Transport</span>
+          <span>Transport</span>
         </label>
         <label class="filter-chip" *ngIf="!isLogisticsView">
           <input type="checkbox" [(ngModel)]="filterUsesDiningHall" [ngModelOptions]="{standalone: true}" (change)="onLogisticsFilterChange()" />
-          <span>🍽 Dining hall</span>
+          <span>Dining hall</span>
         </label>
-        <button type="button" class="students-clear-filters" *ngIf="hasActiveFilters()" (click)="clearAllFilters()">
+        <button type="button" class="ms-btn ms-btn--ghost" *ngIf="hasActiveFilters()" (click)="clearAllFilters()">
           Clear filters ({{ activeFilterCount }})
         </button>
         <span class="students-bulk-hint" *ngIf="canBulkCorrectStatus() && selectedCount > 0">
@@ -158,7 +168,7 @@
         </span>
         <button
           type="button"
-          class="students-bulk-btn"
+          class="ms-btn ms-btn--outline"
           *ngIf="canBulkCorrectStatus()"
           (click)="bulkMarkSelectedReturning()"
           [disabled]="bulkSubmitting || selectedCount === 0">
@@ -168,13 +178,13 @@
 
       <div class="manage-students-toolbar-actions">
         <div class="students-view-toggle" role="group" aria-label="View mode">
-          <button type="button" class="students-view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List view">☰</button>
-          <button type="button" class="students-view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card view">▦</button>
+          <button type="button" class="students-view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List view">List</button>
+          <button type="button" class="students-view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card view">Cards</button>
         </div>
-        <button type="button" class="students-action-btn" (click)="exportToCsv()" [disabled]="!filteredStudents.length">CSV</button>
+        <button type="button" class="ms-btn ms-btn--outline" (click)="exportToCsv()" [disabled]="!filteredStudents.length">CSV</button>
         <button
           type="button"
-          class="students-action-btn"
+          class="ms-btn ms-btn--outline"
           (click)="openLogisticsReport(true)"
           *ngIf="isLogisticsView"
           [disabled]="!filteredStudents.length || loading"
@@ -183,7 +193,7 @@
         </button>
         <button
           type="button"
-          class="students-action-btn"
+          class="ms-btn ms-btn--outline"
           (click)="openLogisticsReport(false)"
           *ngIf="isLogisticsView"
           [disabled]="!filteredStudents.length || loading"
@@ -192,7 +202,7 @@
         </button>
         <button
           type="button"
-          class="students-action-btn"
+          class="ms-btn ms-btn--outline"
           (click)="printList()"
           *ngIf="!isLogisticsView"
           [disabled]="!filteredStudents.length"
@@ -201,7 +211,7 @@
         </button>
         <button
           type="button"
-          class="students-action-btn students-action-btn--primary"
+          class="ms-btn ms-btn--primary"
           *ngIf="isLogisticsTransport"
           (click)="generateBusIdCards()"
           [disabled]="!filteredStudents.length || loading">
@@ -231,21 +241,21 @@
                 aria-label="Select all visible" />
             </th>
             <th class="sortable" (click)="setSort('studentNumber')">
-              <span class="th-icon" aria-hidden="true">🎓</span> Student ID <span class="sort-icon">{{ sortIndicator('studentNumber') }}</span>
+              Student ID <span class="sort-icon">{{ sortIndicator('studentNumber') }}</span>
             </th>
             <th class="sortable" (click)="setSort('lastName')">
-              <span class="th-icon" aria-hidden="true">👤</span> Surname <span class="sort-icon">{{ sortIndicator('lastName') }}</span>
+              Surname <span class="sort-icon">{{ sortIndicator('lastName') }}</span>
             </th>
             <th class="sortable" (click)="setSort('firstName')">
-              <span class="th-icon" aria-hidden="true">👤</span> Name <span class="sort-icon">{{ sortIndicator('firstName') }}</span>
+              Name <span class="sort-icon">{{ sortIndicator('firstName') }}</span>
             </th>
             <th *ngIf="!isLogisticsView">Class</th>
             <th>Type</th>
             <th class="sortable" (click)="setSort('gender')">
-              <span class="th-icon" aria-hidden="true">⚥</span> Gender <span class="sort-icon">{{ sortIndicator('gender') }}</span>
+              Gender <span class="sort-icon">{{ sortIndicator('gender') }}</span>
             </th>
-            <th><span class="th-icon" aria-hidden="true">📞</span> Phone</th>
-            <th><span class="th-icon" aria-hidden="true">⚙</span> Actions</th>
+            <th>Phone</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -280,15 +290,15 @@
             </td>
             <td>{{ getPhone(student) }}</td>
             <td class="col-actions">
-              <button type="button" class="action-view" (click)="viewStudentDetails(student)" title="View student">👁</button>
-              <button type="button" class="action-edit" *ngIf="!isTeacher" (click)="editStudent(student.id)" title="Edit student">✏️</button>
+              <button type="button" class="ms-row-btn" (click)="viewStudentDetails(student)" title="View student">View</button>
+              <button type="button" class="ms-row-btn ms-row-btn--primary" *ngIf="!isTeacher" (click)="editStudent(student.id)" title="Edit student">Edit</button>
               <button
                 type="button"
-                class="action-delete"
+                class="ms-row-btn ms-row-btn--ghost"
                 *ngIf="!isTeacher"
                 (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)"
                 title="Delete student"
-                [disabled]="loading">🗑</button>
+                [disabled]="loading">Delete</button>
             </td>
           </tr>
         </tbody>
@@ -328,8 +338,8 @@
         <p class="student-card__class" *ngIf="!isLogisticsView">{{ getStudentClassName(student) }}</p>
         <p class="student-card__phone">{{ getPhone(student) }}</p>
         <div class="student-card__actions">
-          <button type="button" class="student-card__btn" (click)="viewStudentDetails(student)">View</button>
-          <button type="button" class="student-card__btn student-card__btn--primary" *ngIf="!isTeacher" (click)="editStudent(student.id)">Edit</button>
+          <button type="button" class="ms-btn ms-btn--outline" (click)="viewStudentDetails(student)">View</button>
+          <button type="button" class="ms-btn ms-btn--primary" *ngIf="!isTeacher" (click)="editStudent(student.id)">Edit</button>
         </div>
       </article>
     </div>
@@ -341,9 +351,11 @@
       <p *ngIf="loadFailed">Check your connection and try again.</p>
       <p *ngIf="!loadFailed && hasActiveFilters()">Try adjusting search or filters.</p>
       <p *ngIf="!loadFailed && !hasActiveFilters()">Enrol your first student to get started.</p>
-      <button type="button" class="btn-retry" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
-      <button type="button" class="btn-clear-filters" *ngIf="!loadFailed && hasActiveFilters()" (click)="clearAllFilters()">Clear filters</button>
-      <a routerLink="/students/new" class="btn-add-first" *ngIf="!isTeacher && !loadFailed && !hasActiveFilters()">+ Add Student</a>
+      <div class="manage-students-empty__actions">
+        <button type="button" class="ms-btn ms-btn--primary" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
+        <button type="button" class="ms-btn ms-btn--outline" *ngIf="!loadFailed && hasActiveFilters()" (click)="clearAllFilters()">Clear filters</button>
+        <a routerLink="/students/new" class="ms-btn ms-btn--primary" *ngIf="!isTeacher && !loadFailed && !hasActiveFilters()">+ Add Student</a>
+      </div>
     </div>
 
     <div class="manage-students-pagination" *ngIf="!loading && pagination.total > 0">
@@ -359,10 +371,10 @@
         </label>
       </div>
       <div class="pagination-actions">
-        <button type="button" class="btn-page" (click)="onPageChange(1)" [disabled]="!canGoPrevious" title="First page" aria-label="First page">⏮</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.page - 1)" [disabled]="!canGoPrevious" title="Previous page" aria-label="Previous page">◀</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.page + 1)" [disabled]="!canGoNext" title="Next page" aria-label="Next page">▶</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.totalPages)" [disabled]="!canGoNext" title="Last page" aria-label="Last page">⏭</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--icon" (click)="onPageChange(1)" [disabled]="!canGoPrevious" title="First page" aria-label="First page">«</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--icon" (click)="onPageChange(pagination.page - 1)" [disabled]="!canGoPrevious" title="Previous page" aria-label="Previous page">‹</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--icon" (click)="onPageChange(pagination.page + 1)" [disabled]="!canGoNext" title="Next page" aria-label="Next page">›</button>
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--icon" (click)="onPageChange(pagination.totalPages)" [disabled]="!canGoNext" title="Last page" aria-label="Last page">»</button>
       </div>
     </div>
   </div>
@@ -370,10 +382,10 @@
   <!-- Student Details Modal -->
   <div class="modal-overlay" *ngIf="selectedStudent" (click)="closeStudentDetails()">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <button type="button" class="modal-close" (click)="closeStudentDetails()">&times;</button>
+      <button type="button" class="modal-close" (click)="closeStudentDetails()" aria-label="Close">&times;</button>
       <div class="modal-header">
         <div class="modal-avatar" [class.male]="selectedStudent.gender === 'Male'" [class.female]="selectedStudent.gender === 'Female'">
-          <span class="avatar-icon-large">{{ selectedStudent.gender === 'Male' ? '👨' : '👩' }}</span>
+          <span class="avatar-initial">{{ (selectedStudent.firstName || '?').charAt(0) }}{{ (selectedStudent.lastName || '').charAt(0) }}</span>
         </div>
         <div class="modal-title">
           <h2>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h2>
@@ -427,14 +439,14 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeStudentDetails()">Close</button>
-        <button type="button" class="btn btn-secondary-outline" (click)="viewStudentIdCard(selectedStudent.id)">ID Card</button>
-        <button type="button" class="btn btn-secondary-outline" (click)="viewReportCard(selectedStudent.id)">Report card</button>
-        <button type="button" class="btn btn-danger" *ngIf="!isTeacher" (click)="deleteStudent(selectedStudent.id, selectedStudent.firstName + ' ' + selectedStudent.lastName, selectedStudent.studentNumber)">
-          🗑️ Delete
+        <button type="button" class="ms-btn ms-btn--ghost" (click)="closeStudentDetails()">Close</button>
+        <button type="button" class="ms-btn ms-btn--outline" (click)="viewStudentIdCard(selectedStudent.id)">ID Card</button>
+        <button type="button" class="ms-btn ms-btn--outline" (click)="viewReportCard(selectedStudent.id)">Report card</button>
+        <button type="button" class="ms-btn ms-btn--ghost" *ngIf="!isTeacher" (click)="deleteStudent(selectedStudent.id, selectedStudent.firstName + ' ' + selectedStudent.lastName, selectedStudent.studentNumber)">
+          Delete
         </button>
-        <button type="button" class="btn btn-primary" *ngIf="!isTeacher" (click)="editStudent(selectedStudent.id)">
-          ✏️ Edit Student
+        <button type="button" class="ms-btn ms-btn--primary" *ngIf="!isTeacher" (click)="editStudent(selectedStudent.id)">
+          Edit Student
         </button>
       </div>
     </div>

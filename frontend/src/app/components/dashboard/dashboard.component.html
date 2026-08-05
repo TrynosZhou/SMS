@@ -6,51 +6,79 @@
 
       <header class="sd-hero">
         <div class="sd-hero__main">
-          <span class="sd-pill">Student Portal</span>
-          <p class="sd-hero__eyebrow">{{ getSmartGreeting() }}</p>
-          <h1 class="sd-hero__title">{{ getGreetingName() }}</h1>
-          <p class="sd-hero__meta" *ngIf="getStudentNumber() || getStudentClassName()">
-            <span *ngIf="getStudentNumber()">🆔 {{ getStudentNumber() }}</span>
-            <span *ngIf="getStudentClassName()"> · 🏫 {{ getStudentClassName() }}</span>
-          </p>
-          <p class="sd-hero__date">{{ getCurrentDateTime() }}</p>
-          <p class="sd-hero__updated" *ngIf="studentDataLastUpdated && !loadingBalance">
-            Balance updated {{ formatStudentUpdatedAt() }}
-          </p>
+          <div class="sd-hero__left">
+            <span class="sd-hero__icon" aria-hidden="true">🎓</span>
+            <div>
+              <span class="sd-hero__eyebrow">Student Portal</span>
+              <h1 class="sd-hero__title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
+              <p class="sd-hero__meta" *ngIf="getStudentNumber() || getStudentClassName()">
+                <span *ngIf="getStudentNumber()">{{ getStudentNumber() }}</span>
+                <span *ngIf="getStudentClassName()"> · {{ getStudentClassName() }}</span>
+              </p>
+              <p class="sd-hero__date">{{ getCurrentDateTime() }}</p>
+              <p class="sd-hero__updated" *ngIf="studentDataLastUpdated && !loadingBalance">
+                Balance updated {{ formatStudentUpdatedAt() }}
+              </p>
+            </div>
+          </div>
+          <div class="sd-hero__actions">
+            <button
+              type="button"
+              class="sd-btn sd-btn--ghost"
+              (click)="refreshStudentDashboard()"
+              [disabled]="loadingBalance">
+              <span class="sd-spin" *ngIf="loadingBalance">↻</span>
+              <span *ngIf="!loadingBalance">↻</span>
+              Refresh
+            </button>
+            <a
+              *ngIf="canChangeOwnPassword()"
+              class="sd-btn sd-btn--white"
+              [routerLink]="changePasswordRoute">
+              Change password
+            </a>
+          </div>
         </div>
-        <div class="sd-hero__actions">
-          <button
-            type="button"
-            class="sd-btn sd-btn--ghost"
-            (click)="refreshStudentDashboard()"
-            [disabled]="loadingBalance">
-            <span class="sd-spin" *ngIf="loadingBalance">↻</span>
-            <span *ngIf="!loadingBalance">↻</span>
-            Refresh
-          </button>
-          <a
-            *ngIf="canChangeOwnPassword()"
-            class="sd-btn sd-btn--outline"
-            [routerLink]="changePasswordRoute">
-            🔐 Change password
-          </a>
+
+        <nav class="sd-cross-links" aria-label="Student shortcuts">
+          <a routerLink="/student/report-card">Report card</a>
+          <a routerLink="/student/invoice-statement">Invoice statement</a>
+          <a routerLink="/student/parent-portal">Parent portal</a>
+        </nav>
+
+        <div class="sd-hero-stats" *ngIf="!loadingBalance">
+          <article class="sd-hstat">
+            <span class="sd-hstat__value">{{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}</span>
+            <span class="sd-hstat__label">Balance</span>
+          </article>
+          <article class="sd-hstat">
+            <span class="sd-hstat__value">{{ activeTerm || '—' }}</span>
+            <span class="sd-hstat__label">Active term</span>
+          </article>
+          <article class="sd-hstat">
+            <span class="sd-hstat__value">{{ getStudentClassName() || '—' }}</span>
+            <span class="sd-hstat__label">Class</span>
+          </article>
+        </div>
+        <div class="sd-hero-stats sd-hero-stats--skeleton" *ngIf="loadingBalance" aria-busy="true">
+          <div class="sd-hstat-skel" *ngFor="let _ of [0,1,2]"></div>
         </div>
       </header>
 
       <div class="sd-alert sd-alert--error" *ngIf="studentError">
-        <span aria-hidden="true">⚠️</span>
+        <span class="sd-alert__mark" aria-hidden="true">!</span>
         <div>{{ studentError }}</div>
       </div>
 
       <div class="sd-alert sd-alert--warn" *ngIf="!loadingBalance && studentBalance > 0">
-        <span aria-hidden="true">⚠️</span>
+        <span class="sd-alert__mark" aria-hidden="true">!</span>
         <div>
           <strong>Outstanding balance: {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}</strong>
           <p>Please clear your fees to access all academic records. View your invoice statement for payment details.</p>
         </div>
         <button
           type="button"
-          class="sd-btn sd-btn--white sd-btn--sm"
+          class="sd-btn sd-btn--primary sd-btn--sm"
           (click)="viewStudentInvoicePreview()"
           [disabled]="loadingInvoicePdf">
           {{ loadingInvoicePdf ? 'Loading…' : 'View invoice' }}
@@ -58,69 +86,37 @@
       </div>
 
       <div class="sd-alert sd-alert--success" *ngIf="!loadingBalance && studentBalance <= 0">
-        <span aria-hidden="true">✅</span>
+        <span class="sd-alert__mark sd-alert__mark--ok" aria-hidden="true">✓</span>
         <div>
           <strong>Your account is fully paid up</strong>
           <p>You can view your report card and download invoice statements anytime.</p>
         </div>
       </div>
 
-      <!-- Stats skeleton -->
-      <div class="sd-stats sd-stats--skeleton" *ngIf="loadingBalance" aria-busy="true">
-        <div class="sd-skeleton-card" *ngFor="let _ of [0,1,2]"></div>
-      </div>
-
-      <div class="sd-stats" *ngIf="!loadingBalance">
-        <article
-          class="sd-stat"
-          [class.sd-stat--danger]="studentBalance > 0"
-          [class.sd-stat--success]="studentBalance <= 0">
-          <span class="sd-stat__icon">{{ studentBalance > 0 ? '💰' : '✅' }}</span>
-          <div>
-            <div class="sd-stat__val">{{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}</div>
-            <div class="sd-stat__lbl">Current balance</div>
-          </div>
-        </article>
-        <article class="sd-stat sd-stat--sky">
-          <span class="sd-stat__icon">📅</span>
-          <div>
-            <div class="sd-stat__val sd-stat__val--text">{{ activeTerm || '—' }}</div>
-            <div class="sd-stat__lbl">Active term</div>
-          </div>
-        </article>
-        <article class="sd-stat sd-stat--violet">
-          <span class="sd-stat__icon">🏫</span>
-          <div>
-            <div class="sd-stat__val sd-stat__val--text">{{ getStudentClassName() || '—' }}</div>
-            <div class="sd-stat__lbl">Your class</div>
-          </div>
-        </article>
-      </div>
-
       <section class="sd-panel">
         <div class="sd-panel__head">
-          <h2>⚡ Quick actions</h2>
+          <h2>Quick actions</h2>
           <p>Jump to your report card, fees, and account tools.</p>
         </div>
         <div class="sd-qa-grid">
-          <a routerLink="/student/report-card" class="sd-qa-tile sd-qa-tile--violet">
-            <span class="sd-qa-icon">📄</span>
+          <a routerLink="/student/report-card" class="sd-qa-tile">
+            <span class="sd-qa-icon" aria-hidden="true">📄</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Report card</span>
               <span class="sd-qa-hint">Grades, remarks & PDF</span>
             </span>
             <span class="sd-qa-arrow" aria-hidden="true">→</span>
           </a>
-          <a routerLink="/student/invoice-statement" class="sd-qa-tile sd-qa-tile--sky">
-            <span class="sd-qa-icon">🧾</span>
+          <a routerLink="/student/invoice-statement" class="sd-qa-tile">
+            <span class="sd-qa-icon" aria-hidden="true">🧾</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Invoice statement</span>
               <span class="sd-qa-hint">Fees, balance & PDF preview</span>
             </span>
             <span class="sd-qa-arrow" aria-hidden="true">→</span>
           </a>
-          <a routerLink="/student/parent-portal" class="sd-qa-tile sd-qa-tile--emerald">
-            <span class="sd-qa-icon">👨‍👩‍👧</span>
+          <a routerLink="/student/parent-portal" class="sd-qa-tile">
+            <span class="sd-qa-icon" aria-hidden="true">👨‍👩‍👧</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Parent portal</span>
               <span class="sd-qa-hint">Share access with guardians</span>
@@ -130,8 +126,8 @@
           <a
             *ngIf="canChangeOwnPassword()"
             [routerLink]="changePasswordRoute"
-            class="sd-qa-tile sd-qa-tile--slate">
-            <span class="sd-qa-icon">🔐</span>
+            class="sd-qa-tile">
+            <span class="sd-qa-icon" aria-hidden="true">🔐</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Change password</span>
               <span class="sd-qa-hint">Keep your login secure</span>
@@ -154,10 +150,15 @@
     <ng-container *ngIf="!isStudent()">
     <header class="dash-page-header">
       <div class="dash-page-header__intro">
-        <span class="dash-page-eyebrow">{{ getRoleLabel() }} · Dashboard</span>
-        <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
-        <p class="dash-page-subtitle">Overview of enrolment, staff, academics, and school operations.</p>
-        <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
+        <div class="dash-page-header__brand">
+          <span class="dash-page-header__icon" aria-hidden="true">📊</span>
+          <div>
+            <span class="dash-page-eyebrow">{{ getRoleLabel() }} · Dashboard</span>
+            <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
+            <p class="dash-page-subtitle">Overview of enrolment, staff, academics, and school operations.</p>
+            <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
+          </div>
+        </div>
       </div>
       <div class="dash-page-header__actions">
         <a
@@ -177,6 +178,14 @@
           Refresh
         </button>
       </div>
+
+      <nav class="dash-cross-links" aria-label="Related pages" *ngIf="isAdmin() || isAccountant() || isTeacher()">
+        <a routerLink="/students" *ngIf="canAccessModule('students')">Students</a>
+        <a routerLink="/invoices" *ngIf="canAccessModule('finance')">Invoices</a>
+        <a routerLink="/teachers" *ngIf="canAccessModule('teachers')">Teachers</a>
+        <a routerLink="/messages/incoming">Messages</a>
+        <a routerLink="/system-settings" *ngIf="canAccessModule('settings')">Settings</a>
+      </nav>
     </header>
 
     <div class="dash-status-strip" *ngIf="canViewDashboardStats()">
@@ -195,7 +204,7 @@
 
     <!-- Statistics Cards -->
     <div class="stats-grid stats-grid--live" *ngIf="canViewDashboardStats() && !loadingStats">
-      <article class="stat-card primary">
+      <article class="stat-card">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">👥</div>
         </div>
@@ -208,7 +217,7 @@
         </div>
       </article>
 
-      <article class="stat-card success">
+      <article class="stat-card">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">👨‍🏫</div>
         </div>
@@ -219,7 +228,7 @@
         </div>
       </article>
 
-      <article class="stat-card info">
+      <article class="stat-card">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">🏫</div>
         </div>
@@ -230,7 +239,7 @@
         </div>
       </article>
 
-      <article class="stat-card warning">
+      <article class="stat-card">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">📚</div>
         </div>
@@ -241,7 +250,7 @@
         </div>
       </article>
 
-      <article class="stat-card danger" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
+      <article class="stat-card" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">💰</div>
         </div>
@@ -254,7 +263,7 @@
         </div>
       </article>
 
-      <article class="stat-card secondary" *ngIf="canViewDashboardStats()">
+      <article class="stat-card" *ngIf="canViewDashboardStats()">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" aria-hidden="true">👶</div>
         </div>
@@ -318,7 +327,6 @@
               *ngFor="let m of getModuleShortcutsForView(); let mi = index"
               [routerLink]="m.route"
               class="dash-module-tile dash-module-tile--enter"
-              [ngClass]="'dash-module-tile--' + m.pastel"
               [style.animation-delay.ms]="mi * 35"
               [attr.aria-label]="isMessagesShortcut(m.route) && unreadParentMessageCount > 0 ? m.label + ', ' + unreadParentMessageCount + ' unread' : m.label"
             >
@@ -436,8 +444,8 @@
                   </div>
                 </div>
                 <div class="activity-action">
-                  <a [routerLink]="['/students', student.id, 'edit']" class="btn-link modern-btn-link">
-                    <span>✏️</span> Edit
+                  <a [routerLink]="['/students', student.id, 'edit']" class="dash-action-btn">
+                    Edit
                   </a>
                 </div>
               </div>
@@ -468,8 +476,8 @@
                   </div>
                 </div>
                 <div class="activity-action">
-                  <a [routerLink]="['/invoices']" class="btn-link modern-btn-link">
-                    <span>👁️</span> View
+                  <a [routerLink]="['/invoices']" class="dash-action-btn">
+                    View
                   </a>
                 </div>
               </div>
@@ -512,16 +520,16 @@
         <div class="sd-pdf-viewer-actions">
           <button
             type="button"
-            class="sd-btn sd-btn--white sd-btn--sm"
+            class="sd-btn sd-btn--primary sd-btn--sm"
             (click)="downloadStudentInvoicePdf()"
             [disabled]="loadingInvoicePdf || invoiceModalPdfError">
-            ⬇️ Download
+            Download
           </button>
           <button
             type="button"
-            class="sd-btn sd-btn--outline sd-btn--sm sd-pdf-viewer-close"
+            class="sd-btn sd-btn--ghost sd-btn--sm sd-pdf-viewer-close"
             (click)="closeStudentInvoicePdfViewer()">
-            ✕ Close
+            Close
           </button>
         </div>
       </div>
@@ -541,9 +549,9 @@
           <span>⚠️</span>
           <p>Could not load the invoice statement PDF.</p>
           <div class="sd-pdf-error-actions">
-            <button type="button" class="sd-btn sd-btn--outline sd-btn--sm" (click)="retryStudentInvoicePdf()">🔄 Retry</button>
-            <button type="button" class="sd-btn sd-btn--white sd-btn--sm" (click)="downloadStudentInvoicePdf()" *ngIf="invoiceModalId">
-              ⬇️ Download Instead
+            <button type="button" class="sd-btn sd-btn--ghost sd-btn--sm" (click)="retryStudentInvoicePdf()">Retry</button>
+            <button type="button" class="sd-btn sd-btn--primary sd-btn--sm" (click)="downloadStudentInvoicePdf()" *ngIf="invoiceModalId">
+              Download instead
             </button>
           </div>
         </div>

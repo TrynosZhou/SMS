@@ -1,12 +1,11 @@
-/* Mark Attendance — classic professional layout */
+/* Mark Attendance — classical professional layout */
 .mark-page {
   --mark-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
-  --mark-purple: #1e3a5f;
-  --mark-purple-dark: #152a45;
+  --mark-navy: #1e3a5f;
+  --mark-navy-deep: #152a45;
   --mark-border: #e2e8f0;
   --mark-muted: #64748b;
   --mark-text: #0f172a;
-  --mark-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
@@ -89,23 +88,23 @@
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: none;
+  color: #111;
 }
 
 .mark-hero-eyebrow {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fbbf24;
   margin-bottom: 4px;
 }
 
 .mark-hero h1 { margin: 0 0 6px; font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
-.mark-hero-sub { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); max-width: 640px; line-height: 1.45; }
+.mark-hero-sub { margin: 0; font-size: 0.95rem; color: rgba(255, 255, 255, 0.92); max-width: 640px; line-height: 1.5; }
 
-.mark-hero-aside { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.mark-hero-aside { display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; }
 
 .mark-hero-badge {
   display: inline-block;
@@ -119,62 +118,114 @@
 
 .mark-hero-badge--muted { opacity: 0.85; }
 
+.mark-hero__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.mark-hero-btn {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  box-shadow: none;
+}
+
+.mark-hero-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.mark-hero-btn--ghost {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.mark-hero-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mark-hero-btn--white {
+  background: #fff;
+  color: #1e3a5f;
+  border-color: #fff;
+}
+
+.mark-hero-btn--white:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.mark-hero-btn--accent {
+  background: #f59e0b;
+  color: #422006;
+  border-color: #f59e0b;
+}
+
+.mark-hero-btn--accent:hover {
+  background: #d97706;
+  color: #fff;
+}
+
 .mark-cross-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 16px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
+  gap: 0.5rem;
+  margin: 0 0 16px;
 }
 
 .mark-cross-links a {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 0.85rem;
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
   border-radius: 999px;
   font-size: 0.82rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: 500;
+  color: #fff;
   text-decoration: none;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   transition: background 0.15s;
 }
 
-.mark-cross-links a:hover { background: #f8fafc; }
+.mark-cross-links a:hover { background: rgba(255, 255, 255, 0.22); }
 
 .mark-hero-stats {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
-  margin: 14px 0 12px;
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
-  border: none;
+  margin: 0 0 14px;
 }
 
 .mark-stat {
-  position: relative;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-left: 3px solid #94a3b8;
-  border-radius: 8px;
-  padding: 12px 14px 12px 38px;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #fff;
+  text-align: left;
 }
 
-.mark-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 1; color: #000; }
-.mark-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #000; }
-.mark-stat__label { display: block; font-size: 0.72rem; margin-top: 2px; color: #000; font-weight: 700; }
-.mark-stat--mint .mark-stat__value,
-.mark-stat--rose .mark-stat__value,
-.mark-stat--amber .mark-stat__value,
-.mark-stat--sky .mark-stat__value,
-.mark-stat--muted .mark-stat__value { color: #000; opacity: 1; }
+.mark-stat__icon { display: none; }
+
+.mark-stat__value {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.mark-stat__label {
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 .mark-hero-toolbar {
   display: flex;
@@ -186,17 +237,6 @@
 }
 
 .mark-hero-toolbar__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-
-.mark-hero-toolbar .mark-btn--ghost {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
-
-.mark-hero-toolbar .mark-btn--ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
-.mark-hero-toolbar .mark-btn--outline { background: #fff; color: var(--mark-purple-dark); border-color: #fff; }
-.mark-hero-toolbar .mark-btn--success { color: #047857; }
-.mark-hero-toolbar .mark-btn--danger { color: #b91c1c; }
 
 .mark-save-pill {
   display: inline-flex;
@@ -214,11 +254,11 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fde68a;
+  background: #fbbf24;
   animation: mark-pulse 2s infinite;
 }
 
-.mark-save-pill__dot.saved { background: #6ee7b7; animation: none; }
+.mark-save-pill__dot.saved { background: #f59e0b; animation: none; }
 
 @keyframes mark-pulse {
   0%, 100% { opacity: 1; }
@@ -229,18 +269,21 @@
 .mark-panel {
   background: #fff;
   border: 1px solid var(--mark-border);
-  border-radius: 14px;
-  padding: 1.35rem 1.5rem;
+  border-top: 3px solid #1e3a5f;
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
   margin-bottom: 1.25rem;
-  box-shadow: var(--mark-shadow);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
-.mark-panel--select { border-top: 3px solid var(--mark-purple); }
-.mark-panel--register { border-top: 3px solid #10b981; }
+.mark-panel--select,
+.mark-panel--register {
+  border-top-color: #1e3a5f;
+}
 
 .mark-panel__head { margin-bottom: 1rem; }
-.mark-panel__title { margin: 0 0 4px; font-size: 1.12rem; font-weight: 700; color: var(--mark-text); }
-.mark-panel__intro { margin: 0; color: var(--mark-muted); font-size: 0.9rem; }
+.mark-panel__title { margin: 0 0 4px; font-size: 1.1rem; font-weight: 700; color: var(--mark-text); }
+.mark-panel__intro { margin: 0; color: var(--mark-muted); font-size: 0.85rem; }
 
 /* Form */
 .mark-form-grid {
@@ -266,10 +309,12 @@
 .mark-field label,
 .mark-field-label-spacer {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .mark-field-label-spacer {
@@ -285,13 +330,14 @@
 .mark-search-input,
 .mark-remarks-input {
   width: 100%;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid var(--mark-border);
-  border-radius: 10px;
-  font-size: 0.95rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  font-size: 0.9rem;
   box-sizing: border-box;
   background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
 }
 
 .mark-select--filter { min-width: 140px; width: auto; }
@@ -301,7 +347,7 @@
 .mark-search-input:focus,
 .mark-remarks-input:focus {
   outline: none;
-  border-color: var(--mark-purple);
+  border-color: #1e3a5f;
   box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
@@ -315,21 +361,22 @@
 .mark-weekend-badge {
   margin-left: 6px;
   padding: 2px 8px;
-  background: #fee2e2;
-  color: #991b1b;
+  background: #f1f5f9;
+  color: #1e3a5f;
+  border: 1px solid #94a3b8;
   border-radius: 6px;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .mark-already-marked-badge {
-  background: #dcfce7;
-  color: #166534;
+  background: #1e3a5f;
+  color: #fff;
+  border-color: #1e3a5f;
 }
 
-.mark-bulk-btn:disabled,
 .mark-status-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -342,76 +389,96 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
 }
 
 .mark-chip {
-  border: 1px solid var(--mark-border);
-  background: #f8fafc;
-  border-radius: 999px;
+  border: 1px solid #94a3b8;
+  background: #fff;
+  border-radius: 8px;
   padding: 0.4rem 0.85rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
-  color: #334155;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  color: #1e3a5f;
+  font-family: inherit;
+  box-shadow: none;
 }
 
-.mark-chip:hover { border-color: var(--mark-purple); color: var(--mark-purple-dark); }
-.mark-chip--active { background: var(--mark-purple); border-color: var(--mark-purple); color: #fff; }
+.mark-chip:hover { border-color: #1e3a5f; background: #f1f5f9; }
+.mark-chip--active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
 
-
-/* Buttons */
+/* Classical buttons */
 .mark-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border: 1px solid var(--mark-border);
+  border: 1px solid #1e3a5f;
   background: #fff;
-  border-radius: 10px;
-  padding: 0.6rem 1.05rem;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
-  color: #334155;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  color: #1e3a5f;
   text-decoration: none;
+  font-family: inherit;
+  box-shadow: none;
+  white-space: nowrap;
 }
 
-.mark-btn:hover:not(:disabled) { border-color: #cbd5e1; background: #f8fafc; }
-.mark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.mark-btn--primary { background: var(--mark-purple); border-color: var(--mark-purple); color: #fff; }
-.mark-btn--primary:hover:not(:disabled) { background: var(--mark-purple-dark); border-color: var(--mark-purple-dark); }
-.mark-btn--success { background: #059669; border-color: #059669; color: #fff; }
-.mark-btn--success:hover:not(:disabled) { background: #047857; }
-.mark-btn--danger { background: #dc2626; border-color: #dc2626; color: #fff; }
-.mark-btn--danger:hover:not(:disabled) { background: #b91c1c; }
-.mark-btn--outline { border-color: var(--mark-purple); color: var(--mark-purple-dark); }
-.mark-btn--outline:hover:not(:disabled) { background: #f8fafc; }
-.mark-btn--ghost { background: transparent; border-color: transparent; color: var(--mark-muted); }
-.mark-btn--ghost:hover:not(:disabled) { background: #f1f5f9; border-color: #e2e8f0; }
-.mark-btn--sm { padding: 0.4rem 0.75rem; font-size: 0.82rem; }
-.mark-btn--lg { padding: 0.75rem 1.25rem; font-weight: 600; }
+.mark-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+  color: #1e3a5f;
+}
+
+.mark-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.mark-btn--primary {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
+}
+
+.mark-btn--primary:hover:not(:disabled) {
+  background: #152a45;
+  border-color: #152a45;
+  color: #fff;
+}
+
+.mark-btn--outline {
+  border-color: #94a3b8;
+  color: #1e3a5f;
+  background: #fff;
+}
+
+.mark-btn--outline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+}
+
+.mark-btn--ghost {
+  background: #fff;
+  border-color: #94a3b8;
+  color: #1e3a5f;
+}
+
+.mark-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+}
+
+.mark-btn--sm { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+.mark-btn--lg { padding: 0.65rem 1.25rem; font-weight: 700; }
+
 .mark-btn--inline {
   white-space: nowrap;
   height: 2.65rem;
   align-self: stretch;
 }
-
-.mark-link-btn {
-  background: none;
-  border: none;
-  color: var(--mark-purple);
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-
-.mark-link-btn:hover { background: #f8fafc; }
 
 .mark-spinner {
   width: 14px;
@@ -429,33 +496,35 @@
 .mark-empty {
   text-align: center;
   padding: 3rem 1.5rem;
-  border: 1px dashed var(--mark-border);
-  border-radius: 14px;
+  border: 1px solid var(--mark-border);
+  border-top: 3px solid #1e3a5f;
+  border-radius: 12px;
   margin-bottom: 1.25rem;
-  background: #fafbfc;
+  background: #fff;
   color: var(--mark-muted);
 }
 
-.mark-loading-panel { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; background: #fff; }
+.mark-loading-panel { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
 
 .mark-loading-ring {
   width: 36px;
   height: 36px;
   border: 3px solid #e2e8f0;
-  border-top-color: var(--mark-purple);
+  border-top-color: #1e3a5f;
   border-radius: 50%;
   animation: mark-spin 0.8s linear infinite;
 }
 
 .mark-empty-icon { font-size: 2.25rem; display: block; margin-bottom: 0.5rem; }
-.mark-empty h3 { margin: 0 0 0.5rem; color: #334155; font-size: 1.1rem; }
+.mark-empty h3 { margin: 0 0 0.5rem; color: #1e293b; font-size: 1.1rem; }
 .mark-empty p { margin: 0 0 1rem; max-width: 420px; margin-left: auto; margin-right: auto; }
 
 .mark-empty-inline {
   text-align: center;
   padding: 2rem;
   background: #f8fafc;
-  border-radius: 10px;
+  border-radius: 8px;
+  border: 1px solid #94a3b8;
 }
 
 /* Register section */
@@ -471,49 +540,6 @@
 }
 
 .mark-bulk-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-
-.mark-bulk-btn {
-  padding: 0.5rem 0.95rem;
-  border-radius: 8px;
-  font-size: 0.902rem; /* 0.82rem + 10% */
-  font-weight: 700;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: filter 0.15s, opacity 0.15s;
-}
-
-.mark-bulk-btn--present {
-  background: #059669;
-  border-color: #047857;
-  color: #ffffff;
-}
-.mark-bulk-btn--present:hover {
-  background: #047857;
-  color: #ffffff;
-  filter: brightness(1.05);
-}
-
-.mark-bulk-btn--absent {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #ffffff;
-}
-.mark-bulk-btn--absent:hover {
-  background: #b91c1c;
-  color: #ffffff;
-  filter: brightness(1.05);
-}
-
-.mark-bulk-btn--late {
-  background: #d97706;
-  border-color: #b45309;
-  color: #ffffff;
-}
-.mark-bulk-btn--late:hover {
-  background: #b45309;
-  color: #ffffff;
-  filter: brightness(1.05);
-}
 
 .mark-refine-row {
   display: flex;
@@ -558,49 +584,68 @@
 /* Table */
 .mark-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--mark-border);
-  border-radius: 12px;
+  border-radius: 8px;
   margin-bottom: 1.25rem;
 }
 
 .mark-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.mark-table thead,
+.mark-table thead tr,
+.mark-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
+.mark-table thead tr:hover,
+.mark-table thead tr:hover th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .mark-table th,
 .mark-table td {
-  padding: 0.7rem 0.9rem;
-  border-bottom: 1px solid var(--mark-border);
+  padding: 12px 14px;
   text-align: left;
   vertical-align: middle;
-  color: #000000;
 }
 
 .mark-table th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
-  font-weight: 700;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #000000;
   z-index: 1;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ffffff !important;
+  background: #1e3a5f !important;
+  border: 1.5px solid #152a45;
+  white-space: nowrap;
 }
 
 .mark-table tbody td {
-  color: #000000;
+  border: 1.5px solid #94a3b8;
+  color: #1e293b;
   font-weight: 500;
 }
 
-.mark-table tbody tr:hover { background: #fafbfc; }
-.mark-row--absent { background: #fff7ed; }
-.mark-row--absent:hover { background: #ffedd5 !important; }
+.mark-table tbody tr:nth-child(odd) { background: #ffffff; }
+.mark-table tbody tr:nth-child(even) { background: #f1f5f9; }
+.mark-table tbody tr:hover { background: #e2e8f0; }
 
-.mark-col-rank { width: 44px; color: #000000; font-weight: 700; text-align: center; }
-.mark-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #000000; font-weight: 600; }
+.mark-row--absent { background: #f1f5f9 !important; }
+.mark-row--absent:hover { background: #e2e8f0 !important; }
+
+.mark-col-rank { width: 44px; color: #64748b; font-weight: 700; text-align: center; }
+.mark-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #1e3a5f; font-weight: 600; }
 
 .mark-status-btns {
   display: flex;
@@ -611,23 +656,37 @@
 .mark-status-btn {
   padding: 0.35rem 0.6rem;
   border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   cursor: pointer;
-  border: 1px solid;
+  border: 1px solid #94a3b8;
   background: #fff;
-  transition: all 0.15s;
+  color: #1e3a5f;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
+  font-family: inherit;
+  box-shadow: none;
 }
 
-.mark-status-btn--present { border-color: #bbf7d0; color: #047857; }
-.mark-status-btn--present.active, .mark-status-btn--present:hover { background: #ecfdf5; border-color: #10b981; }
-.mark-status-btn--absent { border-color: #fecaca; color: #b91c1c; }
-.mark-status-btn--absent.active, .mark-status-btn--absent:hover { background: #fef2f2; border-color: #ef4444; }
-.mark-status-btn--late { border-color: #fde68a; color: #b45309; }
-.mark-status-btn--late.active, .mark-status-btn--late:hover { background: #fffbeb; border-color: #f59e0b; }
-.mark-status-btn--excused { border-color: #e2e8f0; color: #1e3a5f; }
-.mark-status-btn--excused.active, .mark-status-btn--excused:hover { background: #f8fafc; border-color: #274876; }
+.mark-status-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+}
+
+.mark-status-btn.active {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
+}
+
+.mark-status-btn--present.active,
+.mark-status-btn--absent.active,
+.mark-status-btn--late.active,
+.mark-status-btn--excused.active {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
+}
 
 .mark-remarks-input { min-width: 160px; font-size: 0.85rem; padding: 0.45rem 0.65rem; }
 
@@ -654,8 +713,9 @@
 
 .mark-modal {
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  border-radius: 12px;
+  border-top: 3px solid #1e3a5f;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
   width: 100%;
   max-width: 520px;
   overflow: hidden;
@@ -671,17 +731,15 @@
   color: #fff;
 }
 
-.mark-modal__head--danger { background: linear-gradient(135deg, #991b1b, #dc2626); }
-
 .mark-modal__head h3 { margin: 0 0 4px; font-size: 1.15rem; }
 .mark-modal__head p { margin: 0; font-size: 0.85rem; opacity: 0.9; }
 
 .mark-modal__close {
   background: rgba(255, 255, 255, 0.2);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 8px;
   color: #fff;
   font-size: 1.25rem;
   cursor: pointer;
@@ -689,37 +747,73 @@
 }
 
 .mark-modal__body { padding: 1.35rem; }
+
 .mark-modal__foot {
   display: flex;
   justify-content: flex-end;
   gap: 0.65rem;
   padding: 1.15rem 1.35rem;
   border-top: 1px solid var(--mark-border);
-  background: #f8fafc;
+  background: #fff;
 }
 
 .mark-notice {
   display: flex;
   gap: 0.75rem;
   padding: 1rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
   margin-bottom: 1rem;
   font-size: 0.9rem;
-  color: #1e40af;
+  color: #1e3a5f;
 }
 
 .mark-notice p { margin: 0 0 6px; }
 .mark-notice p:last-child { margin-bottom: 0; }
-.mark-notice--danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 
-.mark-progress { padding: 1rem; background: #f8fafc; border-radius: 10px; }
-.mark-progress__stats { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; color: var(--mark-muted); margin: 0.5rem 0; }
-.mark-progress__bar-wrap { height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 0.5rem; }
-.mark-progress__bar { height: 100%; background: var(--mark-purple); transition: width 0.3s; }
-.mark-progress__bar--danger { background: #ef4444; }
+.mark-notice--danger {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #1e3a5f;
+}
+
+.mark-progress {
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+}
+
+.mark-progress__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--mark-muted);
+  margin: 0.5rem 0;
+}
+
+.mark-progress__bar-wrap {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.mark-progress__bar {
+  height: 100%;
+  background: #1e3a5f;
+  transition: width 0.3s;
+}
+
+.mark-progress__bar--danger { background: #1e3a5f; }
 .mark-progress__hint { margin: 0; font-size: 0.8rem; color: var(--mark-muted); font-style: italic; }
+
+@media (max-width: 1100px) {
+  .mark-hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 @media (max-width: 900px) {
   .mark-form-grid,
@@ -730,6 +824,8 @@
 @media (max-width: 768px) {
   .mark-page { padding: 1rem; }
   .mark-toast-stack { left: 1rem; right: 1rem; max-width: none; }
+  .mark-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mark-hero__main { flex-direction: column; }
   .mark-status-btns { flex-direction: column; }
   .mark-status-btn { width: 100%; text-align: center; }
   .mark-refine-row { flex-direction: column; align-items: stretch; }

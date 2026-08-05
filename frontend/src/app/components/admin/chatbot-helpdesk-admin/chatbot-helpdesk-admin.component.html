@@ -1,233 +1,274 @@
 <div class="hd-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="hd-shell">
-    <header class="hd-hero">
-      <div class="hd-hero__main">
-        <span class="hd-hero__eyebrow">System Administration</span>
-        <h1 class="hd-hero__title">Helpdesk</h1>
-        <p class="hd-hero__lead">
-          Review support tickets escalated from the chatbot and inspect conversation logs.
-        </p>
-        <div class="hd-hero__actions">
-          <button type="button" class="hd-btn hd-btn--light" (click)="refresh()" [disabled]="loading">
-            {{ loading ? 'Refreshing…' : 'Refresh' }}
-          </button>
-          <a routerLink="/admin/helpdesk-faqs" class="hd-btn hd-btn--ghost-light">FAQ knowledge base</a>
-        </div>
-        <div class="hd-hero__status">
-          <span
-            class="hd-ai-pill"
-            [class.hd-ai-pill--ok]="aiStatus.configured"
-            [class.hd-ai-pill--warn]="!aiStatus.configured">
-            {{ aiStatus.configured ? 'AI ready · ' + aiStatus.model : 'OpenAI not configured' }}
-          </span>
+
+  <div class="hd-toast-stack" *ngIf="error">
+    <div class="hd-toast hd-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="hd-toast__dismiss" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="hd-hero">
+    <div class="hd-hero__main">
+      <div class="hd-hero-left">
+        <span class="hd-hero-icon" aria-hidden="true">🎫</span>
+        <div>
+          <span class="hd-hero-eyebrow">System Administration</span>
+          <h1>Helpdesk</h1>
+          <p class="hd-hero-sub">
+            Review support tickets escalated from the chatbot and inspect conversation logs.
+          </p>
         </div>
       </div>
-      <div class="hd-hero__stats">
-        <div class="hd-stat">
-          <span class="hd-stat__value">{{ tickets.length }}</span>
-          <span class="hd-stat__label">Tickets</span>
-        </div>
-        <div class="hd-stat">
-          <span class="hd-stat__value">{{ openTicketCount }}</span>
-          <span class="hd-stat__label">Open</span>
-        </div>
-        <div class="hd-stat">
-          <span class="hd-stat__value">{{ conversations.length || '—' }}</span>
-          <span class="hd-stat__label">Chats</span>
-        </div>
+      <div class="hd-hero__actions">
+        <button type="button" class="hd-hero-refresh" (click)="refresh()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a routerLink="/admin/helpdesk-faqs" class="hd-hero-btn hd-hero-btn--white">FAQ knowledge base</a>
+        <button type="button" class="hd-hero-btn hd-hero-btn--accent" (click)="refresh()" [disabled]="loading">
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
       </div>
-    </header>
-
-    <div class="hd-alert hd-alert--error" *ngIf="error" role="alert">{{ error }}</div>
-    <nav class="hd-tabs" aria-label="Helpdesk sections">
-      <button
-        type="button"
-        class="hd-tab"
-        [class.hd-tab--active]="tab === 'tickets'"
-        (click)="setTab('tickets')">
-        <span class="hd-tab__icon" aria-hidden="true">🎫</span>
-        Tickets
-        <span class="hd-tab__count">{{ tickets.length }}</span>
-      </button>
-      <button
-        type="button"
-        class="hd-tab"
-        [class.hd-tab--active]="tab === 'conversations'"
-        (click)="setTab('conversations')">
-        <span class="hd-tab__icon" aria-hidden="true">💬</span>
-        Conversations
-        <span class="hd-tab__count" *ngIf="conversations.length">{{ conversations.length }}</span>
-      </button>
-    </nav>
-
-    <div class="hd-loading" *ngIf="loading">
-      <span class="hd-spinner" aria-hidden="true"></span>
-      <p>Loading helpdesk data…</p>
     </div>
 
-    <!-- Tickets -->
-    <section class="hd-panel" *ngIf="!loading && tab === 'tickets'" aria-label="Support tickets">
-      <div class="hd-toolbar">
-        <div class="hd-toolbar__search">
-          <span class="hd-toolbar__search-icon" aria-hidden="true">🔍</span>
-          <input
-            type="search"
-            class="hd-search-input"
-            [(ngModel)]="ticketSearch"
-            name="ticketSearch"
-            placeholder="Search subject, description, email…" />
+    <nav class="hd-cross-links" aria-label="Related admin pages">
+      <a routerLink="/admin/helpdesk-faqs">Helpdesk FAQs</a>
+      <a routerLink="/user-management">User management</a>
+      <a routerLink="/admin/manage-accounts">Manage accounts</a>
+    </nav>
+
+    <div class="hd-hero-status">
+      <span
+        class="hd-ai-pill"
+        [class.hd-ai-pill--ok]="aiStatus.configured"
+        [class.hd-ai-pill--warn]="!aiStatus.configured">
+        {{ aiStatus.configured ? 'AI ready · ' + aiStatus.model : 'OpenAI not configured' }}
+      </span>
+    </div>
+
+    <div class="hd-hero-stats" *ngIf="!loading">
+      <article class="hd-stat">
+        <span class="hd-stat__value">{{ tickets.length }}</span>
+        <span class="hd-stat__label">Tickets</span>
+      </article>
+      <article class="hd-stat">
+        <span class="hd-stat__value">{{ openTicketCount }}</span>
+        <span class="hd-stat__label">Open</span>
+      </article>
+      <article class="hd-stat">
+        <span class="hd-stat__value">{{ conversations.length || 0 }}</span>
+        <span class="hd-stat__label">Chats</span>
+      </article>
+      <article class="hd-stat">
+        <span class="hd-stat__value">{{ filteredTickets.length }}</span>
+        <span class="hd-stat__label">Showing</span>
+      </article>
+    </div>
+    <div class="hd-hero-stats hd-hero-stats--skeleton" *ngIf="loading">
+      <div class="hd-skeleton" *ngFor="let i of [1,2,3,4]"></div>
+    </div>
+  </header>
+
+  <nav class="hd-tabs" aria-label="Helpdesk sections">
+    <button
+      type="button"
+      class="hd-tab"
+      [class.hd-tab--active]="tab === 'tickets'"
+      (click)="setTab('tickets')">
+      <span class="hd-tab__icon" aria-hidden="true">🎫</span>
+      Tickets
+      <span class="hd-tab__count">{{ tickets.length }}</span>
+    </button>
+    <button
+      type="button"
+      class="hd-tab"
+      [class.hd-tab--active]="tab === 'conversations'"
+      (click)="setTab('conversations')">
+      <span class="hd-tab__icon" aria-hidden="true">💬</span>
+      Conversations
+      <span class="hd-tab__count" *ngIf="conversations.length">{{ conversations.length }}</span>
+    </button>
+  </nav>
+
+  <div class="hd-loading" *ngIf="loading">
+    <span class="hd-spinner" aria-hidden="true"></span>
+    <p>Loading helpdesk data…</p>
+  </div>
+
+  <!-- Tickets -->
+  <section class="hd-panel" *ngIf="!loading && tab === 'tickets'" aria-label="Support tickets">
+    <div class="hd-panel__head hd-panel__head--row">
+      <div>
+        <h2 class="hd-panel__title">Support tickets</h2>
+        <p class="hd-panel__intro">Search, filter, and update ticket status. Notes apply on the next status change.</p>
+      </div>
+      <button type="button" class="hd-btn" (click)="refresh()" [disabled]="loading">Refresh</button>
+    </div>
+
+    <div class="hd-toolbar">
+      <div class="hd-toolbar__search">
+        <span class="hd-toolbar__search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="hd-search-input"
+          [(ngModel)]="ticketSearch"
+          name="ticketSearch"
+          placeholder="Search subject, description, email…" />
+      </div>
+      <label class="hd-field">
+        <span>Status</span>
+        <select class="hd-select" [(ngModel)]="statusFilter" name="ticketStatus" (change)="loadTickets()">
+          <option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</option>
+        </select>
+      </label>
+      <label class="hd-field hd-field--grow">
+        <span>Admin notes</span>
+        <input
+          class="hd-input"
+          [(ngModel)]="notesDraft"
+          name="adminNotes"
+          placeholder="Optional note for the next action…" />
+      </label>
+    </div>
+
+    <p class="hd-toolbar__meta" *ngIf="filteredTickets.length !== tickets.length">
+      Showing {{ filteredTickets.length }} of {{ tickets.length }} tickets
+    </p>
+
+    <div class="hd-ticket-list" *ngIf="filteredTickets.length">
+      <article class="hd-ticket" *ngFor="let t of filteredTickets">
+        <div class="hd-ticket__head">
+          <div class="hd-ticket__title-row">
+            <h3 class="hd-ticket__subject">{{ t.subject }}</h3>
+            <span class="hd-badge" [ngClass]="statusClass(t.status)">{{ statusLabel(t.status) }}</span>
+          </div>
+          <time class="hd-ticket__time" [attr.datetime]="t.createdAt">{{ t.createdAt | date: 'medium' }}</time>
         </div>
-        <label class="hd-field">
-          <span>Status</span>
-          <select class="hd-select" [(ngModel)]="statusFilter" name="ticketStatus" (change)="loadTickets()">
-            <option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</option>
-          </select>
-        </label>
-        <label class="hd-field hd-field--grow">
-          <span>Admin notes (applied on next status update)</span>
-          <input
-            class="hd-input"
-            [(ngModel)]="notesDraft"
-            name="adminNotes"
-            placeholder="Optional note for the next action…" />
-        </label>
-      </div>
 
-      <p class="hd-toolbar__meta" *ngIf="filteredTickets.length !== tickets.length">
-        Showing {{ filteredTickets.length }} of {{ tickets.length }} tickets
-      </p>
+        <p class="hd-ticket__desc">{{ t.description }}</p>
 
-      <div class="hd-ticket-list" *ngIf="filteredTickets.length">
-        <article class="hd-ticket" *ngFor="let t of filteredTickets">
-          <div class="hd-ticket__head">
-            <div class="hd-ticket__title-row">
-              <h3 class="hd-ticket__subject">{{ t.subject }}</h3>
-              <span class="hd-badge" [ngClass]="statusClass(t.status)">{{ statusLabel(t.status) }}</span>
-            </div>
-            <time class="hd-ticket__time" [attr.datetime]="t.createdAt">{{ t.createdAt | date: 'medium' }}</time>
-          </div>
+        <div class="hd-ticket__meta">
+          <span class="hd-chip">{{ (t.userRole || 'guest') | titlecase }}</span>
+          <span class="hd-chip" *ngIf="t.contactEmail">{{ t.contactEmail }}</span>
+          <span class="hd-chip" *ngIf="t.contactPhone">{{ t.contactPhone }}</span>
+        </div>
 
-          <p class="hd-ticket__desc">{{ t.description }}</p>
+        <div class="hd-ticket__notes" *ngIf="t.adminNotes">
+          <strong>Notes</strong>
+          <p>{{ t.adminNotes }}</p>
+        </div>
 
-          <div class="hd-ticket__meta">
-            <span class="hd-chip">{{ (t.userRole || 'guest') | titlecase }}</span>
-            <span class="hd-chip" *ngIf="t.contactEmail">{{ t.contactEmail }}</span>
-            <span class="hd-chip" *ngIf="t.contactPhone">{{ t.contactPhone }}</span>
-          </div>
-
-          <div class="hd-ticket__notes" *ngIf="t.adminNotes">
-            <strong>Notes</strong>
-            <p>{{ t.adminNotes }}</p>
-          </div>
-
-          <div class="hd-ticket__actions">
-            <button
-              type="button"
-              class="hd-btn hd-btn--sm hd-btn--ghost"
-              (click)="updateTicket(t, 'in_progress')"
-              [disabled]="updatingId === t.id || t.status === 'in_progress'">
-              In progress
-            </button>
-            <button
-              type="button"
-              class="hd-btn hd-btn--sm hd-btn--success"
-              (click)="updateTicket(t, 'resolved')"
-              [disabled]="updatingId === t.id || t.status === 'resolved'">
-              Resolve
-            </button>
-            <button
-              type="button"
-              class="hd-btn hd-btn--sm hd-btn--muted"
-              (click)="updateTicket(t, 'closed')"
-              [disabled]="updatingId === t.id || t.status === 'closed'">
-              Close
-            </button>
-            <button
-              type="button"
-              class="hd-btn hd-btn--sm hd-btn--primary"
-              (click)="updateTicket(t, 'open')"
-              [disabled]="updatingId === t.id || t.status === 'open'">
-              Reopen
-            </button>
-          </div>
-        </article>
-      </div>
-
-      <div class="hd-empty" *ngIf="!filteredTickets.length">
-        <div class="hd-empty__icon" aria-hidden="true">📭</div>
-        <h3>No tickets found</h3>
-        <p *ngIf="tickets.length">Try a different search or status filter.</p>
-        <p *ngIf="!tickets.length">Escalated chatbot tickets will appear here.</p>
-      </div>
-    </section>
-
-    <!-- Conversations -->
-    <section class="hd-panel hd-panel--conv" *ngIf="!loading && tab === 'conversations'" aria-label="Chat conversations">
-      <div class="hd-conv">
-        <aside class="hd-conv__list" aria-label="Conversation list">
-          <div class="hd-conv__list-head">
-            <h2>Recent chats</h2>
-            <span>{{ conversations.length }} total</span>
-          </div>
+        <div class="hd-ticket__actions">
           <button
             type="button"
-            class="hd-conv__item"
-            *ngFor="let c of conversations"
-            [class.hd-conv__item--active]="selectedConversation?.id === c.id"
-            (click)="openConversation(c)">
-            <span class="hd-conv__avatar" aria-hidden="true">{{ roleInitial(c.userRole) }}</span>
-            <span class="hd-conv__body">
-              <strong>{{ (c.userRole || 'guest') | titlecase }}</strong>
-              <span class="hd-conv__preview">{{ c.lastUserMessage || '(no message)' }}</span>
-              <small>{{ c.updatedAt | date: 'short' }} · {{ c.messageCount }} msgs</small>
-            </span>
+            class="hd-btn hd-btn--sm"
+            (click)="updateTicket(t, 'in_progress')"
+            [disabled]="updatingId === t.id || t.status === 'in_progress'">
+            In progress
           </button>
-          <div class="hd-empty hd-empty--compact" *ngIf="!conversations.length">
-            <p>No conversations logged yet.</p>
-          </div>
-        </aside>
+          <button
+            type="button"
+            class="hd-btn hd-btn--sm"
+            (click)="updateTicket(t, 'resolved')"
+            [disabled]="updatingId === t.id || t.status === 'resolved'">
+            Resolve
+          </button>
+          <button
+            type="button"
+            class="hd-btn hd-btn--sm hd-btn--ghost"
+            (click)="updateTicket(t, 'closed')"
+            [disabled]="updatingId === t.id || t.status === 'closed'">
+            Close
+          </button>
+          <button
+            type="button"
+            class="hd-btn hd-btn--sm hd-btn--ghost"
+            (click)="updateTicket(t, 'open')"
+            [disabled]="updatingId === t.id || t.status === 'open'">
+            Reopen
+          </button>
+        </div>
+      </article>
+    </div>
 
-        <div class="hd-conv__detail" *ngIf="selectedConversation; else pickConv">
-          <div class="hd-conv__detail-head">
-            <div>
-              <h2>Conversation</h2>
-              <p>
-                {{ (selectedConversation.userRole || 'guest') | titlecase }}
-                · {{ selectedConversation.messageCount }} messages
-                · Updated {{ selectedConversation.updatedAt | date: 'medium' }}
-              </p>
-            </div>
-          </div>
+    <div class="hd-empty" *ngIf="!filteredTickets.length">
+      <div class="hd-empty__icon" aria-hidden="true">📭</div>
+      <h3>No tickets found</h3>
+      <p *ngIf="tickets.length">Try a different search or status filter.</p>
+      <p *ngIf="!tickets.length">Escalated chatbot tickets will appear here.</p>
+    </div>
+  </section>
 
-          <div class="hd-msg-thread" *ngIf="selectedMessages.length; else noMsgs">
-            <div
-              class="hd-msg"
-              *ngFor="let m of selectedMessages"
-              [class.hd-msg--user]="m.role === 'user'"
-              [class.hd-msg--assistant]="m.role === 'assistant' || m.role === 'bot'">
-              <div class="hd-msg__meta">
-                <span class="hd-msg__role">{{ m.role }}</span>
-                <time>{{ m.createdAt | date: 'short' }}</time>
-              </div>
-              <p class="hd-msg__content">{{ m.content }}</p>
-            </div>
+  <!-- Conversations -->
+  <section class="hd-panel hd-panel--conv" *ngIf="!loading && tab === 'conversations'" aria-label="Chat conversations">
+    <div class="hd-panel__head">
+      <h2 class="hd-panel__title">Conversations</h2>
+      <p class="hd-panel__intro">Inspect chatbot conversation transcripts for support and quality review.</p>
+    </div>
+
+    <div class="hd-conv">
+      <aside class="hd-conv__list" aria-label="Conversation list">
+        <div class="hd-conv__list-head">
+          <h2>Recent chats</h2>
+          <span>{{ conversations.length }} total</span>
+        </div>
+        <button
+          type="button"
+          class="hd-conv__item"
+          *ngFor="let c of conversations"
+          [class.hd-conv__item--active]="selectedConversation?.id === c.id"
+          (click)="openConversation(c)">
+          <span class="hd-conv__avatar" aria-hidden="true">{{ roleInitial(c.userRole) }}</span>
+          <span class="hd-conv__body">
+            <strong>{{ (c.userRole || 'guest') | titlecase }}</strong>
+            <span class="hd-conv__preview">{{ c.lastUserMessage || '(no message)' }}</span>
+            <small>{{ c.updatedAt | date: 'short' }} · {{ c.messageCount }} msgs</small>
+          </span>
+        </button>
+        <div class="hd-empty hd-empty--compact" *ngIf="!conversations.length">
+          <p>No conversations logged yet.</p>
+        </div>
+      </aside>
+
+      <div class="hd-conv__detail" *ngIf="selectedConversation; else pickConv">
+        <div class="hd-conv__detail-head">
+          <div>
+            <h2>Conversation</h2>
+            <p>
+              {{ (selectedConversation.userRole || 'guest') | titlecase }}
+              · {{ selectedConversation.messageCount }} messages
+              · Updated {{ selectedConversation.updatedAt | date: 'medium' }}
+            </p>
           </div>
-          <ng-template #noMsgs>
-            <div class="hd-empty hd-empty--compact">
-              <p>No messages in this conversation.</p>
-            </div>
-          </ng-template>
         </div>
 
-        <ng-template #pickConv>
-          <div class="hd-conv__placeholder">
-            <div class="hd-empty__icon" aria-hidden="true">💬</div>
-            <h3>Select a conversation</h3>
-            <p>Choose a chat from the list to review the full transcript.</p>
+        <div class="hd-msg-thread" *ngIf="selectedMessages.length; else noMsgs">
+          <div
+            class="hd-msg"
+            *ngFor="let m of selectedMessages"
+            [class.hd-msg--user]="m.role === 'user'"
+            [class.hd-msg--assistant]="m.role === 'assistant' || m.role === 'bot'">
+            <div class="hd-msg__meta">
+              <span class="hd-msg__role">{{ m.role }}</span>
+              <time>{{ m.createdAt | date: 'short' }}</time>
+            </div>
+            <p class="hd-msg__content">{{ m.content }}</p>
+          </div>
+        </div>
+        <ng-template #noMsgs>
+          <div class="hd-empty hd-empty--compact">
+            <p>No messages in this conversation.</p>
           </div>
         </ng-template>
       </div>
-    </section>
-  </div>
+
+      <ng-template #pickConv>
+        <div class="hd-conv__placeholder">
+          <div class="hd-empty__icon" aria-hidden="true">💬</div>
+          <h3>Select a conversation</h3>
+          <p>Choose a chat from the list to review the full transcript.</p>
+        </div>
+      </ng-template>
+    </div>
+  </section>
 </div>

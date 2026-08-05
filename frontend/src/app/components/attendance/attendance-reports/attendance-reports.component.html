@@ -12,7 +12,7 @@
       <div class="att-hero-left">
         <span class="att-hero-icon" aria-hidden="true">📊</span>
         <div>
-          <span class="att-hero-eyebrow">Attendance analytics</span>
+          <span class="att-hero-eyebrow">Attendance · Analytics</span>
           <h1>Attendance Reports</h1>
           <p class="att-hero-sub">Class-wide attendance insights by term and date range — filter, visualize, and export.</p>
         </div>
@@ -21,41 +21,42 @@
         <span class="att-hero-badge" *ngIf="filterSummary">{{ filterSummary.class }}</span>
         <span class="att-hero-badge att-hero-badge--muted" *ngIf="filterSummary?.term">{{ filterSummary.term }}</span>
       </aside>
+      <div class="att-hero__actions">
+        <a routerLink="/attendance/mark" class="att-hero-btn att-hero-btn--white">← Mark attendance</a>
+        <a routerLink="/classes" class="att-hero-btn att-hero-btn--accent">Classes</a>
+      </div>
     </div>
 
     <nav class="att-cross-links" aria-label="Related attendance pages">
       <a routerLink="/attendance/mark">Mark attendance</a>
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/classes/lists">Class lists</a>
+      <a routerLink="/students">Students</a>
       <a routerLink="/dashboard">Dashboard</a>
     </nav>
 
     <div class="att-hero-stats" *ngIf="!loading">
       <article class="att-stat">
-        <span class="att-stat__icon" aria-hidden="true">👥</span>
         <span class="att-stat__value">{{ hasReportData ? dashboardStats.students : '—' }}</span>
         <span class="att-stat__label">Showing</span>
       </article>
-      <article class="att-stat att-stat--mint">
-        <span class="att-stat__icon" aria-hidden="true">✓</span>
+      <article class="att-stat">
         <span class="att-stat__value">{{ hasReportData ? dashboardStats.average + '%' : '—' }}</span>
         <span class="att-stat__label">Avg attendance</span>
       </article>
-      <article class="att-stat att-stat--rose">
-        <span class="att-stat__icon" aria-hidden="true">⚠</span>
+      <article class="att-stat">
         <span class="att-stat__value">{{ hasReportData ? dashboardStats.concerns : '—' }}</span>
         <span class="att-stat__label">At risk</span>
       </article>
-      <article class="att-stat att-stat--sky">
-        <span class="att-stat__icon" aria-hidden="true">★</span>
+      <article class="att-stat">
         <span class="att-stat__value">{{ hasReportData ? dashboardStats.excellent + '%' : '—' }}</span>
         <span class="att-stat__label">Excellent rate</span>
       </article>
       <article class="att-stat">
-        <span class="att-stat__icon" aria-hidden="true">{{ getTrendIcon() }}</span>
         <span class="att-stat__value">{{ hasReportData ? getTrendText() : '—' }}</span>
         <span class="att-stat__label">Trend</span>
       </article>
-      <article class="att-stat att-stat--muted">
-        <span class="att-stat__icon" aria-hidden="true">📋</span>
+      <article class="att-stat">
         <span class="att-stat__value">{{ hasReportData ? dashboardStats.records : '—' }}</span>
         <span class="att-stat__label">Status records</span>
       </article>
@@ -66,18 +67,18 @@
     </div>
 
     <div class="att-hero-toolbar" *ngIf="hasReportData && !loading">
-      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="generateReport()" [disabled]="loading || !selectedClassId" title="Regenerate">
+      <button type="button" class="att-hero-btn att-hero-btn--ghost" (click)="generateReport()" [disabled]="loading || !selectedClassId" title="Regenerate">
         <span [class.att-spin]="loading">↻</span> Refresh
       </button>
-      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="toggleCharts()" [class.att-btn--active]="showCharts">
+      <button type="button" class="att-hero-btn att-hero-btn--ghost" (click)="toggleCharts()" [class.att-hero-btn--on]="showCharts">
         {{ showCharts ? 'Hide charts' : 'Show charts' }}
       </button>
-      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="toggleViewMode()">
+      <button type="button" class="att-hero-btn att-hero-btn--ghost" (click)="toggleViewMode()">
         {{ viewMode === 'table' ? 'Card view' : 'Table view' }}
       </button>
-      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="exportToCSV()" [disabled]="!filteredReport.length">Export CSV</button>
-      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="exportToPDF()" [disabled]="!filteredReport.length">Export PDF</button>
-      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="printReport()" [disabled]="!filteredReport.length">Print</button>
+      <button type="button" class="att-hero-btn att-hero-btn--white" (click)="exportToCSV()" [disabled]="!filteredReport.length">Export CSV</button>
+      <button type="button" class="att-hero-btn att-hero-btn--white" (click)="exportToPDF()" [disabled]="!filteredReport.length">Export PDF</button>
+      <button type="button" class="att-hero-btn att-hero-btn--white" (click)="printReport()" [disabled]="!filteredReport.length">Print</button>
     </div>
   </header>
 
@@ -222,7 +223,7 @@
         <h2 class="att-panel__title">Refine results</h2>
         <p class="att-panel__intro">{{ filteredReport.length }} of {{ rawReportRows.length }} students</p>
       </div>
-      <button type="button" class="att-link-btn" (click)="resetFilters()">Reset filters</button>
+      <button type="button" class="att-btn att-btn--ghost" (click)="resetFilters()">Reset filters</button>
     </div>
 
     <div class="att-refine-grid">

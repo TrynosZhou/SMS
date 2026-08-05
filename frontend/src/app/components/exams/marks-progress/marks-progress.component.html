@@ -1,7 +1,7 @@
 <div class="cmp-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="cmp-toast-stack" *ngIf="error">
-    <div class="cmp-toast cmp-toast--error" *ngIf="error" role="alert">
+  <div class="cmp-toast-stack" *ngIf="error">
+    <div class="cmp-toast cmp-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="cmp-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -12,7 +12,7 @@
       <div class="cmp-hero-left">
         <span class="cmp-hero-icon" aria-hidden="true">📊</span>
         <div>
-          <span class="cmp-hero-eyebrow">Exams</span>
+          <span class="cmp-hero-eyebrow">Exams · Marks progress</span>
           <h1>Marks Entry Progress</h1>
           <p class="cmp-hero-sub">Track how complete marks entry is for each class and subject by exam type and term.</p>
           <p class="cmp-hero-meta" *ngIf="lastLoadedAt && !loading">
@@ -20,9 +20,7 @@
           </p>
         </div>
       </div>
-    </div>
-
-    <div class="cmp-hero__actions">
+      <div class="cmp-hero__actions">
         <button type="button" class="cmp-hero-refresh" (click)="refresh()" [disabled]="loading || !selectedExamType" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
@@ -31,7 +29,17 @@
         <button type="button" class="cmp-hero-btn" (click)="expandAll()" [disabled]="!viewData.length">Expand all</button>
         <button type="button" class="cmp-hero-btn" (click)="collapseAll()" [disabled]="!viewData.length">Collapse all</button>
         <a routerLink="/mark-sheet" class="cmp-hero-btn cmp-hero-btn--accent">Mark sheet</a>
+      </div>
     </div>
+
+    <nav class="cmp-cross-links" aria-label="Related exam pages">
+      <a routerLink="/exams">Enter marks</a>
+      <a routerLink="/mark-sheet">Mark sheet</a>
+      <a routerLink="/report-cards">Report cards</a>
+      <a routerLink="/results-analysis">Results analysis</a>
+      <a routerLink="/publish-results" *ngIf="authService.isAdmin()">Publish results</a>
+      <a routerLink="/classes">Classes</a>
+    </nav>
 
     <div class="cmp-hero-stats" *ngIf="hasData && selectedExamType && !loading">
       <article class="cmp-stat">
@@ -42,15 +50,15 @@
         <span class="cmp-stat__value">{{ stats.totalSubjects }}</span>
         <span class="cmp-stat__label">Subjects</span>
       </article>
-      <article class="cmp-stat cmp-stat--mint">
+      <article class="cmp-stat">
         <span class="cmp-stat__value">{{ stats.subjectsComplete }}</span>
         <span class="cmp-stat__label">Complete</span>
       </article>
-      <article class="cmp-stat cmp-stat--rose">
+      <article class="cmp-stat">
         <span class="cmp-stat__value">{{ stats.subjectsIncomplete }}</span>
         <span class="cmp-stat__label">Incomplete</span>
       </article>
-      <article class="cmp-stat cmp-stat--accent">
+      <article class="cmp-stat">
         <span class="cmp-stat__value">{{ stats.averageProgress }}%</span>
         <span class="cmp-stat__label">Avg progress</span>
       </article>
@@ -62,6 +70,16 @@
     <div class="cmp-hero-stats cmp-hero-stats--skeleton" *ngIf="loading">
       <div class="cmp-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
+
+    <div class="cmp-steps" aria-label="Progress">
+      <span class="cmp-step" [class.cmp-step--done]="!!selectedExamType" [class.cmp-step--active]="!selectedExamType">
+        <strong>1</strong> Select exam type
+      </span>
+      <span class="cmp-step-arrow">→</span>
+      <span class="cmp-step" [class.cmp-step--active]="!!selectedExamType">
+        <strong>2</strong> Review progress
+      </span>
+    </div>
   </header>
 
   <section class="cmp-panel">
@@ -70,7 +88,7 @@
         <h2 class="cmp-panel__title">Filters & search</h2>
         <p class="cmp-panel__intro">Select exam type (required), then refine by term, class, or progress.</p>
       </div>
-      <button type="button" class="cmp-btn-clear" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
+      <button type="button" class="cmp-btn cmp-btn--ghost cmp-btn--sm" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
     </div>
 
     <div class="cmp-filters-row">
@@ -182,7 +200,7 @@
     <span class="cmp-empty-icon" aria-hidden="true">📭</span>
     <h3>No progress data</h3>
     <p>No results match your filters. Try another class, term, or reset filters.</p>
-    <button type="button" class="cmp-btn-secondary" (click)="resetFilters()">Reset filters</button>
+    <button type="button" class="cmp-btn cmp-btn--outline" (click)="resetFilters()">Reset filters</button>
   </section>
 
   <div class="cmp-class-grid" *ngIf="!loading && viewData.length > 0">

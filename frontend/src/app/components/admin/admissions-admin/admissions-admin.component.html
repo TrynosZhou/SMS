@@ -1,64 +1,118 @@
 <div class="adm-admin">
-  <header class="adm-admin-hero">
-    <div class="adm-admin-hero__main">
-      <span class="adm-admin-hero__eyebrow">Registration</span>
-      <h1 class="adm-admin-hero__title">Admissions review</h1>
-      <p class="adm-admin-hero__lead">
-        Review online applications, open full details, update decisions, and enroll accepted students.
-      </p>
+  <div class="adm-toast-stack" *ngIf="error">
+    <div class="adm-toast adm-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="adm-toast__dismiss" (click)="error = ''" aria-label="Dismiss">×</button>
     </div>
-    <div class="adm-admin-hero__stat" *ngIf="!loading">
-      <span class="adm-admin-hero__stat-value">{{ applications.length }}</span>
-      <span class="adm-admin-hero__stat-label">Applications</span>
+  </div>
+
+  <header class="adm-hero">
+    <div class="adm-hero__main">
+      <div class="adm-hero-left">
+        <span class="adm-hero-icon" aria-hidden="true">📋</span>
+        <div>
+          <span class="adm-hero-eyebrow">Registration</span>
+          <h1>Admissions</h1>
+          <p class="adm-hero-sub">
+            Review online applications, update decisions, message applicants, and enroll accepted students.
+          </p>
+        </div>
+      </div>
+      <div class="adm-hero__actions">
+        <button type="button" class="adm-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a routerLink="/admissions/portal" class="adm-hero-btn adm-hero-btn--white">Admission portal</a>
+        <button type="button" class="adm-hero-btn adm-hero-btn--accent" (click)="load()" [disabled]="loading">
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    <nav class="adm-cross-links" aria-label="Related pages">
+      <a routerLink="/students">Students</a>
+      <a routerLink="/students/enroll_student">Enroll student</a>
+      <a routerLink="/user-management">User management</a>
+    </nav>
+
+    <div class="adm-hero-stats" *ngIf="!loading">
+      <article class="adm-stat">
+        <span class="adm-stat__value">{{ applications.length }}</span>
+        <span class="adm-stat__label">Showing</span>
+      </article>
+      <article class="adm-stat">
+        <span class="adm-stat__value">{{ pendingCount }}</span>
+        <span class="adm-stat__label">Pending</span>
+      </article>
+      <article class="adm-stat">
+        <span class="adm-stat__value">{{ reviewCount }}</span>
+        <span class="adm-stat__label">In review</span>
+      </article>
+      <article class="adm-stat">
+        <span class="adm-stat__value">{{ acceptedCount }}</span>
+        <span class="adm-stat__label">Accepted</span>
+      </article>
+    </div>
+    <div class="adm-hero-stats adm-hero-stats--skeleton" *ngIf="loading">
+      <div class="adm-skeleton" *ngFor="let i of [1,2,3,4]"></div>
     </div>
   </header>
 
-  <section class="adm-admin-filters" aria-label="Filter applications">
-    <div class="adm-admin-filters__field adm-admin-filters__field--grow">
-      <label for="adm-admin-search">Search</label>
-      <input
-        id="adm-admin-search"
-        type="search"
-        placeholder="Name, reference, or email…"
-        [(ngModel)]="search"
-        (keyup.enter)="load()" />
+  <section class="adm-panel adm-panel--filters" aria-label="Filter applications">
+    <div class="adm-panel__head adm-panel__head--row">
+      <div>
+        <h2 class="adm-panel__title">Search &amp; filters</h2>
+        <p class="adm-panel__intro">Find applications by name, reference, or email. Filter by decision status.</p>
+      </div>
+      <button type="button" class="adm-btn" (click)="load()" [disabled]="loading">
+        {{ loading ? 'Refreshing…' : 'Refresh' }}
+      </button>
     </div>
-    <div class="adm-admin-filters__field">
-      <label for="adm-admin-status">Status</label>
-      <select id="adm-admin-status" [(ngModel)]="statusFilter" (change)="load()">
-        <option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</option>
-      </select>
+
+    <div class="adm-filters-row">
+      <div class="adm-search-wrap">
+        <span class="adm-search-icon" aria-hidden="true">🔍</span>
+        <input
+          id="adm-admin-search"
+          type="search"
+          placeholder="Name, reference, or email…"
+          [(ngModel)]="search"
+          (keyup.enter)="load()" />
+      </div>
+      <div class="adm-field">
+        <label for="adm-admin-status">Status</label>
+        <select id="adm-admin-status" class="adm-select" [(ngModel)]="statusFilter" (change)="load()">
+          <option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</option>
+        </select>
+      </div>
     </div>
-    <button type="button" class="adm-admin-btn adm-admin-btn--primary" (click)="load()">
-      Refresh
-    </button>
   </section>
 
-  <div class="adm-admin-alert" *ngIf="error" role="alert">{{ error }}</div>
-
-  <div class="adm-admin-loading" *ngIf="loading" aria-busy="true">
-    <div class="adm-admin-skeleton adm-admin-skeleton--bar"></div>
-    <div class="adm-admin-skeleton adm-admin-skeleton--row"></div>
-    <div class="adm-admin-skeleton adm-admin-skeleton--row"></div>
-    <div class="adm-admin-skeleton adm-admin-skeleton--row short"></div>
+  <div class="adm-loading" *ngIf="loading" aria-busy="true">
+    <span class="adm-spinner" aria-hidden="true"></span>
+    <p>Loading applications…</p>
   </div>
 
-  <div class="adm-admin-layout" *ngIf="!loading">
-    <section class="adm-admin-card adm-admin-card--table">
-      <div class="adm-admin-card__head">
-        <h2 class="adm-admin-card__title">Applications</h2>
-        <p class="adm-admin-card__sub" *ngIf="applications.length">
-          Showing {{ applications.length }} record{{ applications.length === 1 ? '' : 's' }}
-        </p>
+  <div class="adm-layout" *ngIf="!loading">
+    <section class="adm-panel adm-panel--table">
+      <div class="adm-panel__head adm-panel__head--row">
+        <div>
+          <h2 class="adm-panel__title">Applications</h2>
+          <p class="adm-panel__intro" *ngIf="applications.length">
+            Showing {{ applications.length }} record{{ applications.length === 1 ? '' : 's' }}
+          </p>
+          <p class="adm-panel__intro" *ngIf="!applications.length">No records match the current filters.</p>
+        </div>
       </div>
 
-      <div class="adm-admin-empty" *ngIf="!applications.length">
-        <p class="adm-admin-empty__title">No applications found</p>
-        <p class="adm-admin-empty__text">Try changing the status filter or search terms.</p>
+      <div class="adm-empty" *ngIf="!applications.length">
+        <div class="adm-empty__icon" aria-hidden="true">📭</div>
+        <p class="adm-empty__title">No applications found</p>
+        <p class="adm-empty__text">Try changing the status filter or search terms.</p>
       </div>
 
-      <div class="adm-admin-table-wrap" *ngIf="applications.length">
-        <table class="adm-admin-table">
+      <div class="adm-table-wrap" *ngIf="applications.length">
+        <table class="adm-table">
           <thead>
             <tr>
               <th>Reference</th>
@@ -66,39 +120,41 @@
               <th>Type</th>
               <th>Status</th>
               <th>Student ID</th>
-              <th class="adm-admin-table__actions-head">Actions</th>
+              <th class="adm-col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              *ngFor="let app of applications"
-              [class.adm-admin-table__row--selected]="selected?.id === app.id">
+              *ngFor="let app of applications; let i = index"
+              [class.adm-row--alt]="i % 2 === 1"
+              [class.adm-row--selected]="selected?.id === app.id"
+              (click)="selectForReview(app)">
               <td>
-                <span class="adm-admin-ref">{{ app.applicationNumber }}</span>
+                <span class="adm-ref">{{ app.applicationNumber }}</span>
               </td>
               <td>
-                <span class="adm-admin-name">{{ app.firstName }} {{ app.lastName }}</span>
+                <span class="adm-name">{{ app.firstName }} {{ app.lastName }}</span>
               </td>
               <td>{{ app.applicationType === 'transfer' ? 'Transfer' : 'New' }}</td>
               <td>
                 <span
-                  class="adm-admin-badge"
-                  [class.adm-admin-badge--pending]="app.status === 'pending'"
-                  [class.adm-admin-badge--review]="app.status === 'under_review'"
-                  [class.adm-admin-badge--accepted]="app.status === 'accepted'"
-                  [class.adm-admin-badge--rejected]="app.status === 'rejected'">
+                  class="adm-badge"
+                  [class.adm-badge--pending]="app.status === 'pending'"
+                  [class.adm-badge--review]="app.status === 'under_review'"
+                  [class.adm-badge--accepted]="app.status === 'accepted'"
+                  [class.adm-badge--rejected]="app.status === 'rejected'">
                   {{ admissionService.statusLabel(app.status) }}
                 </span>
               </td>
               <td>
-                <span class="adm-admin-student-id" *ngIf="app.enrolledStudent?.studentNumber">
+                <span class="adm-student-id" *ngIf="app.enrolledStudent?.studentNumber">
                   {{ app.enrolledStudent!.studentNumber }}
                 </span>
-                <span class="adm-admin-muted" *ngIf="!app.enrolledStudent?.studentNumber">—</span>
+                <span class="adm-muted" *ngIf="!app.enrolledStudent?.studentNumber">—</span>
               </td>
-              <td class="adm-admin-table__actions">
-                <a class="adm-admin-action" [routerLink]="['/admissions/status', app.id]">View</a>
-                <button type="button" class="adm-admin-action" (click)="selectForReview(app)">Review</button>
+              <td class="adm-col-actions" (click)="$event.stopPropagation()">
+                <a class="adm-btn adm-btn--sm adm-btn--ghost" [routerLink]="['/admissions/status', app.id]">View</a>
+                <button type="button" class="adm-btn adm-btn--sm" (click)="selectForReview(app)">Review</button>
               </td>
             </tr>
           </tbody>
@@ -106,61 +162,61 @@
       </div>
     </section>
 
-    <aside class="adm-admin-review" *ngIf="selected">
-      <div class="adm-admin-review__head">
-        <h2 class="adm-admin-review__title">Decision</h2>
-        <button type="button" class="adm-admin-review__close" (click)="closeReview()" aria-label="Close review panel">✕</button>
+    <aside class="adm-review" *ngIf="selected">
+      <div class="adm-review__head">
+        <h2 class="adm-review__title">Decision</h2>
+        <button type="button" class="adm-review__close" (click)="closeReview()" aria-label="Close review panel">×</button>
       </div>
-      <p class="adm-admin-review__ref">{{ selected.applicationNumber }}</p>
-      <p class="adm-admin-review__name">{{ selected.firstName }} {{ selected.lastName }}</p>
+      <p class="adm-review__ref">{{ selected.applicationNumber }}</p>
+      <p class="adm-review__name">{{ selected.firstName }} {{ selected.lastName }}</p>
       <span
-        class="adm-admin-badge adm-admin-badge--lg"
-        [class.adm-admin-badge--pending]="selected.status === 'pending'"
-        [class.adm-admin-badge--review]="selected.status === 'under_review'"
-        [class.adm-admin-badge--accepted]="selected.status === 'accepted'"
-        [class.adm-admin-badge--rejected]="selected.status === 'rejected'">
+        class="adm-badge adm-badge--lg"
+        [class.adm-badge--pending]="selected.status === 'pending'"
+        [class.adm-badge--review]="selected.status === 'under_review'"
+        [class.adm-badge--accepted]="selected.status === 'accepted'"
+        [class.adm-badge--rejected]="selected.status === 'rejected'">
         {{ admissionService.statusLabel(selected.status) }}
       </span>
 
-      <label class="adm-admin-label" for="adm-review-notes">Message to applicant (optional)</label>
+      <label class="adm-label" for="adm-review-notes">Message to applicant (optional)</label>
       <textarea
         id="adm-review-notes"
-        class="adm-admin-textarea"
+        class="adm-textarea"
         rows="4"
         [(ngModel)]="reviewNotes"
         placeholder="Notes included in the status email or WhatsApp…"></textarea>
 
-      <div class="adm-admin-whats">
-        <p class="adm-admin-whats__hint" *ngIf="applicantWhatsAppPhone(selected)">
+      <div class="adm-whats">
+        <p class="adm-whats__hint" *ngIf="applicantWhatsAppPhone(selected)">
           WhatsApp will be sent to <strong>{{ applicantWhatsAppPhone(selected) }}</strong>
           (guardian or applicant contact).
         </p>
-        <p class="adm-admin-whats__hint adm-admin-whats__hint--warn" *ngIf="!applicantWhatsAppPhone(selected)">
+        <p class="adm-whats__hint adm-whats__hint--warn" *ngIf="!applicantWhatsAppPhone(selected)">
           No phone number on file — add guardian or applicant phone before sending.
         </p>
         <button
           type="button"
-          class="adm-admin-btn adm-admin-btn--whatsapp"
+          class="adm-btn adm-btn--whatsapp"
           [disabled]="whatsAppSending || !applicantWhatsAppPhone(selected) || !reviewNotes.trim()"
           (click)="sendWhatsAppToApplicant()">
-          {{ whatsAppSending ? 'Sending…' : 'Send' }}
+          {{ whatsAppSending ? 'Sending…' : 'Send WhatsApp' }}
         </button>
-        <p class="adm-admin-whats__feedback" *ngIf="whatsAppFeedback">{{ whatsAppFeedback }}</p>
+        <p class="adm-whats__feedback" *ngIf="whatsAppFeedback">{{ whatsAppFeedback }}</p>
       </div>
 
-      <div class="adm-admin-review__actions">
-        <button type="button" class="adm-admin-btn adm-admin-btn--ghost" [disabled]="updating" (click)="setStatus('under_review')">
+      <div class="adm-review__actions">
+        <button type="button" class="adm-btn adm-btn--ghost" [disabled]="updating" (click)="setStatus('under_review')">
           Mark under review
         </button>
-        <button type="button" class="adm-admin-btn adm-admin-btn--accept" [disabled]="updating" (click)="setStatus('accepted')">
+        <button type="button" class="adm-btn" [disabled]="updating" (click)="setStatus('accepted')">
           Accept
         </button>
-        <button type="button" class="adm-admin-btn adm-admin-btn--reject" [disabled]="updating" (click)="setStatus('rejected')">
+        <button type="button" class="adm-btn adm-btn--danger" [disabled]="updating" (click)="setStatus('rejected')">
           Reject
         </button>
         <button
           type="button"
-          class="adm-admin-btn adm-admin-btn--enroll"
+          class="adm-btn adm-btn--accent"
           *ngIf="canEnrollSelected()"
           [disabled]="enrolling"
           (click)="enrollSelected()">
@@ -168,12 +224,13 @@
         </button>
       </div>
 
-      <p class="adm-admin-enrolled" *ngIf="selected.enrolledStudent?.studentNumber">
+      <p class="adm-enrolled" *ngIf="selected.enrolledStudent?.studentNumber">
         Enrolled · Student ID <strong>{{ selected.enrolledStudent!.studentNumber }}</strong>
       </p>
     </aside>
 
-    <div class="adm-admin-review-placeholder" *ngIf="!selected && applications.length">
+    <div class="adm-review-placeholder" *ngIf="!selected && applications.length">
+      <div class="adm-empty__icon" aria-hidden="true">✍️</div>
       <p>Select <strong>Review</strong> on an application to update status or enroll.</p>
     </div>
   </div>

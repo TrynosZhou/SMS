@@ -159,6 +159,76 @@ export function generateHeadmasterRemark(input: HeadmasterRemarkInput): string {
   return withSignature(pickVariant(`${seed}|growth`, growthVariants), signature);
 }
 
+/** Build a performance-based class teacher remark (no signature). */
+export function generateClassTeacherRemark(input: HeadmasterRemarkInput): string {
+  const studentName = String(input.studentName || '').trim();
+  const displayName = studentName || 'The learner';
+  const firstName = studentName ? studentName.split(/\s+/)[0] : displayName;
+  const seed = `${studentName}|ct|${input.overallAverage}|${(input.subjects || []).length}`;
+
+  const assessedSubjects = getAssessedSubjects(input.subjects);
+  const failedSubjects = assessedSubjects.filter((sub) => getSubjectPercentage(sub) < 50);
+  const allSubjectsUnder50 =
+    assessedSubjects.length > 0 &&
+    assessedSubjects.every((sub) => getSubjectPercentage(sub) < 50);
+  const average = parseAverage(input.overallAverage);
+
+  if (allSubjectsUnder50) {
+    return pickVariant(seed, [
+      `${firstName} needs consistent support and closer supervision. Greater focus on homework and regular revision will help lift performance across subjects.`,
+      `${displayName} must apply more effort in class and at home. With steady practice and guidance, clearer progress is within reach.`,
+      `${firstName} shows need for sustained academic support. Encouraging regular study habits and asking for help early will make a real difference.`
+    ]);
+  }
+
+  if (failedSubjects.length > 0) {
+    const weakNames = failedSubjects.map(subjectLabel).filter(Boolean).join(', ');
+    return pickVariant(`${seed}|weak`, [
+      `${firstName} works well in several areas but should strengthen ${weakNames}. Extra revision and class participation will help balance results.`,
+      `${displayName} shows promise overall. Targeted practice in ${weakNames} and continued effort elsewhere will improve the term profile.`,
+      `${firstName} is capable and engaged in many lessons. Focusing more carefully on ${weakNames} will bring more consistent grades.`
+    ]);
+  }
+
+  if (average >= 80) {
+    return pickVariant(`${seed}|80`, [
+      `${firstName} has shown excellent effort, focus, and participation. Keep up this outstanding work ethic and positive classroom attitude.`,
+      `${displayName} is a highly committed learner. Continued diligence and helpful class engagement set a fine example for peers.`,
+      `${firstName} demonstrates strong study habits and keen interest in learning. Maintain this excellent standard throughout the year.`
+    ]);
+  }
+
+  if (average >= 70) {
+    return pickVariant(`${seed}|70`, [
+      `${firstName} has worked hard and participates positively in class. Maintain this strong effort to keep improving.`,
+      `${displayName} shows good commitment and steady application. Continue revising regularly and aiming for even higher standards.`,
+      `${firstName} is attentive and reliable. With the same focus and determination, further progress is expected.`
+    ]);
+  }
+
+  if (average >= 60) {
+    return pickVariant(`${seed}|60`, [
+      `${firstName} has made solid progress and shows a positive attitude. Consistent homework and revision will yield stronger results.`,
+      `${displayName} works steadily in class. Keep building good study habits and confidence for the next assessment.`,
+      `${firstName} is cooperative and improving. Continued effort and active participation will support further gains.`
+    ]);
+  }
+
+  if (average >= 50) {
+    return pickVariant(`${seed}|50`, [
+      `${firstName} has achieved a fair standard. Greater consistency in revision and classwork will help move to the next level.`,
+      `${displayName} shows potential with more focused effort. Regular practice and asking questions will strengthen performance.`,
+      `${firstName} is making acceptable progress. Stay committed to homework and classroom tasks for better outcomes.`
+    ]);
+  }
+
+  return pickVariant(`${seed}|grow`, [
+    `${firstName} can improve with sustained effort and support. Focus on daily revision and completing all assigned work carefully.`,
+    `${displayName} needs to build stronger study routines. With encouragement and steady practice, better results are achievable.`,
+    `${firstName} is capable of stronger work. Stay positive, seek help when unsure, and keep practising regularly.`
+  ]);
+}
+
 /** Use a saved remark when present; otherwise generate from performance data. */
 export function resolveHeadmasterRemark(
   saved: string | null | undefined,
@@ -167,5 +237,16 @@ export function resolveHeadmasterRemark(
   const trimmed = String(saved || '').trim();
   if (trimmed) return trimmed;
   const generated = generateHeadmasterRemark(input);
+  return generated || null;
+}
+
+/** Use a saved class-teacher remark when present; otherwise generate from performance. */
+export function resolveClassTeacherRemark(
+  saved: string | null | undefined,
+  input: HeadmasterRemarkInput
+): string | null {
+  const trimmed = String(saved || '').trim();
+  if (trimmed) return trimmed;
+  const generated = generateClassTeacherRemark(input);
   return generated || null;
 }

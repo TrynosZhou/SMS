@@ -369,15 +369,33 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  background: #fff;
+  border: none;
 }
 
 .um-table-wrap {
   overflow-x: auto;
-  padding: 0 0 0.5rem;
+  margin: 0 1rem 1rem;
+  padding: 0;
+  border: 1.5px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.um-table thead {
-  background: linear-gradient(135deg, #152a45 0%, #1e3a5f 100%);
+/* Lock header — override global th / tr:hover so navy never blinks away */
+.um-table thead,
+.um-table thead tr,
+.um-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
+.um-table thead tr:hover,
+.um-table thead tr:hover th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .um-table th {
@@ -385,21 +403,53 @@
   padding: 0.75rem 1rem;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #fff;
+  color: #ffffff !important;
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
   white-space: nowrap;
-  border-bottom: none;
+  border: 1.5px solid #152a45;
+  border-top: none;
+}
+
+.um-table thead th:first-child {
+  border-left: none;
+}
+
+.um-table thead th:last-child {
+  border-right: none;
 }
 
 .um-table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border: 1.5px solid #94a3b8;
+  color: #1e293b;
   vertical-align: middle;
 }
 
+.um-table tbody td:first-child {
+  border-left: none;
+}
+
+.um-table tbody td:last-child {
+  border-right: none;
+}
+
+.um-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.um-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.um-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
 .um-table tbody tr:hover {
-  background: #fafbfc;
+  background: #e2e8f0;
 }
 
 .um-col-check {

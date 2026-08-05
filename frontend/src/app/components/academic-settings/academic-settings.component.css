@@ -307,6 +307,9 @@
 
 .academic-table-wrap {
   overflow-x: auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .academic-table {
@@ -314,6 +317,7 @@
   border-collapse: collapse;
   font-size: 0.875rem;
   background: #fff;
+  border: none;
 }
 
 /* Lock header — override global th color / thead bg */
@@ -343,7 +347,16 @@
   color: #ffffff !important;
   background: #1e3a5f !important;
   background-color: #1e3a5f !important;
-  border-bottom: 1px solid #152a45;
+  border: 1.5px solid #152a45;
+  border-top: none;
+}
+
+.academic-table thead th:first-child {
+  border-left: none;
+}
+
+.academic-table thead th:last-child {
+  border-right: none;
 }
 
 .academic-table thead .th-icon,
@@ -358,12 +371,33 @@
 
 .academic-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border: 1.5px solid #94a3b8;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.academic-table tbody td:first-child {
+  border-left: none;
+}
+
+.academic-table tbody td:last-child {
+  border-right: none;
+}
+
+.academic-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.academic-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.academic-table tbody tr:nth-child(odd) {
+  background: #ffffff;
 }
 
 .academic-table tbody tr:hover {
-  background: #f8fafc;
+  background: #e2e8f0;
 }
 
 /* Classes tab (reference layout) */

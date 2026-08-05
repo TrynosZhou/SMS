@@ -24,7 +24,7 @@
       <div class="exam-hero-left">
         <span class="exam-hero-icon" aria-hidden="true">📝</span>
         <div>
-          <span class="exam-hero-eyebrow">Examinations</span>
+          <span class="exam-hero-eyebrow">Exams · Marks entry</span>
           <h1>Enter Marks</h1>
           <p class="exam-hero-sub">Select class, term, exam type, and subject — then enter and auto-save student marks.</p>
         </div>
@@ -34,6 +34,10 @@
         <span class="exam-hero-badge exam-hero-badge--muted" *ngIf="selectedTerm">{{ selectedTerm }}</span>
         <span class="exam-hero-badge exam-hero-badge--published" *ngIf="isPublished">Published</span>
       </aside>
+      <div class="exam-hero__actions">
+        <a routerLink="/mark-sheet" class="exam-hero-btn exam-hero-btn--white">Mark sheet</a>
+        <a routerLink="/results-analysis" class="exam-hero-btn exam-hero-btn--accent">Results</a>
+      </div>
     </div>
 
     <nav class="exam-cross-links" aria-label="Related exam pages">
@@ -41,43 +45,39 @@
       <a routerLink="/results-analysis">Results analysis</a>
       <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
       <a routerLink="/check_mark_progess">Marks progress</a>
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/subjects">Subjects</a>
     </nav>
 
     <div class="exam-hero-stats">
       <article class="exam-stat">
-        <span class="exam-stat__icon" aria-hidden="true">👥</span>
         <span class="exam-stat__value">{{ showMarksEntry ? filteredStudents.length : '—' }}</span>
         <span class="exam-stat__label">Students</span>
       </article>
-      <article class="exam-stat exam-stat--mint">
-        <span class="exam-stat__icon" aria-hidden="true">✓</span>
+      <article class="exam-stat">
         <span class="exam-stat__value">{{ showMarksEntry ? getEnteredMarksCount() : '—' }}</span>
         <span class="exam-stat__label">Entered</span>
       </article>
-      <article class="exam-stat exam-stat--amber">
-        <span class="exam-stat__icon" aria-hidden="true">⏳</span>
+      <article class="exam-stat">
         <span class="exam-stat__value">{{ showMarksEntry ? (filteredStudents.length - getEnteredMarksCount()) : '—' }}</span>
         <span class="exam-stat__label">Pending</span>
       </article>
-      <article class="exam-stat exam-stat--sky">
-        <span class="exam-stat__icon" aria-hidden="true">📊</span>
+      <article class="exam-stat">
         <span class="exam-stat__value">{{ showMarksEntry ? (getAverageScore() | number : '1.0-0') + '%' : '—' }}</span>
         <span class="exam-stat__label">Average</span>
       </article>
       <article class="exam-stat">
-        <span class="exam-stat__icon" aria-hidden="true">💾</span>
         <span class="exam-stat__value">{{ showMarksEntry ? getSavedMarksCount() : '—' }}</span>
         <span class="exam-stat__label">Saved</span>
       </article>
-      <article class="exam-stat exam-stat--muted">
-        <span class="exam-stat__icon" aria-hidden="true">%</span>
+      <article class="exam-stat">
         <span class="exam-stat__value">{{ showMarksEntry ? getMarksProgress() + '%' : '—' }}</span>
         <span class="exam-stat__label">Progress</span>
       </article>
     </div>
 
     <div class="exam-hero-toolbar">
-      <button type="button" class="exam-btn exam-btn--ghost exam-btn--sm" (click)="resetSelection()" [disabled]="loadingStudents">
+      <button type="button" class="exam-hero-btn exam-hero-btn--ghost" (click)="resetSelection()" [disabled]="loadingStudents">
         Reset selection
       </button>
       <span class="exam-autosave-hint" *ngIf="showMarksEntry && lastAutoSaveAt && !isAutoSaving">
@@ -196,7 +196,7 @@
       </div>
       <div class="exam-quick-actions">
         <button type="button" class="exam-btn exam-btn--outline exam-btn--sm" (click)="fillRemainingWithZero()" [disabled]="loading || isPublished">Fill empty</button>
-        <button type="button" class="exam-btn exam-btn--outline exam-btn--sm exam-btn--danger" (click)="clearAllMarks()" [disabled]="loading || getEnteredMarksCount() === 0 || isPublished">Clear all</button>
+        <button type="button" class="exam-btn exam-btn--ghost exam-btn--sm" (click)="clearAllMarks()" [disabled]="loading || getEnteredMarksCount() === 0 || isPublished">Clear all</button>
       </div>
     </div>
 
@@ -239,19 +239,12 @@
               <td class="exam-col-actions">
                 <button
                   type="button"
-                  class="exam-delete-btn"
+                  class="exam-btn exam-btn--ghost exam-btn--sm"
                   (click)="deleteMark(student.id)"
                   [disabled]="isPublished || !isRecordSaved(student.id)"
-                  [class.exam-delete-btn--active]="!isPublished && isRecordSaved(student.id)"
                   title="Delete mark"
                   aria-label="Delete mark">
-                  <svg class="exam-delete-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
-                  <span class="exam-delete-btn__label">Delete</span>
+                  Delete
                 </button>
               </td>
             </tr>

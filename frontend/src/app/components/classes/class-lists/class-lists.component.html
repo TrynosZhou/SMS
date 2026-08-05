@@ -12,7 +12,7 @@
       <div class="cll-hero-left">
         <span class="cll-hero-icon" aria-hidden="true">📋</span>
         <div>
-          <span class="cll-hero-eyebrow">Class Manager</span>
+          <span class="cll-hero-eyebrow">Academics · Class Lists</span>
           <h1>Class Lists</h1>
           <p class="cll-hero-sub">View and manage students enrolled in a class for a specific term — print, export, or update records.</p>
           <p class="cll-hero-meta" *ngIf="lastLoadedAt && !loadingStudents">
@@ -32,15 +32,18 @@
         <button type="button" class="cll-hero-refresh" (click)="refreshAll()" [disabled]="loading || loadingStudents" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading || loadingStudents">↻</span>
         </button>
-        <a routerLink="/classes" class="cll-hero-btn cll-hero-btn--white">Manage classes</a>
+        <a routerLink="/classes" class="cll-hero-btn cll-hero-btn--white">← Classes</a>
+        <a routerLink="/classes/new" class="cll-hero-btn cll-hero-btn--accent">+ Add class</a>
       </div>
     </div>
 
     <nav class="cll-cross-links" aria-label="Related class pages">
       <a routerLink="/classes">Manage classes</a>
       <a routerLink="/classes/new">Add class</a>
+      <a routerLink="/students">Students</a>
       <a routerLink="/students/enroll_student">Enroll student</a>
       <a routerLink="/students/transfer">Transfer student</a>
+      <a routerLink="/teachers">Teachers</a>
     </nav>
 
     <div class="cll-hero-stats" *ngIf="!loadingStudents">
@@ -88,8 +91,8 @@
     </div>
 
     <div class="cll-hero-toolbar" *ngIf="filteredStudents.length && !loadingStudents">
-      <button type="button" class="cll-hero-btn" (click)="toggleViewMode()" title="Toggle view">
-        {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+      <button type="button" class="cll-hero-btn cll-hero-btn--ghost" (click)="toggleViewMode()" title="Toggle view">
+        {{ viewMode === 'table' ? 'Cards' : 'Table' }}
       </button>
       <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="exportCsv()">CSV</button>
       <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="printReport()">Print</button>
@@ -139,7 +142,7 @@
         <label>&nbsp;</label>
         <button
           type="button"
-          class="cll-btn-primary"
+          class="cll-btn cll-btn--primary"
           (click)="loadStudents()"
           [disabled]="loading || loadingStudents || !selectedClassId || !selectedTerm">
           <span [class.spinning]="loadingStudents">↻</span>
@@ -149,10 +152,10 @@
     </div>
 
     <div class="cll-pills" *ngIf="selectedClassId && selectedTerm">
-      <span class="cll-pill">📚 {{ getSelectedClassName() }}</span>
-      <span class="cll-pill">📅 {{ selectedTerm }}</span>
+      <span class="cll-pill">{{ getSelectedClassName() }}</span>
+      <span class="cll-pill">{{ selectedTerm }}</span>
       <span class="cll-pill cll-pill--count" *ngIf="filteredStudents.length">
-        👥 {{ filteredStudents.length }} student{{ filteredStudents.length !== 1 ? 's' : '' }}
+        {{ filteredStudents.length }} student{{ filteredStudents.length !== 1 ? 's' : '' }}
       </span>
     </div>
   </section>
@@ -166,7 +169,7 @@
     <span class="cll-empty-icon" aria-hidden="true">👥</span>
     <h3>No students in this class</h3>
     <p>No students are enrolled in <strong>{{ getSelectedClassName() }}</strong> for {{ selectedTerm }}.</p>
-    <button type="button" class="cll-btn-secondary" (click)="loadStudents()">Reload</button>
+    <button type="button" class="cll-btn cll-btn--outline" (click)="loadStudents()">Reload</button>
   </section>
 
   <section class="cll-panel cll-panel--roster" *ngIf="filteredStudents.length > 0 && !loadingStudents">
@@ -188,7 +191,7 @@
           </span>
         </p>
       </div>
-      <button type="button" class="cll-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <button type="button" class="cll-btn cll-btn--ghost" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
     <div class="cll-filters-row">
@@ -307,7 +310,7 @@
                     <span *ngIf="!canMoveStudent()">{{ student.class?.name || 'N/A' }}</span>
                   </td>
                   <td *ngIf="canDeleteStudent()" class="col-action hide-print">
-                    <button type="button" class="cll-action-btn cll-action-btn--danger" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
+                    <button type="button" class="cll-btn cll-btn--ghost cll-btn--sm" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
                       Delete
                     </button>
                   </td>
@@ -337,9 +340,9 @@
             <span *ngIf="!canMoveStudent()">{{ student.class?.name || 'N/A' }}</span>
           </p>
           <div class="cll-card__actions hide-print">
-            <button type="button" class="cll-action-btn" (click)="openEditModal(student, 'lastName')">Edit</button>
-            <button type="button" class="cll-action-btn" (click)="viewStudentIdCard(student.id)">ID card</button>
-            <button type="button" class="cll-action-btn cll-action-btn--danger" *ngIf="canDeleteStudent()" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">Delete</button>
+            <button type="button" class="cll-btn cll-btn--outline cll-btn--sm" (click)="openEditModal(student, 'lastName')">Edit</button>
+            <button type="button" class="cll-btn cll-btn--outline cll-btn--sm" (click)="viewStudentIdCard(student.id)">ID card</button>
+            <button type="button" class="cll-btn cll-btn--ghost cll-btn--sm" *ngIf="canDeleteStudent()" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">Delete</button>
           </div>
         </article>
       </div>
@@ -348,7 +351,7 @@
         <span class="cll-empty-icon" aria-hidden="true">🔍</span>
         <h3>No matching students</h3>
         <p>Try adjusting search or filter chips.</p>
-        <button type="button" class="cll-btn-secondary" (click)="clearFilters()">Reset filters</button>
+        <button type="button" class="cll-btn cll-btn--outline" (click)="clearFilters()">Reset filters</button>
       </div>
     </div>
   </section>
@@ -463,8 +466,8 @@
       </div>
 
       <div class="cll-modal__footer">
-        <button type="button" class="cll-btn-secondary" (click)="cancelEditModal()" [disabled]="savingEdit">Cancel</button>
-        <button type="button" class="cll-btn-primary" (click)="saveEditModal()" [disabled]="savingEdit || !editModalValue">
+        <button type="button" class="cll-btn cll-btn--ghost" (click)="cancelEditModal()" [disabled]="savingEdit">Cancel</button>
+        <button type="button" class="cll-btn cll-btn--primary" (click)="saveEditModal()" [disabled]="savingEdit || !editModalValue">
           {{ savingEdit ? 'Saving…' : 'Save changes' }}
         </button>
       </div>
@@ -505,8 +508,8 @@
       </div>
 
       <div class="cll-modal__footer">
-        <button type="button" class="cll-btn-secondary" (click)="closeClassTeacherModal()" [disabled]="updatingClassTeacher">Cancel</button>
-        <button type="button" class="cll-btn-primary" (click)="saveClassTeacher()" [disabled]="updatingClassTeacher || !selectedClassTeacherId">
+        <button type="button" class="cll-btn cll-btn--ghost" (click)="closeClassTeacherModal()" [disabled]="updatingClassTeacher">Cancel</button>
+        <button type="button" class="cll-btn cll-btn--primary" (click)="saveClassTeacher()" [disabled]="updatingClassTeacher || !selectedClassTeacherId">
           {{ updatingClassTeacher ? 'Updating…' : 'Assign teacher' }}
         </button>
       </div>
@@ -562,8 +565,8 @@
       </div>
 
       <div class="cll-modal__footer">
-        <button type="button" class="cll-btn-secondary" (click)="cancelMove()" [disabled]="enrolling">Cancel</button>
-        <button type="button" class="cll-btn-primary" (click)="confirmEnroll()" [disabled]="enrolling || !moveTargetClassId || moveTargetClassId === selectedClassId">
+        <button type="button" class="cll-btn cll-btn--ghost" (click)="cancelMove()" [disabled]="enrolling">Cancel</button>
+        <button type="button" class="cll-btn cll-btn--primary" (click)="confirmEnroll()" [disabled]="enrolling || !moveTargetClassId || moveTargetClassId === selectedClassId">
           {{ enrolling ? 'Moving…' : 'Confirm transfer' }}
         </button>
       </div>

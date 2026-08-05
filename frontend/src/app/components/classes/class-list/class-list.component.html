@@ -12,8 +12,8 @@
       <div class="cl-hero-left">
         <span class="cl-hero-icon" aria-hidden="true">🏫</span>
         <div>
-          <span class="cl-hero-eyebrow">Class Manager</span>
-          <h1>Manage Classes</h1>
+          <span class="cl-hero-eyebrow">Academics · Classes</span>
+          <h1>Classes</h1>
           <p class="cl-hero-sub">Create, organize, and maintain classes — view enrolment counts and status at a glance.</p>
           <p class="cl-hero-meta" *ngIf="lastLoadedAt && !loading">
             Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
@@ -24,8 +24,8 @@
         <button type="button" class="cl-hero-refresh" (click)="loadClasses()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="cl-hero-btn" (click)="toggleViewMode()" title="Toggle view" *ngIf="hasData && !loading">
-          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        <button type="button" class="cl-hero-btn cl-hero-btn--ghost" (click)="toggleViewMode()" title="Toggle view" *ngIf="hasData && !loading">
+          {{ viewMode === 'table' ? 'Cards' : 'Table' }}
         </button>
         <button type="button" class="cl-hero-btn cl-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredClasses.length || loading">CSV</button>
         <button type="button" class="cl-hero-btn cl-hero-btn--white" (click)="printReport()" [disabled]="!filteredClasses.length || loading">Print</button>
@@ -33,6 +33,15 @@
         <a routerLink="/classes/new" class="cl-hero-btn cl-hero-btn--accent">+ Add class</a>
       </div>
     </div>
+
+    <nav class="cl-cross-links" aria-label="Related pages">
+      <a routerLink="/classes/lists">Class lists</a>
+      <a routerLink="/classes/new">Add class</a>
+      <a routerLink="/students">Students</a>
+      <a routerLink="/students/enroll_student">Enroll</a>
+      <a routerLink="/teachers">Teachers</a>
+      <a routerLink="/subjects">Subjects</a>
+    </nav>
 
     <div class="cl-hero-stats" *ngIf="hasData && !loading">
       <article class="cl-stat">
@@ -43,15 +52,15 @@
         <span class="cl-stat__value">{{ dashboardStats.total }}</span>
         <span class="cl-stat__label">Total classes</span>
       </article>
-      <article class="cl-stat cl-stat--mint">
+      <article class="cl-stat">
         <span class="cl-stat__value">{{ dashboardStats.active }}</span>
         <span class="cl-stat__label">Active</span>
       </article>
-      <article class="cl-stat cl-stat--rose">
+      <article class="cl-stat">
         <span class="cl-stat__value">{{ dashboardStats.inactive }}</span>
         <span class="cl-stat__label">Inactive</span>
       </article>
-      <article class="cl-stat cl-stat--amber">
+      <article class="cl-stat">
         <span class="cl-stat__value">{{ dashboardStats.totalStudents }}</span>
         <span class="cl-stat__label">Students</span>
       </article>
@@ -71,7 +80,7 @@
         <h2 class="cl-panel__title">Filters & search</h2>
         <p class="cl-panel__intro">Find classes by name, grade, or description. Filter by status.</p>
       </div>
-      <button type="button" class="cl-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <button type="button" class="cl-btn cl-btn--ghost" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
     <div class="cl-filters-row">
@@ -126,8 +135,8 @@
           <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size === 1000 ? 'All' : size }}</option>
         </select>
       </label>
-      <button type="button" class="cl-btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">◀ Prev</button>
-      <button type="button" class="cl-btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">Next ▶</button>
+      <button type="button" class="cl-btn cl-btn--outline" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">◀ Prev</button>
+      <button type="button" class="cl-btn cl-btn--outline" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">Next ▶</button>
     </div>
   </section>
 
@@ -197,9 +206,9 @@
           <tr *ngFor="let classItem of filteredClasses; trackBy: trackByClass">
             <td class="cl-cell-name">{{ classItem.name }}</td>
             <td><span class="cl-form-pill">{{ classItem.form || '—' }}</span></td>
-            <td><span class="cl-count-pill cl-count-pill--students">👨‍🎓 {{ classItem.students?.length || 0 }}</span></td>
-            <td><span class="cl-count-pill cl-count-pill--teachers">👨‍🏫 {{ classItem.teachers?.length || 0 }}</span></td>
-            <td><span class="cl-count-pill cl-count-pill--subjects">📖 {{ getSubjectCount(classItem) }}</span></td>
+            <td><span class="cl-count-pill">{{ classItem.students?.length || 0 }}</span></td>
+            <td><span class="cl-count-pill">{{ classItem.teachers?.length || 0 }}</span></td>
+            <td><span class="cl-count-pill">{{ getSubjectCount(classItem) }}</span></td>
             <td>
               <span class="cl-status-pill" [class.cl-status-pill--active]="classItem.isActive" [class.cl-status-pill--inactive]="!classItem.isActive">
                 {{ classItem.isActive ? 'Active' : 'Inactive' }}
@@ -207,8 +216,8 @@
             </td>
             <td class="cl-col-actions">
               <div class="cl-actions-cell">
-                <button type="button" class="cl-action-btn" (click)="editClass(classItem.id)" title="Edit">Edit</button>
-                <button type="button" class="cl-action-btn cl-action-btn--danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading" title="Delete">Delete</button>
+                <button type="button" class="cl-btn cl-btn--outline cl-btn--sm" (click)="editClass(classItem.id)" title="Edit">Edit</button>
+                <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading" title="Delete">Delete</button>
               </div>
             </td>
           </tr>
@@ -227,13 +236,13 @@
         <p class="cl-card__form">{{ classItem.form || 'No grade set' }}</p>
         <p class="cl-card__meta" *ngIf="classItem.description">{{ classItem.description }}</p>
         <div class="cl-card__counts">
-          <span class="cl-count-pill cl-count-pill--students">👨‍🎓 {{ classItem.students?.length || 0 }} students</span>
-          <span class="cl-count-pill cl-count-pill--teachers">👨‍🏫 {{ classItem.teachers?.length || 0 }} teachers</span>
-          <span class="cl-count-pill cl-count-pill--subjects">📖 {{ getSubjectCount(classItem) }} subjects</span>
+          <span class="cl-count-pill">{{ classItem.students?.length || 0 }} students</span>
+          <span class="cl-count-pill">{{ classItem.teachers?.length || 0 }} teachers</span>
+          <span class="cl-count-pill">{{ getSubjectCount(classItem) }} subjects</span>
         </div>
         <div class="cl-card__actions">
-          <button type="button" class="cl-action-btn" (click)="editClass(classItem.id)">Edit</button>
-          <button type="button" class="cl-action-btn cl-action-btn--danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading">Delete</button>
+          <button type="button" class="cl-btn cl-btn--outline cl-btn--sm" (click)="editClass(classItem.id)">Edit</button>
+          <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading">Delete</button>
         </div>
       </article>
     </div>
@@ -243,8 +252,8 @@
       <h3 class="cl-empty-title">{{ hasActiveFilters() ? 'No matching classes' : 'No classes yet' }}</h3>
       <p class="cl-empty-text" *ngIf="hasActiveFilters()">Try adjusting search or status filters.</p>
       <p class="cl-empty-text" *ngIf="!hasActiveFilters()">Create your first class to get started.</p>
-      <button type="button" class="cl-btn-primary" *ngIf="hasActiveFilters()" (click)="clearFilters()">Reset filters</button>
-      <a routerLink="/classes/new" class="cl-btn-primary" *ngIf="!hasActiveFilters()">+ Add your first class</a>
+      <button type="button" class="cl-btn cl-btn--primary" *ngIf="hasActiveFilters()" (click)="clearFilters()">Reset filters</button>
+      <a routerLink="/classes/new" class="cl-btn cl-btn--primary" *ngIf="!hasActiveFilters()">+ Add your first class</a>
     </div>
   </section>
 </div>

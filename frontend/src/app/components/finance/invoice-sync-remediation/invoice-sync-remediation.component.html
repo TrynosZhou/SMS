@@ -1,11 +1,19 @@
 <div class="rem-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<header class="rem-hero">
+
+  <div class="rem-toast-stack" *ngIf="error">
+    <div class="rem-toast rem-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="rem-toast__dismiss" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="rem-hero">
     <div class="rem-hero__main">
       <div class="rem-hero__left">
         <span class="rem-hero__icon" aria-hidden="true">🛠️</span>
         <div>
-          <span class="rem-hero__eyebrow">Admin · Finance</span>
+          <span class="rem-hero__eyebrow">Finance · Admin</span>
           <h1>Invoice Sync Remediation</h1>
           <p class="rem-hero__sub">
             Reverse fictitious payments and credit duplicated tuition charges from the transport/DH sync bug.
@@ -14,16 +22,43 @@
         </div>
       </div>
       <div class="rem-hero__actions">
-        <button type="button" class="rem-btn rem-btn--ghost" (click)="goBack()">← Back to invoices</button>
+        <button type="button" class="rem-hero-btn rem-hero-btn--white" (click)="goBack()">← Back to invoices</button>
       </div>
+    </div>
+
+    <nav class="rem-cross-links" aria-label="Related finance pages">
+      <a routerLink="/invoices">Invoices</a>
+      <a routerLink="/invoices/credit-note">Credit note</a>
+      <a routerLink="/invoices/debit-note">Debit note</a>
+      <a routerLink="/finance/financial-books">Financial books</a>
+    </nav>
+
+    <div class="rem-hero-stats">
+      <article class="rem-stat">
+        <span class="rem-stat__value">{{ students.length }}</span>
+        <span class="rem-stat__label">Students</span>
+      </article>
+      <article class="rem-stat">
+        <span class="rem-stat__value">{{ paymentCount }}</span>
+        <span class="rem-stat__label">Payments</span>
+      </article>
+      <article class="rem-stat">
+        <span class="rem-stat__value">{{ reversibleCount }}</span>
+        <span class="rem-stat__label">Reversible</span>
+      </article>
+      <article class="rem-stat">
+        <span class="rem-stat__value">{{ selectedPayments.length }}</span>
+        <span class="rem-stat__label">Selected</span>
+      </article>
     </div>
   </header>
 
-  <div *ngIf="error" class="rem-alert rem-alert--error" role="alert">{{ error }}</div>
   <!-- Step 1: Filter & Preview -->
-  <section class="rem-card">
-    <h2><span class="step-badge">1</span> Filter &amp; Preview Payments</h2>
-    <p class="rem-hint">Enter Student ID(s) and an optional date range. Select specific payment rows — nothing is auto-selected.</p>
+  <section class="rem-panel">
+    <div class="rem-panel__head">
+      <h2 class="rem-panel__title"><span class="step-badge">1</span> Filter &amp; Preview Payments</h2>
+      <p class="rem-panel__intro">Enter Student ID(s) and an optional date range. Select specific payment rows — nothing is auto-selected.</p>
+    </div>
 
     <div class="rem-form-grid">
       <div class="rem-field rem-field--wide">
@@ -46,16 +81,18 @@
       </div>
     </div>
 
-    <button type="button" class="rem-btn rem-btn--primary" (click)="loadPreview()" [disabled]="loading">
-      {{ loading ? 'Loading…' : 'Load payments' }}
-    </button>
+    <div class="rem-panel__actions">
+      <button type="button" class="rem-btn rem-btn--primary" (click)="loadPreview()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Load payments' }}
+      </button>
+    </div>
 
     <div *ngIf="notFound.length" class="rem-warn">
       Not found: {{ notFound.join(', ') }}
     </div>
 
     <div *ngIf="students.length > 1" class="rem-student-picker">
-      <p>Select student:</p>
+      <p class="rem-student-picker__label">Select student</p>
       <div class="rem-student-chips">
         <button
           type="button"
@@ -70,17 +107,27 @@
   </section>
 
   <ng-container *ngIf="activeStudent">
-    <section class="rem-card rem-summary">
-      <h3>{{ activeStudent.firstName }} {{ activeStudent.lastName }} ({{ activeStudent.studentNumber }})</h3>
-      <p *ngIf="activeStudent.className">Class: {{ activeStudent.className }}</p>
-      <p class="rem-balance">
-        Total outstanding:
-        <strong>{{ currencySymbol }} {{ activeStudent.totalOutstanding | number:'1.2-2' }}</strong>
-      </p>
+    <section class="rem-panel rem-summary">
+      <div class="rem-panel__head rem-panel__head--row">
+        <div>
+          <h2 class="rem-panel__title">{{ activeStudent.firstName }} {{ activeStudent.lastName }}</h2>
+          <p class="rem-panel__intro">
+            {{ activeStudent.studentNumber }}
+            <span *ngIf="activeStudent.className"> · {{ activeStudent.className }}</span>
+          </p>
+        </div>
+        <p class="rem-balance">
+          Total outstanding
+          <strong>{{ currencySymbol }} {{ activeStudent.totalOutstanding | number:'1.2-2' }}</strong>
+        </p>
+      </div>
     </section>
 
-    <section class="rem-card" *ngIf="activeStudent.payments.length">
-      <h2>Payment records in range</h2>
+    <section class="rem-panel" *ngIf="activeStudent.payments.length">
+      <div class="rem-panel__head">
+        <h2 class="rem-panel__title">Payment records in range</h2>
+        <p class="rem-panel__intro">Tick reversible rows to include them in Step 2.</p>
+      </div>
       <div class="rem-table-wrap">
         <table class="rem-table">
           <thead>
@@ -96,7 +143,8 @@
           </thead>
           <tbody>
             <tr
-              *ngFor="let p of activeStudent.payments"
+              *ngFor="let p of activeStudent.payments; let i = index"
+              [class.rem-row--alt]="i % 2 === 1"
               [class.rem-row--reversed]="p.reversedAt"
               [class.rem-row--blocked]="!p.canReverse">
               <td>
@@ -108,7 +156,7 @@
                   [attr.aria-label]="'Select payment ' + p.id" />
               </td>
               <td>{{ formatDate(p.paymentDate) }}</td>
-              <td>{{ currencySymbol }} {{ p.amountPaid | number:'1.2-2' }}</td>
+              <td class="rem-num">{{ currencySymbol }} {{ p.amountPaid | number:'1.2-2' }}</td>
               <td>{{ p.paymentMethod || '—' }}</td>
               <td>{{ p.receiptNumber || p.invoiceNumber || '—' }}</td>
               <td class="col-notes">{{ p.notes || '—' }}</td>
@@ -123,13 +171,17 @@
       </div>
     </section>
 
-    <section class="rem-card rem-empty" *ngIf="!activeStudent.payments.length && !loading">
-      No payment logs found for this student in the selected date range.
+    <section class="rem-panel rem-empty" *ngIf="!activeStudent.payments.length && !loading">
+      <p class="rem-empty__title">No payment logs found</p>
+      <p class="rem-empty__text">No payment logs for this student in the selected date range.</p>
     </section>
 
     <!-- Step 2: Reverse -->
-    <section class="rem-card">
-      <h2><span class="step-badge">2</span> Reverse Selected Payment(s)</h2>
+    <section class="rem-panel">
+      <div class="rem-panel__head">
+        <h2 class="rem-panel__title"><span class="step-badge">2</span> Reverse Selected Payment(s)</h2>
+        <p class="rem-panel__intro">Provide a reason, then confirm. Original payment rows stay on file for audit.</p>
+      </div>
       <div class="rem-field">
         <label for="reversalReason">Reason (required)</label>
         <textarea
@@ -138,21 +190,28 @@
           class="form-control"
           [(ngModel)]="reversalReason"></textarea>
       </div>
-      <button
-        type="button"
-        class="rem-btn rem-btn--danger"
-        (click)="openReverseConfirm()"
-        [disabled]="submittingReverse || !selectedPayments.length">
-        Reverse {{ selectedPayments.length || '' }} selected payment(s)
-      </button>
+      <div class="rem-panel__actions">
+        <button
+          type="button"
+          class="rem-btn rem-btn--primary"
+          (click)="openReverseConfirm()"
+          [disabled]="submittingReverse || !selectedPayments.length">
+          Reverse {{ selectedPayments.length || '' }} selected payment(s)
+        </button>
+      </div>
     </section>
 
     <!-- Step 3: Credit note -->
-    <section class="rem-card" [class.rem-card--disabled]="!reversalsCompleted">
-      <h2><span class="step-badge">3</span> Apply Credit Note</h2>
-      <p class="rem-hint" *ngIf="!reversalsCompleted">
-        Complete Step 2 first — credit note is enabled after a successful reversal in this session.
-      </p>
+    <section class="rem-panel" [class.rem-panel--disabled]="!reversalsCompleted">
+      <div class="rem-panel__head">
+        <h2 class="rem-panel__title"><span class="step-badge">3</span> Apply Credit Note</h2>
+        <p class="rem-panel__intro" *ngIf="!reversalsCompleted">
+          Complete Step 2 first — credit note is enabled after a successful reversal in this session.
+        </p>
+        <p class="rem-panel__intro" *ngIf="reversalsCompleted">
+          Choose the invoice and line item, then apply a credit for duplicated charges.
+        </p>
+      </div>
 
       <div class="rem-form-grid" *ngIf="reversalsCompleted">
         <div class="rem-field">
@@ -201,13 +260,15 @@
         </div>
       </div>
 
-      <button
-        type="button"
-        class="rem-btn rem-btn--primary"
-        (click)="openCreditConfirm()"
-        [disabled]="!reversalsCompleted || submittingCredit">
-        Apply credit note
-      </button>
+      <div class="rem-panel__actions">
+        <button
+          type="button"
+          class="rem-btn rem-btn--primary"
+          (click)="openCreditConfirm()"
+          [disabled]="!reversalsCompleted || submittingCredit">
+          Apply credit note
+        </button>
+      </div>
     </section>
   </ng-container>
 
@@ -226,7 +287,7 @@
     <p class="rem-hint">The original payment will be marked reversed; a compensating REVERSAL log will be created.</p>
     <div class="rem-modal-actions">
       <button type="button" class="rem-btn rem-btn--ghost" (click)="cancelReverseConfirm()">Cancel</button>
-      <button type="button" class="rem-btn rem-btn--danger" (click)="confirmReverse()" [disabled]="submittingReverse">
+      <button type="button" class="rem-btn rem-btn--primary" (click)="confirmReverse()" [disabled]="submittingReverse">
         Confirm reversal
       </button>
     </div>

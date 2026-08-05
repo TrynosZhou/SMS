@@ -13,7 +13,7 @@
         <span class="inv-hero-icon" aria-hidden="true">💰</span>
         <div>
           <span class="inv-hero-eyebrow">Finance</span>
-          <h1>Invoice Management</h1>
+          <h1>Invoices</h1>
           <p class="inv-hero-sub">Manage student invoices, record payments, and run bulk billing operations.</p>
           <p class="inv-hero-meta" *ngIf="lastLoadedAt && !loading">
             Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
@@ -29,6 +29,13 @@
         <a routerLink="/invoices/new" class="inv-hero-btn inv-hero-btn--accent" *ngIf="canCreateInvoice()">+ New invoice</a>
       </div>
     </div>
+
+    <nav class="inv-cross-links" aria-label="Related finance pages">
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/financial-reports/outstanding-fees">Outstanding fees</a>
+      <a routerLink="/finance/financial-books">Financial books</a>
+      <a routerLink="/invoices/statements">Statements</a>
+    </nav>
 
     <div class="inv-hero-stats" *ngIf="!loading && filteredInvoices.length > 0">
       <article class="inv-stat">
@@ -57,70 +64,78 @@
     </div>
   </header>
 
-  <div class="invoice-actions-card inv-toolbar">
-    <div class="actions-row actions-row-primary">
-      <a
-        class="btn btn-action btn-credit"
-        routerLink="/invoices/credit-note"
-        *ngIf="canApplyCreditNotes()"
-        title="Credit Note - correct overcharge">
-        <span class="btn-icon">📝</span>
-        <span>Credit Note</span>
-      </a>
-      <a
-        class="btn btn-action btn-debit"
-        routerLink="/invoices/debit-note"
-        *ngIf="canApplyDebitNotes()"
-        title="Debit Note - correct undercharge">
-        <span class="btn-icon">📗</span>
-        <span>Debit Note</span>
-      </a>
-      <a
-        class="btn btn-action btn-remediation"
-        routerLink="/finance/admin/invoice-sync-remediation"
-        *ngIf="canInvoiceSyncRemediation()"
-        title="Reverse fictitious payments and credit duplicated tuition (sync bug remediation)">
-        <span class="btn-icon">🛠️</span>
-        <span>Sync Remediation</span>
-      </a>
-      <button class="btn btn-action btn-create" type="button" (click)="openUniformItemsModal()" *ngIf="canCreateInvoice()" title="Process uniform items for a student and charge against uniform account">
-        <span class="btn-icon">👕</span>
-        <span>Uniform Items</span>
-      </button>
-      <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canBulkInvoices()">
-        <span class="btn-icon">📋</span>
-        <span>Bulk Create</span>
-      </button>
-      <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canBulkInvoices() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
-        <span class="btn-icon">↩️</span>
-        <span>Reverse Bulk</span>
-      </button>
-    </div>
-    <div class="actions-row actions-row-secondary" *ngIf="canManageFinance() || canCorrectTransaction()">
-      <div class="reverse-filters" *ngIf="authService.isAdmin()">
-        <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Term to reverse">
-          <option value="">Auto (following term)</option>
-          <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
-        </select>
-        <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Start date" />
-        <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="End date" />
-      </div>
-      <div class="actions-secondary-buttons">
-        <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canExemptionCorrection()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students">
-          <span class="btn-icon">🛡️</span>
-          <span>Tuition Exemption</span>
-        </button>
-        <button class="btn btn-action btn-prepaid" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canManageFinance() || canCorrectTransaction()" [disabled]="!canCorrectTransaction()" title="Correct prepaid transaction by student">
-          <span class="btn-icon">🧾</span>
-          <span>Correct Prepaid</span>
-        </button>
-        <button class="btn btn-action btn-reconciliation-audit" type="button" (click)="openReconciliationAudit()" *ngIf="canManageFinance()" title="Check for invoice identity violations (paidAmount + balance vs amount + prevBalance - prepaid)">
-          <span class="btn-icon">🔍</span>
-          <span>Reconciliation Audit</span>
-        </button>
+  <section class="inv-panel inv-panel--tools">
+    <div class="inv-panel__head-row">
+      <div>
+        <h2 class="inv-panel__title">Billing tools</h2>
+        <p class="inv-panel__intro">Credit/debit notes, bulk create, uniforms, and finance corrections.</p>
       </div>
     </div>
-  </div>
+    <div class="invoice-actions-card inv-toolbar">
+      <div class="actions-row actions-row-primary">
+        <a
+          class="btn btn-action btn-credit"
+          routerLink="/invoices/credit-note"
+          *ngIf="canApplyCreditNotes()"
+          title="Credit Note - correct overcharge">
+          <span class="btn-icon">📝</span>
+          <span>Credit Note</span>
+        </a>
+        <a
+          class="btn btn-action btn-debit"
+          routerLink="/invoices/debit-note"
+          *ngIf="canApplyDebitNotes()"
+          title="Debit Note - correct undercharge">
+          <span class="btn-icon">📗</span>
+          <span>Debit Note</span>
+        </a>
+        <a
+          class="btn btn-action btn-remediation"
+          routerLink="/finance/admin/invoice-sync-remediation"
+          *ngIf="canInvoiceSyncRemediation()"
+          title="Reverse fictitious payments and credit duplicated tuition (sync bug remediation)">
+          <span class="btn-icon">🛠️</span>
+          <span>Sync Remediation</span>
+        </a>
+        <button class="btn btn-action btn-create" type="button" (click)="openUniformItemsModal()" *ngIf="canCreateInvoice()" title="Process uniform items for a student and charge against uniform account">
+          <span class="btn-icon">👕</span>
+          <span>Uniform Items</span>
+        </button>
+        <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canBulkInvoices()">
+          <span class="btn-icon">📋</span>
+          <span>Bulk Create</span>
+        </button>
+        <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canBulkInvoices() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
+          <span class="btn-icon">↩️</span>
+          <span>Reverse Bulk</span>
+        </button>
+      </div>
+      <div class="actions-row actions-row-secondary" *ngIf="canManageFinance() || canCorrectTransaction()">
+        <div class="reverse-filters" *ngIf="authService.isAdmin()">
+          <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Term to reverse">
+            <option value="">Auto (following term)</option>
+            <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
+          </select>
+          <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Start date" />
+          <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="End date" />
+        </div>
+        <div class="actions-secondary-buttons">
+          <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canExemptionCorrection()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students">
+            <span class="btn-icon">🛡️</span>
+            <span>Tuition Exemption</span>
+          </button>
+          <button class="btn btn-action btn-prepaid" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canManageFinance() || canCorrectTransaction()" [disabled]="!canCorrectTransaction()" title="Correct prepaid transaction by student">
+            <span class="btn-icon">🧾</span>
+            <span>Correct Prepaid</span>
+          </button>
+          <button class="btn btn-action btn-reconciliation-audit" type="button" (click)="openReconciliationAudit()" *ngIf="canManageFinance()" title="Check for invoice identity violations (paidAmount + balance vs amount + prevBalance - prepaid)">
+            <span class="btn-icon">🔍</span>
+            <span>Reconciliation Audit</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
   
   <!-- Reconciliation Audit Modal -->
   <div *ngIf="showReconciliationAuditModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">

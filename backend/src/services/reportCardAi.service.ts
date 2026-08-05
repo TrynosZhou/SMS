@@ -24,7 +24,7 @@ export interface GenerateReportCardRemarkInput {
   totalStudents?: string | number;
   headmasterName?: string;
   subjects?: ReportCardAiSubject[];
-  /** How many alternative remarks to return (default 5, clamped 3–6). */
+  /** How many alternative remarks to return (default 5, clamped 1–6). */
   count?: number;
 }
 
@@ -177,7 +177,7 @@ function parseRemarkAlternatives(raw: string, expected: number): string[] {
     unique.push(item);
   }
 
-  return unique.slice(0, Math.max(expected, 3));
+  return unique.slice(0, Math.max(expected, 1));
 }
 
 export { isOpenAiConfigured };
@@ -200,7 +200,7 @@ export async function generateReportCardRemarkAlternatives(
 
   const remarkType: ReportCardRemarkType =
     input.remarkType === 'headmaster' ? 'headmaster' : 'classTeacher';
-  const count = Math.min(6, Math.max(3, Number(input.count) || 5));
+  const count = Math.min(6, Math.max(1, Number(input.count) || 5));
 
   const url = process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
   const model = DEFAULT_MODEL;

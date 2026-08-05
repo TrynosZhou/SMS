@@ -12,42 +12,49 @@
       <div class="cp-hero-left">
         <span class="cp-hero-icon" aria-hidden="true">⬆️</span>
         <div>
-          <span class="cp-hero-eyebrow">Class Manager</span>
+          <span class="cp-hero-eyebrow">Academics · Admin</span>
           <h1>Class Promotion</h1>
           <p class="cp-hero-sub">Promote students to the next grade or class using your configured promotion rules.</p>
         </div>
       </div>
       <div class="cp-hero__actions">
-        <a routerLink="/classes" class="cp-hero-btn cp-hero-btn--white">← Classes</a>
-        <a routerLink="/academic-settings/classes" class="cp-hero-btn cp-hero-btn--white">Academic settings</a>
-        <button type="button" class="cp-hero-btn" (click)="refreshData()" [disabled]="loading">
+        <button type="button" class="cp-hero-btn cp-hero-btn--ghost" (click)="refreshData()" [disabled]="loading">
           <span [class.cp-spin]="loading">↻</span> Refresh
         </button>
+        <a routerLink="/classes" class="cp-hero-btn cp-hero-btn--white">← Classes</a>
+        <a routerLink="/academic-settings/classes" class="cp-hero-btn cp-hero-btn--accent">Academic settings</a>
       </div>
     </div>
+
+    <nav class="cp-cross-links" aria-label="Related pages">
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/students">Students</a>
+      <a routerLink="/academic-settings/classes">Promotion rules</a>
+      <a routerLink="/academic-settings/terms">Terms</a>
+    </nav>
 
     <div class="cp-hero-stats" *ngIf="!loading && promotionData.length > 0">
       <article class="cp-stat">
         <span class="cp-stat__value">{{ heroStats.total }}</span>
         <span class="cp-stat__label">Total students</span>
       </article>
-      <article class="cp-stat cp-stat--mint">
+      <article class="cp-stat">
         <span class="cp-stat__value">{{ heroStats.eligible }}</span>
         <span class="cp-stat__label">Eligible</span>
       </article>
-      <article class="cp-stat cp-stat--sky">
+      <article class="cp-stat">
         <span class="cp-stat__value">{{ heroStats.classes }}</span>
         <span class="cp-stat__label">Classes</span>
       </article>
-      <article class="cp-stat cp-stat--amber">
+      <article class="cp-stat">
         <span class="cp-stat__value">{{ heroStats.ready }}</span>
         <span class="cp-stat__label">With next class</span>
       </article>
-      <article class="cp-stat cp-stat--rose" *ngIf="heroStats.blocked > 0">
+      <article class="cp-stat" *ngIf="heroStats.blocked > 0">
         <span class="cp-stat__value">{{ heroStats.blocked }}</span>
         <span class="cp-stat__label">No path</span>
       </article>
-      <article class="cp-stat cp-stat--violet">
+      <article class="cp-stat">
         <span class="cp-stat__value">{{ heroStats.rules }}</span>
         <span class="cp-stat__label">Active rules</span>
       </article>
@@ -246,7 +253,7 @@
           class="cp-btn cp-btn--primary"
           (click)="openConfirmModal()"
           [disabled]="promoting || !canPromote()">
-          <span *ngIf="!promoting">⬆️ Promote {{ getPromotionCount() }} student{{ getPromotionCount() !== 1 ? 's' : '' }}</span>
+          <span *ngIf="!promoting">Promote {{ getPromotionCount() }} student{{ getPromotionCount() !== 1 ? 's' : '' }}</span>
           <span *ngIf="promoting" class="cp-btn-loading"><span class="cp-spinner cp-spinner--sm"></span> Promoting…</span>
         </button>
       </div>
@@ -257,7 +264,7 @@
     <span class="cp-empty-page__icon" aria-hidden="true">📚</span>
     <h3>No classes with students</h3>
     <p>Create classes and enroll students before running promotion.</p>
-    <a routerLink="/classes/new" class="cp-btn cp-btn--primary">➕ Create class</a>
+    <a routerLink="/classes/new" class="cp-btn cp-btn--primary">Create class</a>
   </div>
 
   <div *ngIf="showConfirmModal" class="cp-modal-overlay" (click)="closeConfirmModal()" [@fadeInOut]>
@@ -323,7 +330,7 @@
       <footer class="cp-modal__footer">
         <button type="button" class="cp-btn cp-btn--secondary" (click)="closeConfirmModal()" [disabled]="promoting">Cancel</button>
         <button type="button" class="cp-btn cp-btn--primary" (click)="promoteStudents()" [disabled]="promoting">
-          <span *ngIf="!promoting">✅ Confirm &amp; promote</span>
+          <span *ngIf="!promoting">Confirm &amp; promote</span>
           <span *ngIf="promoting" class="cp-btn-loading"><span class="cp-spinner cp-spinner--sm"></span> Promoting…</span>
         </button>
       </footer>

@@ -1,4 +1,4 @@
-/* ── Staff / admin My Account (ma-*) — classic professional layout ───────── */
+/* ?? Staff / admin My Account (ma-*) ? classic professional layout ????????? */
 :host {
   display: block;
 }
@@ -162,26 +162,38 @@
 }
 
 .ma-hero-btn {
-  padding: 0.5rem 0.85rem;
-  border-radius: 10px;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 700;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   font-family: inherit;
   display: inline-flex;
   align-items: center;
+  box-shadow: none;
+  transform: none;
 }
 
-.ma-hero-btn--white { background: #fff; color: #1e3a5f; }
-.ma-hero-btn--accent { background: #facc15; color: #422006; }
-.ma-hero-btn:hover { filter: brightness(0.97); }
+.ma-hero-btn--white {
+  background: #fff;
+  color: #1e3a5f;
+  border-color: #fff;
+}
+.ma-hero-btn--white:hover { background: #f8fafc; }
+
+.ma-hero-btn--accent {
+  background: #f59e0b;
+  color: #422006;
+  border-color: #f59e0b;
+}
+.ma-hero-btn--accent:hover { background: #d97706; color: #fff; }
 
 .ma-cross-links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 16px;
+  margin: 0 0 16px;
 }
 
 .ma-cross-links a {
@@ -193,7 +205,7 @@
   color: #fff;
   text-decoration: none;
   background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   transition: background 0.15s;
 }
 
@@ -203,19 +215,15 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
 }
 
 .ma-stat {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 10px;
   padding: 10px 12px;
-  text-align: center;
-  color: #000;
+  text-align: left;
+  color: #fff;
   min-width: 0;
 }
 
@@ -223,7 +231,7 @@
   display: block;
   font-size: 0.98rem;
   font-weight: 700;
-  color: #000;
+  color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -234,7 +242,7 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #000;
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 700;
   margin-top: 2px;
 }
@@ -267,22 +275,29 @@
 }
 
 .ma-btn {
-  border: none;
-  border-radius: 10px;
-  font-size: 0.8rem;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
   font-family: inherit;
+  box-shadow: none;
+  transform: none;
 }
 
 .ma-btn--light {
-  background: #fff;
-  color: #92400e;
-  padding: 8px 14px;
+  background: #1e3a5f;
+  color: #fff;
+  border-color: #1e3a5f;
+  padding: 0.5rem 0.95rem;
 }
 
-.ma-btn--light:hover { background: #fffbeb; }
+.ma-btn--light:hover {
+  background: #152a45;
+  border-color: #152a45;
+  color: #fff;
+}
 
 .ma-tabs {
   display: flex;
@@ -353,8 +368,9 @@
 
 .ma-profile-card {
   background: #fff;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--ma-border);
+  border-top: 3px solid #1e3a5f;
   padding: 1.35rem 1.15rem;
   text-align: center;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -457,7 +473,8 @@
 .ma-quick-links {
   background: #fff;
   border: 1px solid var(--ma-border);
-  border-radius: 14px;
+  border-top: 3px solid #1e3a5f;
+  border-radius: 12px;
   padding: 16px;
 }
 
@@ -479,19 +496,22 @@
   color: #334155;
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .ma-quick-link:hover {
   background: #f8fafc;
-  color: var(--ma-purple);
+  color: #1e3a5f;
+  border-color: #94a3b8;
 }
 
 .ma-panel {
   background: #fff;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--ma-border);
+  border-top: 3px solid #1e3a5f;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
@@ -844,10 +864,10 @@
   min-width: 160px;
   background: #1e3a5f;
   color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 13px 20px;
-  font-size: 0.9rem;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.2s;
@@ -861,6 +881,7 @@
 
 .btn-save:hover:not(:disabled) {
   background: #152a45;
+  border-color: #152a45;
   transform: none;
   box-shadow: none;
 }
@@ -872,21 +893,22 @@
 }
 
 .btn-cancel {
-  padding: 13px 20px;
-  background: #f1f5f9;
-  color: #64748b;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0.65rem 1.1rem;
+  background: #fff;
+  color: #1e3a5f;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s, border-color 0.15s;
   font-family: inherit;
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background: #e2e8f0;
-  color: #334155;
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+  color: #1e3a5f;
 }
 
 .btn-cancel:disabled {
@@ -959,9 +981,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Parent portal — My Account (pma-*)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ???????????????????????????????????????????????????????????????????????????
+   Parent portal ? My Account (pma-*)
+   ??????????????????????????????????????????????????????????????????????????? */
 .pma-layout {
   min-height: 100%;
   background: #f0f4f8;
@@ -973,17 +995,27 @@
 }
 
 .pma-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 20px;
-  padding: 24px 28px;
+  padding: 20px 24px 16px;
   margin-bottom: 20px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   color: #fff;
-  box-shadow: 0 10px 32px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.pma-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .pma-hero__badges {
@@ -1066,15 +1098,20 @@
 }
 
 .pma-back-btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
+  border: none;
+  background: #fff;
+  color: #1e3a5f;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s;
+  font-family: inherit;
+  box-shadow: none;
+}
+
+.pma-back-btn:hover {
+  background: #f8fafc;
 }
 
 .pma-back-btn:hover {
@@ -1169,22 +1206,27 @@
 }
 
 .pma-btn {
-  border: none;
-  border-radius: 10px;
-  font-size: 0.8rem;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
+  font-family: inherit;
+  box-shadow: none;
 }
 
 .pma-btn--light {
-  background: #fff;
-  color: #92400e;
-  padding: 8px 14px;
+  background: #1e3a5f;
+  color: #fff;
+  border-color: #1e3a5f;
+  padding: 0.5rem 0.95rem;
 }
 
 .pma-btn--light:hover {
-  background: #fffbeb;
+  background: #152a45;
+  border-color: #152a45;
+  color: #fff;
 }
 
 .pma-tabs {
@@ -1220,9 +1262,10 @@
 }
 
 .pma-tab--active {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  box-shadow: none;
 }
 
 .pma-tab-badge {
@@ -1699,4 +1742,58 @@
   .pma-card {
     padding: 20px 16px;
   }
+}
+
+/* Classical overrides ? parent + staff */
+.pma-tab--active {
+  background: #1e3a5f !important;
+  border-color: #1e3a5f !important;
+  color: #fff !important;
+}
+
+.pma-card,
+.pma-profile-card,
+.pma-quick-card,
+.pma-help-card {
+  border-top: 3px solid #1e3a5f;
+  border-radius: 12px;
+}
+
+.pma-link-btn,
+.pma-student__link,
+.pma-link {
+  color: #1e3a5f !important;
+  font-weight: 700;
+}
+
+.pma-layout .btn-save {
+  background: #1e3a5f;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+}
+
+.pma-layout .btn-cancel {
+  background: #fff;
+  color: #1e3a5f;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+}
+
+.pma-avatar,
+.pma-student__avatar {
+  background: #1e3a5f !important;
+}
+
+.eye-btn {
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  background: #fff;
+  color: #1e3a5f;
+  padding: 4px 8px;
+}
+
+.eye-btn:hover {
+  border-color: #1e3a5f;
+  background: #f1f5f9;
+  color: #1e3a5f;
 }

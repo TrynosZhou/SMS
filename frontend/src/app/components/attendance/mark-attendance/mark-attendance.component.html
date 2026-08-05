@@ -12,7 +12,7 @@
       <div class="mark-hero-left">
         <span class="mark-hero-icon" aria-hidden="true">📝</span>
         <div>
-          <span class="mark-hero-eyebrow">Daily register</span>
+          <span class="mark-hero-eyebrow">Attendance · Daily register</span>
           <h1>Mark Attendance</h1>
           <p class="mark-hero-sub">Select a class and date, mark each student, then save the register for the day.</p>
         </div>
@@ -22,41 +22,42 @@
         <span class="mark-hero-badge mark-hero-badge--muted" *ngIf="selectedTerm">{{ formatTermLabel(selectedTerm) }}</span>
         <span class="mark-hero-badge mark-hero-badge--muted" *ngIf="selectedDate">{{ getFormattedDate() }}</span>
       </aside>
+      <div class="mark-hero__actions">
+        <a routerLink="/attendance/reports" class="mark-hero-btn mark-hero-btn--white">Reports</a>
+        <a routerLink="/classes" class="mark-hero-btn mark-hero-btn--accent">Classes</a>
+      </div>
     </div>
 
     <nav class="mark-cross-links" aria-label="Related attendance pages">
       <a routerLink="/attendance/reports">Attendance reports</a>
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/classes/lists">Class lists</a>
+      <a routerLink="/students">Students</a>
       <a routerLink="/dashboard">Dashboard</a>
     </nav>
 
     <div class="mark-hero-stats">
-      <article class="mark-stat mark-stat--mint">
-        <span class="mark-stat__icon" aria-hidden="true">✓</span>
+      <article class="mark-stat">
         <span class="mark-stat__value">{{ rosterLoaded ? dashboardStats.present : '—' }}</span>
         <span class="mark-stat__label">Present</span>
       </article>
-      <article class="mark-stat mark-stat--rose">
-        <span class="mark-stat__icon" aria-hidden="true">✕</span>
+      <article class="mark-stat">
         <span class="mark-stat__value">{{ rosterLoaded ? dashboardStats.absent : '—' }}</span>
         <span class="mark-stat__label">Absent</span>
       </article>
-      <article class="mark-stat mark-stat--amber">
-        <span class="mark-stat__icon" aria-hidden="true">🕐</span>
+      <article class="mark-stat">
         <span class="mark-stat__value">{{ rosterLoaded ? dashboardStats.late : '—' }}</span>
         <span class="mark-stat__label">Late</span>
       </article>
-      <article class="mark-stat mark-stat--sky">
-        <span class="mark-stat__icon" aria-hidden="true">📄</span>
+      <article class="mark-stat">
         <span class="mark-stat__value">{{ rosterLoaded ? dashboardStats.excused : '—' }}</span>
         <span class="mark-stat__label">Excused</span>
       </article>
       <article class="mark-stat">
-        <span class="mark-stat__icon" aria-hidden="true">%</span>
         <span class="mark-stat__value">{{ rosterLoaded ? getAttendanceRate() + '%' : '—' }}</span>
         <span class="mark-stat__label">Rate</span>
       </article>
-      <article class="mark-stat mark-stat--muted">
-        <span class="mark-stat__icon" aria-hidden="true">👥</span>
+      <article class="mark-stat">
         <span class="mark-stat__value">{{ rosterLoaded ? dashboardStats.total : '—' }}</span>
         <span class="mark-stat__label">Students</span>
       </article>
@@ -70,10 +71,10 @@
         <span *ngIf="!registerAlreadyMarked && !hasUnsavedChanges && lastSavedDate">Saved {{ lastSavedDate | date : 'short' }}</span>
       </span>
       <div class="mark-hero-toolbar__actions">
-        <button type="button" class="mark-btn mark-btn--ghost mark-btn--sm" (click)="refreshAttendance()" [disabled]="loading">↻ Refresh</button>
+        <button type="button" class="mark-hero-btn mark-hero-btn--ghost" (click)="refreshAttendance()" [disabled]="loading">↻ Refresh</button>
         <ng-container *ngIf="isAdmin()">
-          <button type="button" class="mark-btn mark-btn--outline mark-btn--sm mark-btn--success" (click)="openBulkModal()">Bulk mark</button>
-          <button type="button" class="mark-btn mark-btn--outline mark-btn--sm mark-btn--danger" (click)="openReverseBulkModal()">Reverse bulk</button>
+          <button type="button" class="mark-hero-btn mark-hero-btn--white" (click)="openBulkModal()">Bulk mark</button>
+          <button type="button" class="mark-hero-btn mark-hero-btn--ghost" (click)="openReverseBulkModal()">Reverse bulk</button>
         </ng-container>
       </div>
     </div>
@@ -137,9 +138,9 @@
         <p class="mark-panel__intro">{{ filteredAttendanceData.length }} of {{ attendanceData.length }} students</p>
       </div>
       <div class="mark-bulk-actions">
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--present" (click)="markAll('present')" [disabled]="registerAlreadyMarked">All present</button>
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--absent" (click)="markAll('absent')" [disabled]="registerAlreadyMarked">All absent</button>
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--late" (click)="markAll('late')" [disabled]="registerAlreadyMarked">All late</button>
+        <button type="button" class="mark-btn mark-btn--outline mark-btn--sm" (click)="markAll('present')" [disabled]="registerAlreadyMarked">All present</button>
+        <button type="button" class="mark-btn mark-btn--outline mark-btn--sm" (click)="markAll('absent')" [disabled]="registerAlreadyMarked">All absent</button>
+        <button type="button" class="mark-btn mark-btn--outline mark-btn--sm" (click)="markAll('late')" [disabled]="registerAlreadyMarked">All late</button>
       </div>
     </div>
 
@@ -156,7 +157,7 @@
         <option value="late">Late</option>
         <option value="excused">Excused</option>
       </select>
-      <button type="button" class="mark-link-btn" *ngIf="searchQuery || statusFilter !== 'all'" (click)="clearSearch(); clearStatusFilter()">Clear filters</button>
+      <button type="button" class="mark-btn mark-btn--ghost mark-btn--sm" *ngIf="searchQuery || statusFilter !== 'all'" (click)="clearSearch(); clearStatusFilter()">Clear filters</button>
     </div>
 
     <div class="mark-table-wrap">
@@ -267,7 +268,7 @@
       </div>
       <div class="mark-modal__foot">
         <button type="button" class="mark-btn mark-btn--ghost" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">Cancel</button>
-        <button type="button" class="mark-btn mark-btn--success" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
+        <button type="button" class="mark-btn mark-btn--primary" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
           {{ bulkMarkingInProgress ? 'Marking…' : 'Start bulk marking' }}
         </button>
       </div>
@@ -276,8 +277,8 @@
 
   <!-- Reverse bulk modal -->
   <div class="mark-modal-overlay" *ngIf="showReverseBulkModal" (click)="closeReverseBulkModal()">
-    <div class="mark-modal mark-modal--danger" (click)="$event.stopPropagation()">
-      <div class="mark-modal__head mark-modal__head--danger">
+    <div class="mark-modal mark-modal--wide" (click)="$event.stopPropagation()">
+      <div class="mark-modal__head">
         <div>
           <h3>Reverse bulk marking</h3>
           <p>Remove attendance records for a class (entire term)</p>
@@ -313,7 +314,7 @@
       </div>
       <div class="mark-modal__foot">
         <button type="button" class="mark-btn mark-btn--ghost" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">Cancel</button>
-        <button type="button" class="mark-btn mark-btn--danger" (click)="startReverseBulk()" [disabled]="reverseBulkInProgress || !reverseBulkSelectedClassId">
+        <button type="button" class="mark-btn mark-btn--primary" (click)="startReverseBulk()" [disabled]="reverseBulkInProgress || !reverseBulkSelectedClassId">
           {{ reverseBulkInProgress ? 'Reversing…' : 'Start reverse bulk' }}
         </button>
       </div>

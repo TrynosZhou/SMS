@@ -12,7 +12,7 @@
       <div class="es-hero-left">
         <span class="es-hero-icon" aria-hidden="true">📝</span>
         <div>
-          <span class="es-hero-eyebrow">Students</span>
+          <span class="es-hero-eyebrow">Students · Enrollment</span>
           <h1>Enroll Student</h1>
           <p class="es-hero-sub">Registered students not yet allocated to a class — assign a class to complete enrollment.</p>
         </div>
@@ -25,7 +25,8 @@
         <button type="button" class="es-hero-refresh" (click)="refresh()" [disabled]="loading" title="Refresh list" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <a routerLink="/students/new" class="es-hero-btn es-hero-btn--white">+ Register student</a>
+        <a routerLink="/students" class="es-hero-btn es-hero-btn--white">← Students</a>
+        <a routerLink="/students/new" class="es-hero-btn es-hero-btn--accent">+ Register student</a>
       </div>
     </div>
 
@@ -34,31 +35,27 @@
       <a routerLink="/students/new">New registration</a>
       <a routerLink="/students/transfer">Transfer student</a>
       <a routerLink="/classes">Classes</a>
+      <a routerLink="/admin/admissions">Admissions</a>
     </nav>
 
     <div class="es-hero-stats" *ngIf="!loading">
       <article class="es-stat">
-        <span class="es-stat__icon" aria-hidden="true">👥</span>
         <span class="es-stat__value">{{ stats.total }}</span>
         <span class="es-stat__label">Unenrolled</span>
       </article>
-      <article class="es-stat es-stat--sky">
-        <span class="es-stat__icon" aria-hidden="true">♂</span>
+      <article class="es-stat">
         <span class="es-stat__value">{{ stats.male }}</span>
         <span class="es-stat__label">Male</span>
       </article>
-      <article class="es-stat es-stat--rose">
-        <span class="es-stat__icon" aria-hidden="true">♀</span>
+      <article class="es-stat">
         <span class="es-stat__value">{{ stats.female }}</span>
         <span class="es-stat__label">Female</span>
       </article>
-      <article class="es-stat es-stat--amber">
-        <span class="es-stat__icon" aria-hidden="true">🏠</span>
+      <article class="es-stat">
         <span class="es-stat__value">{{ stats.dayScholar }}</span>
         <span class="es-stat__label">Day scholars</span>
       </article>
-      <article class="es-stat es-stat--mint">
-        <span class="es-stat__icon" aria-hidden="true">🏫</span>
+      <article class="es-stat">
         <span class="es-stat__value">{{ stats.boarder }}</span>
         <span class="es-stat__label">Boarders</span>
       </article>
@@ -95,7 +92,7 @@
         <button type="button" class="es-btn es-btn--outline es-btn--sm" (click)="printList()" [disabled]="loading">
           Print
         </button>
-        <button type="button" class="es-btn es-btn--primary es-btn--sm" (click)="exportCsv()" [disabled]="loading">
+        <button type="button" class="es-btn es-btn--outline es-btn--sm" (click)="exportCsv()" [disabled]="loading">
           Export CSV
         </button>
       </div>
@@ -221,12 +218,12 @@
                 </button>
                 <button
                   type="button"
-                  class="es-btn es-btn--danger es-btn--sm"
+                  class="es-btn es-btn--ghost es-btn--sm"
                   *ngIf="isAdmin()"
                   [disabled]="deletingMap[s.id || s.studentId]"
                   (click)="deleteStudentRecord(s)">
                   <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
-                  <span *ngIf="deletingMap[s.id || s.studentId]" class="es-spinner es-spinner--danger" aria-hidden="true"></span>
+                  <span *ngIf="deletingMap[s.id || s.studentId]" class="es-spinner es-spinner--navy" aria-hidden="true"></span>
                 </button>
               </div>
             </td>

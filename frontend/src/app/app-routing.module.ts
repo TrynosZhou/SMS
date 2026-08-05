@@ -133,6 +133,7 @@ const routes: Routes = [
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
   { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/enroll_student', component: EnrollStudentComponent, canActivate: [AuthGuard] },
+  { path: 'students/enroll', redirectTo: 'students/enroll_student', pathMatch: 'full' },
   { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/transfer', component: StudentTransferComponent, canActivate: [AuthGuard] },
   { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'teachers' } },

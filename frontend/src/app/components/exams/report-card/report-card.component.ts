@@ -743,7 +743,7 @@ if (err.status === 0) {
           this.applyCoreSubjectRanking(this.reportCards);
         }
 
-        // Do not auto-fill template remarks — user chooses Custom or AI remarks.
+        // Remarks are ensured on the server (OpenAI + template fallback) so every card has both.
         for (const card of this.reportCards) {
           this.ensureRemarksObject(card);
           delete card.headmasterAutoRemarks;
@@ -1999,13 +1999,13 @@ if (err.status === 0) {
     return Math.round((Number(subject?.score) || 0) / max * 100);
   }
 
-  /** Mark and % score: blue only */
+  /** Mark and % score: classical navy */
   getMarkScoreColor(_value: number, _isNa = false): string {
-    return '#2563eb';
+    return '#1e3a5f';
   }
 
   getOverallAverageColor(_reportCard: any): string {
-    return '#2563eb';
+    return '#1e3a5f';
   }
 
   goToParentDashboard(): void {

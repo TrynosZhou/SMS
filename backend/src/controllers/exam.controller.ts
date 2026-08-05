@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { resolveHeadmasterRemark } from '../utils/headmasterRemarks';
+import { ensureReportCardRemarks } from '../utils/ensureReportCardRemarks';
 import { In, IsNull, Repository } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Exam, ExamType, ExamStatus } from '../entities/Exam';
@@ -2731,6 +2731,24 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.EXCUSED
       ).length;
 
+      const ensuredRemarks = await ensureReportCardRemarks({
+        remarksRepository,
+        studentId: student.id,
+        classId: classId as string,
+        examType: normalizedExamType,
+        studentName: `${student.firstName} ${student.lastName}`,
+        className: student.classEntity?.name || classEntity.name,
+        term: termValue,
+        examTypeLabel: examType as string,
+        headmasterName: settings?.headmasterName || '',
+        overallAverage,
+        position: classPosition || 0,
+        totalStudents: classRankings.length,
+        subjects: subjectData,
+        existing: remarks,
+        persist: true,
+      });
+
       reportCards.push({
         student: {
           id: student.id,
@@ -2760,14 +2778,9 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         totalAttendance: totalAttendance, // Total attendance days for the term
         presentAttendance: presentAttendance, // Present/excused attendance days
         remarks: {
-          id: remarks?.id || null,
-          classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
-            studentName: `${student.firstName} ${student.lastName}`,
-            headmasterName: settings?.headmasterName || '',
-            overallAverage,
-            subjects: subjectData,
-          }),
+          id: ensuredRemarks.id,
+          classTeacherRemarks: ensuredRemarks.classTeacherRemarks,
+          headmasterRemarks: ensuredRemarks.headmasterRemarks,
         },
         generatedAt: new Date(),
         settings: {
@@ -3383,6 +3396,24 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Get total number of students in the class with marks (for ranking)
       const totalStudents = rankings.length;
 
+      const ensuredRemarks = await ensureReportCardRemarks({
+        remarksRepository,
+        studentId: studentId as string,
+        classId: classId as string,
+        examType: normalizedExamType,
+        studentName: `${student.firstName} ${student.lastName}`,
+        className: student.classEntity?.name || '',
+        term: termValue,
+        examTypeLabel: examType as string,
+        headmasterName: settings?.headmasterName || '',
+        overallAverage,
+        position: classPosition || 0,
+        totalStudents,
+        subjects: subjectData,
+        existing: remarks,
+        persist: true,
+      });
+
       reportCardData = {
         student: {
           id: student.id,
@@ -3411,13 +3442,8 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         totalAttendance: totalAttendance, // Total attendance days for the term
         presentAttendance: presentAttendance, // Present/excused attendance days
         remarks: {
-          classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
-            studentName: `${student.firstName} ${student.lastName}`,
-            headmasterName: settings?.headmasterName || '',
-            overallAverage,
-            subjects: subjectData,
-          }),
+          classTeacherRemarks: ensuredRemarks.classTeacherRemarks,
+          headmasterRemarks: ensuredRemarks.headmasterRemarks,
         },
         generatedAt: new Date()
       };
@@ -3633,6 +3659,24 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
       console.log('[generateReportCardPDF] Fetched remarks for PDF (old format):', remarks);
 
+      const ensuredRemarksOld = await ensureReportCardRemarks({
+        remarksRepository,
+        studentId: studentId as string,
+        classId: student.classId || '',
+        examType: exam?.type || String(examType || 'end_term'),
+        studentName: `${student.firstName} ${student.lastName}`,
+        className: student.classEntity?.name || '',
+        term: exam?.term || termValue,
+        examTypeLabel: exam?.type || String(examType || ''),
+        headmasterName: pdfSettings?.headmasterName || '',
+        overallAverage,
+        position: classPosition || 0,
+        totalStudents,
+        subjects: subjectData,
+        existing: remarks,
+        persist: true,
+      });
+
       reportCardData = {
         student: {
           id: student.id,
@@ -3647,13 +3691,8 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         classPosition: classPosition || 0,
         totalStudents: totalStudents, // Add total number of students
         remarks: {
-          classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
-            studentName: `${student.firstName} ${student.lastName}`,
-            headmasterName: pdfSettings?.headmasterName || '',
-            overallAverage,
-            subjects: subjectData,
-          }),
+          classTeacherRemarks: ensuredRemarksOld.classTeacherRemarks,
+          headmasterRemarks: ensuredRemarksOld.headmasterRemarks,
         },
         generatedAt: new Date()
       };

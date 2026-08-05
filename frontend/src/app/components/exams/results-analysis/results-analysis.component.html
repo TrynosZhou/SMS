@@ -11,7 +11,7 @@
       <div class="ra-hero-left">
         <span class="ra-hero-icon" aria-hidden="true">📈</span>
         <div>
-          <span class="ra-hero-eyebrow">Exams</span>
+          <span class="ra-hero-eyebrow">Exams · Results analysis</span>
           <h1>Results Analysis</h1>
           <p class="ra-hero-sub">Analyse class performance by term, exam type, and subject — pass rates, rankings, grade distribution, and individual subject bar graphs.</p>
         </div>
@@ -21,6 +21,26 @@
         <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedClassLabel }}</span>
         <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedExamTypeLabel }}</span>
       </aside>
+      <div class="ra-hero__actions">
+        <button
+          type="button"
+          class="ra-hero-btn ra-hero-btn--white"
+          (click)="previewPDF()"
+          [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
+          <span *ngIf="loadingPdf" class="ra-hero-spinner" aria-hidden="true"></span>
+          {{ loadingPdf ? 'Preparing…' : 'Preview PDF' }}
+        </button>
+        <button
+          type="button"
+          class="ra-hero-btn ra-hero-btn--accent"
+          (click)="downloadPDF()"
+          [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
+          <span *ngIf="downloadingPdf" class="ra-hero-spinner ra-hero-spinner--dark" aria-hidden="true"></span>
+          {{ downloadingPdf ? 'Saving…' : 'Download PDF' }}
+        </button>
+        <a routerLink="/mark-sheet" class="ra-hero-btn ra-hero-btn--white">Mark sheet</a>
+        <a routerLink="/report-cards" class="ra-hero-btn">Report cards</a>
+      </div>
     </div>
 
     <nav class="ra-cross-links" aria-label="Related exam pages">
@@ -29,6 +49,7 @@
       <a routerLink="/report-cards">Report cards</a>
       <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
       <a routerLink="/check_mark_progess">Marks progress</a>
+      <a routerLink="/classes">Classes</a>
     </nav>
 
     <div class="ra-hero-stats" *ngIf="analysisLoaded && !loading">
@@ -55,6 +76,16 @@
     </div>
     <div class="ra-hero-stats ra-hero-stats--skeleton" *ngIf="loading">
       <div class="ra-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+
+    <div class="ra-steps" aria-label="Progress">
+      <span class="ra-step" [class.ra-step--done]="analysisLoaded" [class.ra-step--active]="!analysisLoaded">
+        <strong>1</strong> Select parameters
+      </span>
+      <span class="ra-step-arrow">→</span>
+      <span class="ra-step" [class.ra-step--active]="analysisLoaded">
+        <strong>2</strong> Review analysis
+      </span>
     </div>
   </header>
 

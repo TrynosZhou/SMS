@@ -163,7 +163,7 @@
       <div class="rc-hero-left">
         <span class="rc-hero-icon" aria-hidden="true">📊</span>
         <div>
-          <span class="rc-hero-eyebrow">Exams</span>
+          <span class="rc-hero-eyebrow">Exams · Report cards</span>
           <h1>Report Cards</h1>
           <p class="rc-hero-sub">Generate, review, and download student academic report cards by class, term, and exam type.</p>
           <p class="rc-hero-meta" *ngIf="lastLoadedAt && reportCards.length">
@@ -184,7 +184,7 @@
         <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="printSummary()" [disabled]="!filteredReportCards.length || loading">Print</button>
         <button
           type="button"
-          class="rc-hero-btn rc-hero-btn--white"
+          class="rc-hero-btn rc-hero-btn--accent"
           *ngIf="canDownloadReportCard"
           (click)="downloadAllPDFs()"
           [disabled]="loading || !filteredReportCards.length">
@@ -199,6 +199,7 @@
       <a routerLink="/results-analysis">Results analysis</a>
       <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
       <a routerLink="/check_mark_progess">Marks progress</a>
+      <a routerLink="/classes">Classes</a>
     </nav>
 
     <div class="rc-hero-stats" *ngIf="reportCards.length > 0 && !loading && !isParent">
@@ -210,15 +211,15 @@
         <span class="rc-stat__value">{{ dashboardStats.total }}</span>
         <span class="rc-stat__label">Total students</span>
       </article>
-      <article class="rc-stat rc-stat--mint">
+      <article class="rc-stat">
         <span class="rc-stat__value">{{ dashboardStats.classAverage | number : '1.1-1' }}%</span>
         <span class="rc-stat__label">Class average</span>
       </article>
-      <article class="rc-stat rc-stat--amber">
+      <article class="rc-stat">
         <span class="rc-stat__value">{{ dashboardStats.topAverage | number : '1.0-0' }}%</span>
         <span class="rc-stat__label">Top: {{ dashboardStats.topStudent }}</span>
       </article>
-      <article class="rc-stat rc-stat--rose">
+      <article class="rc-stat">
         <span class="rc-stat__value">{{ dashboardStats.needsSupport }}</span>
         <span class="rc-stat__label">Below 50%</span>
       </article>
@@ -445,7 +446,7 @@
             <h2 class="rc-panel__title">Find students</h2>
             <p class="rc-panel__intro">Search and filter report cards shown below.</p>
           </div>
-          <button type="button" class="rc-btn-clear" *ngIf="hasActiveFilters()" (click)="resetListFilters()">Clear filters</button>
+          <button type="button" class="rc-btn rc-btn--ghost rc-btn--sm" *ngIf="hasActiveFilters()" (click)="resetListFilters()">Clear filters</button>
         </div>
 
         <div class="rc-filters-row">
@@ -651,7 +652,7 @@
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
                 <button *ngIf="canEditRemarks && remarksSaveFailed(reportCard)"
                         type="button"
-                        class="btn btn-xs btn-retry"
+                        class="rc-btn rc-btn--ghost rc-btn--sm"
                         (click)="retryRemarksSave(reportCard)">Retry</button>
               </label>
 
@@ -687,7 +688,7 @@
                   <span class="ai-alternatives__title">AI alternatives</span>
                   <button
                     type="button"
-                    class="btn btn-xs btn-ai-sparkle"
+                    class="rc-btn rc-btn--ghost rc-btn--sm"
                     (click)="generateAIRemarkAlternatives(reportCard, 'classTeacher', true)"
                     [disabled]="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
                     <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">↻ Generate options</span>
@@ -772,7 +773,7 @@
                   <span class="ai-alternatives__title">AI alternatives</span>
                   <button
                     type="button"
-                    class="btn btn-xs btn-ai-sparkle"
+                    class="rc-btn rc-btn--ghost rc-btn--sm"
                     (click)="generateAIRemarkAlternatives(reportCard, 'headmaster', true)"
                     [disabled]="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
                     <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_headmaster')">↻ Generate options</span>

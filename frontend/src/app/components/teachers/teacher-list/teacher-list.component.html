@@ -12,8 +12,8 @@
       <div class="manage-teachers-hero-left">
         <span class="manage-teachers-hero-icon" aria-hidden="true">👨‍🏫</span>
         <div>
-          <span class="manage-teachers-hero-eyebrow">Staff</span>
-          <h1>Manage Teachers</h1>
+          <span class="manage-teachers-hero-eyebrow">Staff · Directory</span>
+          <h1>Teachers</h1>
           <p class="manage-teachers-hero-sub">Search, filter, and manage teaching staff across your school.</p>
         </div>
       </div>
@@ -25,38 +25,50 @@
           [disabled]="loading"
           title="Refresh list"
           aria-label="Refresh teachers">↻</button>
-        <a routerLink="/teachers/new" class="manage-teachers-hero-add" title="Add teacher">+ Add Teacher</a>
+        <a routerLink="/teachers/new" class="manage-teachers-hero-add" title="Add teacher">+ Add teacher</a>
       </div>
     </div>
+
+    <nav class="manage-teachers-cross-links" aria-label="Related pages">
+      <a routerLink="/teachers/new">Add teacher</a>
+      <a routerLink="/classes">Classes</a>
+      <a routerLink="/subjects">Subjects</a>
+      <a routerLink="/admin/manage-accounts">Accounts</a>
+    </nav>
+
     <div class="manage-teachers-stats" *ngIf="!loading || pagination.total > 0">
       <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.total }}</span>
         <span class="teachers-stat-card__label">Total</span>
       </article>
-      <article class="teachers-stat-card teachers-stat-card--active">
+      <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.active }}</span>
         <span class="teachers-stat-card__label">Active (page)</span>
       </article>
-      <article class="teachers-stat-card teachers-stat-card--male">
+      <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.male }}</span>
         <span class="teachers-stat-card__label">Male (page)</span>
       </article>
-      <article class="teachers-stat-card teachers-stat-card--female">
+      <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.female }}</span>
         <span class="teachers-stat-card__label">Female (page)</span>
       </article>
-      <article class="teachers-stat-card teachers-stat-card--muted">
+      <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.subjects }}</span>
         <span class="teachers-stat-card__label">Subjects</span>
       </article>
-      <article class="teachers-stat-card teachers-stat-card--muted">
+      <article class="teachers-stat-card">
         <span class="teachers-stat-card__value">{{ dashboardStats.classes }}</span>
         <span class="teachers-stat-card__label">Classes</span>
       </article>
     </div>
   </header>
 
-  <div class="manage-teachers-panel">
+  <section class="manage-teachers-panel">
+    <div class="manage-teachers-panel__head">
+      <h2 class="manage-teachers-panel__title">Teacher list</h2>
+      <p class="manage-teachers-panel__intro">Filter by subject or class, then view, edit, or export staff records.</p>
+    </div>
     <div class="manage-teachers-toolbar manage-teachers-toolbar--primary">
       <div class="manage-teachers-toolbar__left">
         <div class="manage-teachers-search-wrap">
@@ -220,14 +232,14 @@
               </span>
             </td>
             <td class="col-actions">
-              <button type="button" class="action-view" (click)="viewTeacherDetails(teacher)" title="View teacher">👁</button>
-              <button type="button" class="action-edit" (click)="editTeacher(teacher.id)" title="Edit teacher">✏️</button>
+              <button type="button" class="action-btn" (click)="viewTeacherDetails(teacher)" title="View teacher">View</button>
+              <button type="button" class="action-btn" (click)="editTeacher(teacher.id)" title="Edit teacher">Edit</button>
               <button
                 type="button"
-                class="action-delete"
+                class="action-btn action-btn--ghost"
                 (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)"
                 title="Delete teacher"
-                [disabled]="loading">🗑</button>
+                [disabled]="loading">Delete</button>
             </td>
           </tr>
         </tbody>
@@ -295,7 +307,7 @@
         <button type="button" class="btn-page" (click)="onPageChange(pagination.totalPages)" [disabled]="pagination.page === pagination.totalPages">⏭</button>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- Teacher Details Modal -->
   <div class="modal-overlay" *ngIf="selectedTeacher" (click)="closeTeacherDetails()">
@@ -355,14 +367,14 @@
         </div>
       </div>
       <div class="modal-footer modern-footer">
-        <button type="button" class="btn btn-close-grey" (click)="closeTeacherDetails()">Close</button>
+        <button type="button" class="btn btn-secondary-outline" (click)="closeTeacherDetails()">Close</button>
         <button type="button" class="btn btn-secondary-outline" (click)="previewIdCard(selectedTeacher)">ID Card</button>
         <button type="button" class="btn btn-secondary-outline" (click)="allocateClass(selectedTeacher)">Allocate class</button>
         <button type="button" class="btn btn-danger" (click)="deleteTeacher(selectedTeacher.id, selectedTeacher.firstName + ' ' + selectedTeacher.lastName, selectedTeacher.teacherId)">
-          <span class="btn-icon">🗑️</span> Delete
+          Delete
         </button>
         <button type="button" class="btn btn-edit-purple" (click)="editTeacher(selectedTeacher.id)">
-          <span class="btn-icon">✏️</span> Edit Teacher
+          Edit teacher
         </button>
       </div>
     </div>

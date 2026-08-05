@@ -12,7 +12,7 @@
       <div class="st-hero-left">
         <span class="st-hero-icon" aria-hidden="true">🔄</span>
         <div>
-          <span class="st-hero-eyebrow">Students</span>
+          <span class="st-hero-eyebrow">Students · Transfer</span>
           <h1>Transfer Student</h1>
           <p class="st-hero-sub">Move students between classes within the school, or record an external transfer to another institution.</p>
         </div>
@@ -38,7 +38,8 @@
           aria-label="Refresh">
           <span [class.st-spin]="loadingStudents || loadingClasses">↻</span>
         </button>
-        <a routerLink="/students/enroll_student" class="st-hero-btn st-hero-btn--white">Enroll student</a>
+        <a routerLink="/students" class="st-hero-btn st-hero-btn--white">← Students</a>
+        <a routerLink="/students/enroll_student" class="st-hero-btn st-hero-btn--accent">Enroll student</a>
       </div>
     </div>
 
@@ -47,31 +48,27 @@
       <a routerLink="/students/enroll_student">Enroll student</a>
       <a routerLink="/students/new">New registration</a>
       <a routerLink="/classes">Classes</a>
+      <a routerLink="/admin/admissions">Admissions</a>
     </nav>
 
     <div class="st-hero-stats" *ngIf="!loadingStudents">
       <article class="st-stat">
-        <span class="st-stat__icon" aria-hidden="true">👥</span>
         <span class="st-stat__value">{{ dashboardStats.total }}</span>
         <span class="st-stat__label">Total students</span>
       </article>
       <article class="st-stat">
-        <span class="st-stat__icon" aria-hidden="true">🏫</span>
         <span class="st-stat__value">{{ dashboardStats.withClass }}</span>
         <span class="st-stat__label">With class</span>
       </article>
       <article class="st-stat">
-        <span class="st-stat__icon" aria-hidden="true">🔍</span>
         <span class="st-stat__value">{{ dashboardStats.showing }}</span>
         <span class="st-stat__label">Showing</span>
       </article>
       <article class="st-stat">
-        <span class="st-stat__icon" aria-hidden="true">📋</span>
         <span class="st-stat__value">{{ dashboardStats.classes }}</span>
         <span class="st-stat__label">Classes</span>
       </article>
       <article class="st-stat">
-        <span class="st-stat__icon" aria-hidden="true">📜</span>
         <span class="st-stat__value">{{ selectedStudent ? dashboardStats.history : '—' }}</span>
         <span class="st-stat__label">History</span>
       </article>
