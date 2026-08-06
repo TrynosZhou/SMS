@@ -1,7 +1,7 @@
 <div class="ms-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="ms-toast-stack" *ngIf="error">
-    <div class="ms-toast ms-toast--error" *ngIf="error" role="alert">
+  <div class="ms-toast-stack" *ngIf="error">
+    <div class="ms-toast ms-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="ms-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,20 +10,20 @@
   <header class="ms-hero">
     <div class="ms-hero__main">
       <div class="ms-hero-left">
-        <span class="ms-hero-icon" aria-hidden="true">✉️</span>
+        <span class="ms-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="ms-hero-eyebrow">Communication</span>
           <h1>Send Message</h1>
           <p class="ms-hero-sub">Compose and send notices, fee reminders, and updates to parents.</p>
         </div>
       </div>
-      <aside class="ms-hero-aside">
-        <span class="ms-hero-badge">{{ getRecipientSummary() }}</span>
-        <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="attachments.length">{{ attachments.length }} file(s)</span>
-      </aside>
       <div class="ms-hero__actions">
-        <a routerLink="/messages/outgoing" class="ms-hero-btn ms-hero-btn--ghost">📤 Outbox</a>
-        <a routerLink="/messages/drafts" class="ms-hero-btn ms-hero-btn--accent">📝 Drafts</a>
+        <aside class="ms-hero-aside">
+          <span class="ms-hero-badge">{{ getRecipientSummary() }}</span>
+          <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="attachments.length">{{ attachments.length }} file(s)</span>
+        </aside>
+        <a routerLink="/messages/outgoing" class="ms-hero-btn">Outbox</a>
+        <a routerLink="/messages/drafts" class="ms-hero-btn ms-hero-btn--solid">Drafts</a>
       </div>
     </div>
 
@@ -36,22 +36,18 @@
 
     <div class="ms-hero-stats">
       <article class="ms-stat">
-        <span class="ms-stat__icon" aria-hidden="true">📋</span>
         <span class="ms-stat__value">{{ templates.length }}</span>
         <span class="ms-stat__label">Templates</span>
       </article>
-      <article class="ms-stat ms-stat--sky">
-        <span class="ms-stat__icon" aria-hidden="true">👥</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ recipientsType === 'all' ? 'All' : selectedParentIds.size }}</span>
         <span class="ms-stat__label">Recipients</span>
       </article>
-      <article class="ms-stat ms-stat--amber">
-        <span class="ms-stat__icon" aria-hidden="true">📎</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ attachments.length }}</span>
         <span class="ms-stat__label">Attachments</span>
       </article>
-      <article class="ms-stat ms-stat--mint">
-        <span class="ms-stat__icon" aria-hidden="true">✎</span>
+      <article class="ms-stat">
         <span class="ms-stat__value">{{ message.length }}</span>
         <span class="ms-stat__label">Characters</span>
       </article>
@@ -80,16 +76,13 @@
       <div class="ms-form">
         <div class="ms-field">
           <label for="subject">Subject <span class="ms-required">*</span></label>
-          <div class="ms-input-wrap">
-            <span class="ms-input-icon" aria-hidden="true">📌</span>
-            <input
-              type="text"
-              id="subject"
-              class="ms-input ms-input--icon"
-              [(ngModel)]="subject"
-              placeholder="Enter message subject…"
-              maxlength="200" />
-          </div>
+          <input
+            type="text"
+            id="subject"
+            class="ms-input"
+            [(ngModel)]="subject"
+            placeholder="Enter message subject…"
+            maxlength="200" />
           <span class="ms-char-count">{{ subject.length }}/200</span>
         </div>
 
@@ -101,7 +94,6 @@
               class="ms-recipient-card"
               [class.ms-recipient-card--active]="recipientsType === 'all'"
               (click)="setRecipientsType('all')">
-              <span class="ms-recipient-card__icon">👥</span>
               <span class="ms-recipient-card__title">All parents</span>
               <span class="ms-recipient-card__desc">Send to every registered parent</span>
               <span class="ms-recipient-card__check" *ngIf="recipientsType === 'all'">✓</span>
@@ -111,7 +103,6 @@
               class="ms-recipient-card"
               [class.ms-recipient-card--active]="recipientsType === 'selected'"
               (click)="setRecipientsType('selected')">
-              <span class="ms-recipient-card__icon">👤</span>
               <span class="ms-recipient-card__title">Specific parents</span>
               <span class="ms-recipient-card__desc">Pick individual recipients</span>
               <span class="ms-recipient-card__check" *ngIf="recipientsType === 'selected'">✓</span>
@@ -121,7 +112,7 @@
           <div class="ms-parents-panel" *ngIf="recipientsType === 'selected'">
             <div class="ms-parents-toolbar">
               <div class="ms-search-wrap">
-                <span class="ms-search-icon" aria-hidden="true">🔍</span>
+                <span class="ms-search-icon" aria-hidden="true">⌕</span>
                 <input
                   type="search"
                   class="ms-search-input"
@@ -152,7 +143,6 @@
             </div>
 
             <div class="ms-empty" *ngIf="parents.length === 0 && !loadingParents">
-              <span class="ms-empty-icon" aria-hidden="true">👥</span>
               <p>{{ parentsLoadError || 'No parents available' }}</p>
               <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="loadParentsIfNeeded(true)">Reload parents</button>
             </div>
@@ -203,28 +193,27 @@ You can use placeholders like:
               multiple
               hidden
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
-            <span class="ms-dropzone__icon" aria-hidden="true">📎</span>
             <p class="ms-dropzone__text">Drag &amp; drop files here or <strong>browse</strong></p>
             <p class="ms-dropzone__hint">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (max 10MB each)</p>
           </div>
 
           <div class="ms-file-list" *ngIf="attachments.length > 0">
             <div class="ms-file-item" *ngFor="let f of attachments; let i = index">
-              <span class="ms-file-icon">{{ getFileIcon(f.name) }}</span>
+              <span class="ms-file-ext">{{ getFileIcon(f.name) }}</span>
               <div class="ms-file-info">
                 <span class="ms-file-name">{{ f.name }}</span>
                 <span class="ms-file-size">{{ formatFileSize(f.size) }}</span>
               </div>
-              <button type="button" class="ms-file-remove" (click)="removeAttachment(i); $event.stopPropagation()" title="Remove">×</button>
+              <button type="button" class="ms-btn ms-btn--ghost ms-btn--sm" (click)="removeAttachment(i); $event.stopPropagation()" title="Remove">Remove</button>
             </div>
           </div>
         </div>
 
         <div class="ms-form-actions">
-          <button type="button" class="ms-btn ms-btn--outline ms-btn--lg" [disabled]="!canSend() || loading" (click)="previewMessage()">👁️ Preview</button>
+          <button type="button" class="ms-btn ms-btn--outline ms-btn--lg" [disabled]="!canSend() || loading" (click)="previewMessage()">Preview</button>
           <button type="button" class="ms-btn ms-btn--primary ms-btn--lg" [disabled]="!canSend() || loading" (click)="send()">
             <span class="ms-spinner" *ngIf="loading"></span>
-            {{ loading ? 'Sending…' : '📨 Send message' }}
+            {{ loading ? 'Sending…' : 'Send message' }}
           </button>
         </div>
       </div>
@@ -253,7 +242,7 @@ You can use placeholders like:
       </section>
 
       <section class="ms-panel ms-panel--tips">
-        <h3 class="ms-tips-title"><span aria-hidden="true">💡</span> Tips</h3>
+        <h3 class="ms-tips-title">Tips</h3>
         <ul class="ms-tips-list">
           <li>Keep subject lines clear and concise</li>
           <li>Use templates for common messages</li>
@@ -287,14 +276,14 @@ You can use placeholders like:
         <div class="ms-preview-row" *ngIf="attachments.length > 0">
           <span class="ms-preview-label">Attachments</span>
           <div class="ms-preview-files">
-            <span class="ms-preview-file" *ngFor="let f of attachments">📎 {{ f.name }}</span>
+            <span class="ms-preview-file" *ngFor="let f of attachments">{{ f.name }}</span>
           </div>
         </div>
       </div>
       <div class="ms-modal__foot">
         <button type="button" class="ms-btn ms-btn--ghost" (click)="closePreview()">Edit</button>
         <button type="button" class="ms-btn ms-btn--primary" (click)="sendFromPreview()" [disabled]="loading">
-          <span class="ms-spinner ms-spinner--purple" *ngIf="loading"></span>
+          <span class="ms-spinner" *ngIf="loading"></span>
           {{ loading ? 'Sending…' : 'Send now' }}
         </button>
       </div>

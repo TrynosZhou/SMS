@@ -1,7 +1,7 @@
 <div class="mi-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="mi-toast-stack" *ngIf="error">
-    <div class="mi-toast mi-toast--error" *ngIf="error" role="alert">
+  <div class="mi-toast-stack" *ngIf="error">
+    <div class="mi-toast mi-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="mi-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,7 +10,7 @@
   <header class="mi-hero">
     <div class="mi-hero__main">
       <div class="mi-hero-left">
-        <span class="mi-hero-icon" aria-hidden="true">📬</span>
+        <span class="mi-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="mi-hero-eyebrow">Communication</span>
           <h1>
@@ -20,11 +20,11 @@
           <p class="mi-hero-sub">Messages from parents — read, reply, and manage incoming correspondence.</p>
         </div>
       </div>
-      <aside class="mi-hero-aside">
-        <span class="mi-hero-badge">{{ filtered.length }} message(s)</span>
-        <span class="mi-hero-badge mi-hero-badge--unread" *ngIf="unreadCount() > 0">{{ unreadCount() }} unread</span>
-      </aside>
       <div class="mi-hero__actions">
+        <aside class="mi-hero-aside">
+          <span class="mi-hero-badge">{{ filtered.length }} message(s)</span>
+          <span class="mi-hero-badge mi-hero-badge--unread" *ngIf="unreadCount() > 0">{{ unreadCount() }} unread</span>
+        </aside>
         <button type="button" class="mi-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
@@ -32,7 +32,7 @@
           <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
           <span>Auto-refresh</span>
         </label>
-        <a routerLink="/messages/send" class="mi-hero-btn mi-hero-btn--accent">✉️ Compose</a>
+        <a routerLink="/messages/send" class="mi-hero-btn mi-hero-btn--solid">Compose</a>
       </div>
     </div>
 
@@ -45,27 +45,22 @@
 
     <div class="mi-hero-stats" *ngIf="!loading">
       <article class="mi-stat">
-        <span class="mi-stat__icon" aria-hidden="true">📨</span>
         <span class="mi-stat__value">{{ messages.length }}</span>
         <span class="mi-stat__label">Total</span>
       </article>
-      <article class="mi-stat mi-stat--rose">
-        <span class="mi-stat__icon" aria-hidden="true">●</span>
+      <article class="mi-stat">
         <span class="mi-stat__value">{{ unreadCount() }}</span>
         <span class="mi-stat__label">Unread</span>
       </article>
-      <article class="mi-stat mi-stat--mint">
-        <span class="mi-stat__icon" aria-hidden="true">✓</span>
+      <article class="mi-stat">
         <span class="mi-stat__value">{{ messages.length - unreadCount() }}</span>
         <span class="mi-stat__label">Read</span>
       </article>
-      <article class="mi-stat mi-stat--amber">
-        <span class="mi-stat__icon" aria-hidden="true">⭐</span>
+      <article class="mi-stat">
         <span class="mi-stat__value">{{ pinnedIds.size }}</span>
         <span class="mi-stat__label">Pinned</span>
       </article>
       <article class="mi-stat">
-        <span class="mi-stat__icon" aria-hidden="true">👤</span>
         <span class="mi-stat__value">{{ senders.length }}</span>
         <span class="mi-stat__label">Senders</span>
       </article>
@@ -86,11 +81,9 @@
   <section class="mi-bulk-bar" *ngIf="selectedIds.size > 0">
     <span class="mi-bulk-bar__info"><strong>{{ selectedIds.size }}</strong> selected</span>
     <div class="mi-bulk-bar__actions">
-      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkRead()">✓ Mark read</button>
-      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkUnread()">○ Mark unread</button>
-      <button type="button" class="mi-btn mi-btn--danger mi-btn--sm" (click)="bulkDelete()" [disabled]="bulkDeleting">
-        🗑️ Delete
-      </button>
+      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkRead()">Mark read</button>
+      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkUnread()">Mark unread</button>
+      <button type="button" class="mi-btn mi-btn--primary mi-btn--sm" (click)="bulkDelete()" [disabled]="bulkDeleting">Delete</button>
       <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="clearSelection()">Clear</button>
     </div>
   </section>
@@ -108,7 +101,7 @@
 
     <div class="mi-filter-row">
       <div class="mi-search-wrap">
-        <span class="mi-search-icon" aria-hidden="true">🔍</span>
+        <span class="mi-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
           class="mi-search-input"
@@ -124,7 +117,7 @@
           <span class="mi-chip-dot"></span> Unread
         </button>
         <button type="button" class="mi-chip" [class.mi-chip--active]="filterMode === 'read'" (click)="filterMode = 'read'; applyFilterAndPaginate()">Read</button>
-        <button type="button" class="mi-chip" [class.mi-chip--active]="pinnedOnly" (click)="pinnedOnly = !pinnedOnly; applyFilterAndPaginate()">⭐ Pinned</button>
+        <button type="button" class="mi-chip" [class.mi-chip--active]="pinnedOnly" (click)="pinnedOnly = !pinnedOnly; applyFilterAndPaginate()">Pinned</button>
       </div>
     </div>
 
@@ -179,7 +172,6 @@
       </div>
 
       <div class="mi-empty" *ngIf="!loading && paged.length === 0">
-        <span class="mi-empty-icon" aria-hidden="true">📭</span>
         <h3>No messages found</h3>
         <p>Try adjusting your filters or search query.</p>
         <button type="button" class="mi-btn mi-btn--outline" (click)="clearFilters()" *ngIf="hasActiveFilters()">Clear filters</button>
@@ -203,37 +195,37 @@
                 <span class="mi-item-time">{{ timeAgo(m.createdAt) }}</span>
               </div>
               <div class="mi-item-subject">
-                <span *ngIf="isPinned(m)" class="mi-pin-icon">⭐</span>
+                <span *ngIf="isPinned(m)" class="mi-pin-icon" aria-hidden="true">★</span>
                 {{ m.subject || '(No subject)' }}
               </div>
               <div class="mi-item-preview">{{ getPreview(m.message) || '—' }}</div>
             </div>
             <span class="mi-unread-dot" *ngIf="!m.isRead" aria-hidden="true"></span>
           </div>
-          <button type="button" class="mi-pin-btn" (click)="togglePin(m); $event.stopPropagation()" [title]="isPinned(m) ? 'Unpin' : 'Pin'">
-            {{ isPinned(m) ? '⭐' : '☆' }}
+          <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="togglePin(m); $event.stopPropagation()" [title]="isPinned(m) ? 'Unpin' : 'Pin'">
+            {{ isPinned(m) ? 'Unpin' : 'Pin' }}
           </button>
           <button
             type="button"
-            class="mi-delete-btn"
+            class="mi-btn mi-btn--ghost mi-btn--sm"
             (click)="deleteMessage(m, $event)"
             [disabled]="deletingId === m.id || bulkDeleting"
             title="Delete permanently"
             aria-label="Delete message permanently">
-            🗑️
+            Delete
           </button>
         </article>
       </div>
 
       <div class="mi-pagination" *ngIf="totalPages() > 1">
-        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="prevPage()" [disabled]="currentPage === 1">← Prev</button>
+        <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="prevPage()" [disabled]="currentPage === 1">Prev</button>
         <span class="mi-page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
-        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="nextPage()" [disabled]="currentPage === totalPages()">Next →</button>
+        <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="nextPage()" [disabled]="currentPage === totalPages()">Next</button>
       </div>
 
       <div class="mi-list-foot">
-        <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="exportCSV()" [disabled]="filtered.length === 0">📥 Export CSV</button>
-        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="showTemplateManager = true">📝 Templates</button>
+        <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="exportCSV()" [disabled]="filtered.length === 0">Export CSV</button>
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="showTemplateManager = true">Templates</button>
       </div>
     </section>
 
@@ -261,20 +253,22 @@
       </div>
 
       <div class="mi-detail-head">
-        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm mi-back-btn" (click)="selected = null" title="Back to list">← Back</button>
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm mi-back-btn" (click)="selected = null" title="Back to list">Back</button>
         <div class="mi-detail-actions">
-          <button type="button" class="mi-icon-btn" (click)="togglePin(selected)" [title]="isPinned(selected) ? 'Unpin' : 'Pin'">{{ isPinned(selected) ? '⭐' : '☆' }}</button>
-          <button type="button" class="mi-icon-btn" (click)="printSelected()" title="Print">🖨️</button>
-          <button type="button" class="mi-icon-btn" (click)="copySelected()" title="Copy">📋</button>
-          <button type="button" class="mi-icon-btn" (click)="downloadSelected()" title="Download">📄</button>
+          <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="togglePin(selected)" [title]="isPinned(selected) ? 'Unpin' : 'Pin'">
+            {{ isPinned(selected) ? 'Unpin' : 'Pin' }}
+          </button>
+          <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="printSelected()" title="Print">Print</button>
+          <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="copySelected()" title="Copy">Copy</button>
+          <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="downloadSelected()" title="Download">Download</button>
           <button
             type="button"
-            class="mi-icon-btn mi-icon-btn--danger"
+            class="mi-btn mi-btn--ghost mi-btn--sm"
             (click)="deleteMessage(selected)"
             [disabled]="deletingId === selected.id || bulkDeleting"
             title="Delete permanently"
             aria-label="Delete message permanently">
-            🗑️
+            Delete
           </button>
         </div>
       </div>
@@ -295,26 +289,26 @@
         </div>
         <div class="mi-detail-message">{{ selected.message }}</div>
         <div class="mi-attachments" *ngIf="selected.attachments?.length">
-          <h4>📎 Attachments</h4>
+          <h4>Attachments</h4>
           <div class="mi-attachment-list">
-            <a *ngFor="let a of selected.attachments" [href]="a" target="_blank" class="mi-attachment-link">📄 Download</a>
+            <a *ngFor="let a of selected.attachments" [href]="a" target="_blank" class="mi-attachment-link">Download</a>
           </div>
         </div>
       </div>
 
       <div class="mi-detail-foot">
         <button type="button" class="mi-btn mi-btn--outline" (click)="selected.isRead ? markUnread() : markRead()">
-          {{ selected.isRead ? '○ Mark unread' : '✓ Mark read' }}
+          {{ selected.isRead ? 'Mark unread' : 'Mark read' }}
         </button>
         <button
           type="button"
-          class="mi-btn mi-btn--danger"
+          class="mi-btn mi-btn--ghost"
           (click)="deleteMessage(selected)"
           [disabled]="deletingId === selected.id || bulkDeleting">
-          🗑️ Delete permanently
+          Delete permanently
         </button>
         <button type="button" class="mi-btn mi-btn--primary" (click)="toggleReply()">
-          ↩️ {{ replying ? 'Cancel reply' : 'Reply' }}
+          {{ replying ? 'Cancel reply' : 'Reply' }}
         </button>
       </div>
 
@@ -339,18 +333,18 @@
           <div class="mi-field">
             <label>Attachments</label>
             <input type="file" multiple (change)="onReplyFilesChange($event)" #replyFileInput hidden />
-            <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="replyFileInput.click()">📎 Add files</button>
+            <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="replyFileInput.click()">Add files</button>
             <div class="mi-file-list" *ngIf="replyFiles.length">
               <div class="mi-file-item" *ngFor="let f of replyFiles; let i = index">
-                <span>📄 {{ f.name }}</span>
-                <button type="button" class="mi-file-remove" (click)="removeReplyFile(i)">×</button>
+                <span class="mi-file-name">{{ f.name }}</span>
+                <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="removeReplyFile(i)">Remove</button>
               </div>
             </div>
           </div>
           <div class="mi-reply-actions">
             <button type="button" class="mi-btn mi-btn--ghost" (click)="toggleReply()">Cancel</button>
             <button type="button" class="mi-btn mi-btn--primary" [disabled]="!canSendReply() || sendingReply" (click)="sendReply()">
-              {{ sendingReply ? 'Sending…' : '📤 Send reply' }}
+              {{ sendingReply ? 'Sending…' : 'Send reply' }}
             </button>
           </div>
         </div>
@@ -358,7 +352,6 @@
     </section>
 
     <section class="mi-panel mi-panel--empty" *ngIf="!selected">
-      <span class="mi-empty-icon" aria-hidden="true">✉️</span>
       <h3>Select a message</h3>
       <p>Choose a message from the list to read and reply.</p>
     </section>
@@ -386,13 +379,13 @@
               <label>Body</label>
               <textarea class="mi-textarea" rows="3" [(ngModel)]="t.body" placeholder="Reply message…"></textarea>
             </div>
-            <button type="button" class="mi-btn mi-btn--danger mi-btn--sm" (click)="removeReplyTemplate(i)">Remove</button>
+            <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="removeReplyTemplate(i)">Remove</button>
           </article>
         </div>
         <p class="mi-modal-empty" *ngIf="!replyTemplates.length">No templates yet. Create one to speed up replies.</p>
       </div>
       <div class="mi-modal__foot">
-        <button type="button" class="mi-btn mi-btn--outline" (click)="addReplyTemplate()">➕ Add template</button>
+        <button type="button" class="mi-btn mi-btn--outline" (click)="addReplyTemplate()">Add template</button>
         <button type="button" class="mi-btn mi-btn--primary" (click)="saveReplyTemplates(); showTemplateManager = false">Save &amp; close</button>
       </div>
     </div>

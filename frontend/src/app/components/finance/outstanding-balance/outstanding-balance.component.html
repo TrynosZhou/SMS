@@ -1,7 +1,7 @@
 <div class="ob-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="ob-toast-stack" *ngIf="error">
-    <div class="ob-toast ob-toast--error" *ngIf="error" role="alert">
+  <div class="ob-toast-stack" *ngIf="error">
+    <div class="ob-toast ob-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="ob-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,9 +10,9 @@
   <header class="ob-hero">
     <div class="ob-hero__main">
       <div class="ob-hero-left">
-        <span class="ob-hero-icon" aria-hidden="true">⚠️</span>
+        <span class="ob-hero-icon" aria-hidden="true">◈</span>
         <div>
-          <span class="ob-hero-eyebrow">Financial Reports</span>
+          <span class="ob-hero-eyebrow">Finance · Reports</span>
           <h1>Outstanding Fees</h1>
           <p class="ob-hero-sub">
             Students with unpaid invoice balances — filter by class, search, and record payments in one click.
@@ -22,24 +22,33 @@
           </p>
         </div>
       </div>
-      <div class="ob-hero__actions" *ngIf="hasData">
+      <div class="ob-hero__actions">
         <button type="button" class="ob-hero-refresh" (click)="loadOutstandingBalances()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="ob-hero-btn" (click)="toggleViewMode()" title="Toggle view">
-          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        <button type="button" class="ob-hero-btn" *ngIf="hasData" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? 'Cards view' : 'Table view' }}
         </button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredBalances.length || loading">CSV</button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="previewStatement()" [disabled]="loadingPdf || !filteredBalances.length">Preview</button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="downloadStatement()" [disabled]="downloadingPdf || !filteredBalances.length">
-          {{ downloadingPdf ? '…' : 'Statement' }}
+        <button type="button" class="ob-hero-btn" *ngIf="hasData" (click)="exportCsv()" [disabled]="!filteredBalances.length || loading">CSV</button>
+        <button type="button" class="ob-hero-btn" *ngIf="hasData" (click)="previewStatement()" [disabled]="loadingPdf || !filteredBalances.length">Preview</button>
+        <button type="button" class="ob-hero-btn" *ngIf="hasData" (click)="printReport()" [disabled]="!filteredBalances.length || loading">Print</button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--solid" *ngIf="hasData" (click)="downloadStatement()" [disabled]="downloadingPdf || !filteredBalances.length">
+          {{ downloadingPdf ? 'Generating…' : 'Statement' }}
         </button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="printReport()" [disabled]="!filteredBalances.length || loading">Print</button>
+        <a routerLink="/payments/record" class="ob-hero-btn ob-hero-btn--solid" *ngIf="!hasData && !loading">Record payment</a>
       </div>
     </div>
 
+    <nav class="ob-cross-links" aria-label="Related finance pages">
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/balance-enquiry">Balance enquiry</a>
+      <a routerLink="/financial-reports/fees-collection">Fees collection</a>
+      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+      <a routerLink="/invoices">Billing</a>
+    </nav>
+
     <div class="ob-hero-stats" *ngIf="hasData && !loading">
-      <article class="ob-stat ob-stat--rose">
+      <article class="ob-stat">
         <span class="ob-stat__value">{{ currencySymbol }}{{ formatCurrency(dashboardStats.totalOutstanding) }}</span>
         <span class="ob-stat__label">Filtered total</span>
       </article>
@@ -51,7 +60,7 @@
         <span class="ob-stat__value">{{ dashboardStats.classes }}</span>
         <span class="ob-stat__label">Classes</span>
       </article>
-      <article class="ob-stat ob-stat--amber">
+      <article class="ob-stat">
         <span class="ob-stat__value">{{ currencySymbol }}{{ formatCurrency(dashboardStats.largest) }}</span>
         <span class="ob-stat__label">Largest balance</span>
       </article>
@@ -68,15 +77,15 @@
   <section class="ob-panel" *ngIf="hasData && !loading">
     <div class="ob-panel__head-row">
       <div>
-        <h2 class="ob-panel__title">Filters & search</h2>
+        <h2 class="ob-panel__title">Filters &amp; search</h2>
         <p class="ob-panel__intro">Find students by ID, name, or phone. Filter by class or sort by balance.</p>
       </div>
-      <button type="button" class="ob-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <button type="button" class="ob-btn ob-btn--ghost ob-btn--sm" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
     <div class="ob-filters-row">
       <div class="ob-search-wrap">
-        <span class="ob-search-icon" aria-hidden="true">🔍</span>
+        <span class="ob-search-icon" aria-hidden="true">⌕</span>
         <input
           #obSearch
           type="search"
@@ -124,25 +133,34 @@
         <div class="ob-skel ob-skel-md"></div>
         <div class="ob-skel ob-skel-md"></div>
       </div>
-      <p style="text-align:center;color:#64748b;margin:0">Loading outstanding balances…</p>
+      <p class="ob-loading-text">Loading outstanding balances…</p>
     </div>
   </section>
 
-  <section class="ob-panel ob-empty" *ngIf="!loading && !error && outstandingBalances.length === 0">
-    <span class="ob-empty-icon" aria-hidden="true">✅</span>
+  <section class="ob-panel ob-empty-panel" *ngIf="!loading && !error && outstandingBalances.length === 0">
     <p class="ob-empty-title">No outstanding balances</p>
     <p class="ob-empty-text">All students have paid their invoices in full.</p>
     <div class="ob-empty-actions">
-      <a routerLink="/invoices" class="ob-btn-primary">📋 View invoices</a>
+      <a routerLink="/invoices" class="ob-btn ob-btn--primary">View invoices</a>
+      <a routerLink="/payments/record" class="ob-btn ob-btn--outline">Record payment</a>
     </div>
   </section>
 
   <section class="ob-panel ob-data-panel" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="ob-table-toolbar" *ngIf="filteredBalances.length > 0">
+      <h3>{{ filteredBalances.length }} student(s) owing</h3>
+      <div class="ob-table-toolbar__actions">
+        <button type="button" class="ob-btn ob-btn--ghost ob-btn--sm" (click)="toggleViewMode()">
+          {{ viewMode === 'table' ? 'Cards view' : 'Table view' }}
+        </button>
+        <button type="button" class="ob-btn ob-btn--outline ob-btn--sm" (click)="exportCsv()" [disabled]="!filteredBalances.length">CSV</button>
+      </div>
+    </div>
+
     <div class="ob-empty" *ngIf="filteredBalances.length === 0">
-      <span class="ob-empty-icon" aria-hidden="true">🔎</span>
       <p class="ob-empty-title">No matching students</p>
       <p class="ob-empty-text">Try another search or class filter.</p>
-      <button type="button" class="ob-btn-reset" (click)="clearFilters()">Reset filters</button>
+      <button type="button" class="ob-btn ob-btn--primary" (click)="clearFilters()">Reset filters</button>
     </div>
 
     <ng-container *ngIf="filteredBalances.length > 0 && viewMode === 'table'">
@@ -166,6 +184,7 @@
                 <th>Phone</th>
                 <th>Type</th>
                 <th class="text-right">Balance</th>
+                <th *ngIf="canManageFinance()">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -183,20 +202,19 @@
                 <td>{{ balance.firstName }}</td>
                 <td>
                   {{ balance.term || '—' }}
-                  <span *ngIf="balance.includesPriorTermBalance" class="ob-prior-tag" title="Includes balance brought forward from a prior term">↩ prior</span>
+                  <span *ngIf="balance.includesPriorTermBalance" class="ob-prior-tag" title="Includes balance brought forward from a prior term">prior</span>
                 </td>
                 <td>{{ balance.invoiceNumber || '—' }}</td>
                 <td>{{ balance.gender || '—' }}</td>
                 <td>{{ balance.phoneNumber || '—' }}</td>
                 <td>{{ balance.studentType || 'Day Scholar' }}</td>
                 <td class="text-right">
-                  <span
-                    class="ob-balance-badge"
-                    [class.ob-balance-badge--click]="canManageFinance()"
-                    (click)="payInvoice(balance)"
-                    [title]="canManageFinance() ? 'Record payment' : ''">
+                  <span class="ob-balance-badge">
                     {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
                   </span>
+                </td>
+                <td *ngIf="canManageFinance()">
+                  <button type="button" class="ob-btn ob-btn--outline ob-btn--sm" (click)="payInvoice(balance)">Pay</button>
                 </td>
               </tr>
             </tbody>
@@ -228,7 +246,7 @@
               {{ balance.phoneNumber || 'No phone' }}
             </p>
             <div class="ob-card__actions" *ngIf="canManageFinance()">
-              <button type="button" class="ob-card__pay" (click)="payInvoice(balance)">Record payment</button>
+              <button type="button" class="ob-btn ob-btn--primary" (click)="payInvoice(balance)">Record payment</button>
             </div>
           </article>
         </div>

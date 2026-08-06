@@ -82,7 +82,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     {
       id: 'module-access',
       label: 'Permissions & Roles',
-      icon: '🧩',
+      icon: '◈',
       description: 'Control which modules each role can view and use.'
     },
     {

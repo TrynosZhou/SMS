@@ -9,7 +9,7 @@
   <header class="mo-hero">
     <div class="mo-hero__main">
       <div class="mo-hero-left">
-        <span class="mo-hero-icon" aria-hidden="true">📤</span>
+        <span class="mo-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="mo-hero-eyebrow">Communication</span>
           <h1>
@@ -19,15 +19,15 @@
           <p class="mo-hero-sub">View all messages sent to parents — search, read, forward, or resend.</p>
         </div>
       </div>
-      <aside class="mo-hero-aside">
-        <span class="mo-hero-badge">{{ filtered.length }} shown</span>
-        <span class="mo-hero-badge mo-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
-      </aside>
       <div class="mo-hero__actions">
+        <aside class="mo-hero-aside">
+          <span class="mo-hero-badge">{{ filtered.length }} shown</span>
+          <span class="mo-hero-badge mo-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+        </aside>
         <button type="button" class="mo-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <a routerLink="/messages/send" class="mo-hero-btn mo-hero-btn--accent">✉️ Compose</a>
+        <a routerLink="/messages/send" class="mo-hero-btn mo-hero-btn--solid">Compose</a>
       </div>
     </div>
 
@@ -40,22 +40,18 @@
 
     <div class="mo-hero-stats" *ngIf="!loading">
       <article class="mo-stat">
-        <span class="mo-stat__icon" aria-hidden="true">📨</span>
         <span class="mo-stat__value">{{ messages.length }}</span>
         <span class="mo-stat__label">Total sent</span>
       </article>
-      <article class="mo-stat mo-stat--mint">
-        <span class="mo-stat__icon" aria-hidden="true">📅</span>
+      <article class="mo-stat">
         <span class="mo-stat__value">{{ getTodayCount() }}</span>
         <span class="mo-stat__label">Today</span>
       </article>
-      <article class="mo-stat mo-stat--sky">
-        <span class="mo-stat__icon" aria-hidden="true">📆</span>
+      <article class="mo-stat">
         <span class="mo-stat__value">{{ getThisWeekCount() }}</span>
         <span class="mo-stat__label">This week</span>
       </article>
-      <article class="mo-stat mo-stat--amber">
-        <span class="mo-stat__icon" aria-hidden="true">👤</span>
+      <article class="mo-stat">
         <span class="mo-stat__value">{{ recipients.length }}</span>
         <span class="mo-stat__label">Recipients</span>
       </article>
@@ -76,7 +72,7 @@
   <section class="mo-bulk-bar" *ngIf="selectedIds.size > 0">
     <span class="mo-bulk-bar__info"><strong>{{ selectedCount }}</strong> selected</span>
     <div class="mo-bulk-bar__actions">
-      <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="exportSelectedCSV()">📥 Export selected</button>
+      <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="exportSelectedCSV()">Export selected</button>
       <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="clearSelection()">Clear</button>
     </div>
   </section>
@@ -94,7 +90,7 @@
 
     <div class="mo-filter-row">
       <div class="mo-search-wrap">
-        <span class="mo-search-icon" aria-hidden="true">🔍</span>
+        <span class="mo-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
           class="mo-search-input"
@@ -163,12 +159,11 @@
       </div>
 
       <div class="mo-empty" *ngIf="!loading && filtered.length === 0">
-        <span class="mo-empty-icon" aria-hidden="true">📭</span>
         <h3>{{ hasActiveFilters() ? 'No matching messages' : 'No sent messages' }}</h3>
         <p *ngIf="!hasActiveFilters()">Messages you send will appear here.</p>
         <p *ngIf="hasActiveFilters()">Try adjusting your filters or search query.</p>
         <button type="button" class="mo-btn mo-btn--outline" (click)="clearFilters()" *ngIf="hasActiveFilters()">Clear filters</button>
-        <a routerLink="/messages/send" class="mo-btn mo-btn--primary" *ngIf="!hasActiveFilters()">✉️ Send message</a>
+        <a routerLink="/messages/send" class="mo-btn mo-btn--primary" *ngIf="!hasActiveFilters()">Send message</a>
       </div>
 
       <div class="mo-message-list" *ngIf="!loading && displayed.length > 0">
@@ -195,29 +190,29 @@
       </div>
 
       <div class="mo-pagination" *ngIf="totalPages > 1">
-        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="goToPage(page - 1)" [disabled]="page <= 1">← Prev</button>
+        <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="goToPage(page - 1)" [disabled]="page <= 1">Prev</button>
         <span class="mo-page-info">Page {{ page }} of {{ totalPages }}</span>
-        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="goToPage(page + 1)" [disabled]="page >= totalPages">Next →</button>
+        <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="goToPage(page + 1)" [disabled]="page >= totalPages">Next</button>
       </div>
 
       <div class="mo-list-foot" *ngIf="filtered.length > 0">
-        <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="exportCSV()" [disabled]="filtered.length === 0">📥 Export all</button>
-        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="selectPage()">☑️ Select page</button>
+        <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="exportCSV()" [disabled]="filtered.length === 0">Export all</button>
+        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="selectPage()">Select page</button>
       </div>
     </section>
 
     <section class="mo-panel mo-panel--detail" *ngIf="selected">
       <div class="mo-detail-head">
-        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm mo-back-btn" (click)="selected = null" title="Back to list">← Back</button>
+        <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm mo-back-btn" (click)="selected = null" title="Back to list">Back</button>
         <div class="mo-detail-actions">
-          <button type="button" class="mo-icon-btn" (click)="printSelected()" title="Print">🖨️</button>
-          <button type="button" class="mo-icon-btn" (click)="copySelected()" title="Copy">📋</button>
-          <button type="button" class="mo-icon-btn" (click)="downloadSelected()" title="Download">📄</button>
+          <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="printSelected()" title="Print">Print</button>
+          <button type="button" class="mo-btn mo-btn--ghost mo-btn--sm" (click)="copySelected()" title="Copy">Copy</button>
+          <button type="button" class="mo-btn mo-btn--outline mo-btn--sm" (click)="downloadSelected()" title="Download">Download</button>
         </div>
       </div>
 
       <div class="mo-detail-body">
-        <span class="mo-status-pill mo-status-pill--sent">✓ Sent</span>
+        <span class="mo-status-pill mo-status-pill--sent">Sent</span>
         <h2 class="mo-detail-subject">{{ selected.subject || '(No subject)' }}</h2>
         <div class="mo-detail-meta">
           <div class="mo-recipient-card">
@@ -231,21 +226,20 @@
         </div>
         <div class="mo-detail-message">{{ selected.message }}</div>
         <div class="mo-attachments" *ngIf="selected.attachments?.length">
-          <h4>📎 Attachments</h4>
+          <h4>Attachments</h4>
           <div class="mo-attachment-list">
-            <a *ngFor="let a of selected.attachments" [href]="a.url || a" target="_blank" class="mo-attachment-link">📄 {{ a.name || 'Download' }}</a>
+            <a *ngFor="let a of selected.attachments" [href]="a.url || a" target="_blank" class="mo-attachment-link">{{ a.name || 'Download' }}</a>
           </div>
         </div>
       </div>
 
       <div class="mo-detail-foot">
-        <button type="button" class="mo-btn mo-btn--outline" (click)="forwardMessage()">↪️ Forward</button>
-        <button type="button" class="mo-btn mo-btn--primary" (click)="resendSelected()">📤 Resend</button>
+        <button type="button" class="mo-btn mo-btn--outline" (click)="forwardMessage()">Forward</button>
+        <button type="button" class="mo-btn mo-btn--primary" (click)="resendSelected()">Resend</button>
       </div>
     </section>
 
     <section class="mo-panel mo-panel--empty" *ngIf="!selected">
-      <span class="mo-empty-icon" aria-hidden="true">📨</span>
       <h3>Select a message</h3>
       <p>Choose a sent message from the list to read, forward, or resend.</p>
     </section>

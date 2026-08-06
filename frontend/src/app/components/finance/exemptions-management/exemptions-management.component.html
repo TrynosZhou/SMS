@@ -1,7 +1,7 @@
 <div class="fx-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="fx-toast-stack" *ngIf="error">
-    <div class="fx-toast fx-toast--error" *ngIf="error" role="alert">
+  <div class="fx-toast-stack" *ngIf="error">
+    <div class="fx-toast fx-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="fx-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -12,7 +12,7 @@
       <div class="fx-hero-left">
         <span class="fx-hero-icon" aria-hidden="true">🎓</span>
         <div>
-          <span class="fx-hero-eyebrow">Finance</span>
+          <span class="fx-hero-eyebrow">Finance · Exemptions</span>
           <h1>Exemption Management</h1>
           <p class="fx-hero-sub">Create and manage student fee exemptions — fixed amounts, percentages, or staff sibling rules.</p>
           <p class="fx-hero-meta" *ngIf="lastLoadedAt && !loading">
@@ -24,11 +24,18 @@
         <button type="button" class="fx-hero-refresh" (click)="refresh()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="fx-hero-btn fx-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredExemptions.length">CSV</button>
-        <a routerLink="/financial-reports/exemption-report" class="fx-hero-btn fx-hero-btn--white">Exemption report</a>
-        <button type="button" class="fx-hero-btn fx-hero-btn--accent" (click)="clearForm()">+ New exemption</button>
+        <button type="button" class="fx-hero-btn" (click)="exportCsv()" [disabled]="!filteredExemptions.length">CSV</button>
+        <a routerLink="/financial-reports/exemption-report" class="fx-hero-btn">Exemption report</a>
+        <button type="button" class="fx-hero-btn fx-hero-btn--solid" (click)="clearForm()">+ New exemption</button>
       </div>
     </div>
+
+    <nav class="fx-cross-links" aria-label="Related finance pages">
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/balance-enquiry">Balance enquiry</a>
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/financial-reports/exemption-report">Exemption report</a>
+    </nav>
 
     <div class="fx-hero-stats" *ngIf="!loading">
       <article class="fx-stat">
@@ -39,11 +46,11 @@
         <span class="fx-stat__value">{{ stats.fixed }}</span>
         <span class="fx-stat__label">Fixed</span>
       </article>
-      <article class="fx-stat fx-stat--accent">
+      <article class="fx-stat">
         <span class="fx-stat__value">{{ stats.percentage }}</span>
         <span class="fx-stat__label">Percentage</span>
       </article>
-      <article class="fx-stat fx-stat--mint">
+      <article class="fx-stat">
         <span class="fx-stat__value">{{ stats.staff }}</span>
         <span class="fx-stat__label">Staff sibling</span>
       </article>
@@ -59,12 +66,12 @@
         <h2 class="fx-panel__title">{{ editingId ? 'Edit exemption' : 'Create exemption' }}</h2>
         <p class="fx-panel__intro">{{ editingId ? 'Update exemption for the selected student' : 'Search for a student and configure their exemption' }}</p>
       </div>
-      <button type="button" class="fx-btn-clear" *ngIf="editingId || selectedStudent" (click)="clearForm()">Cancel edit</button>
+      <button type="button" class="fx-btn fx-btn--ghost fx-btn--sm" *ngIf="editingId || selectedStudent" (click)="clearForm()">Cancel edit</button>
     </div>
 
     <label class="fx-label" for="fx-student-search">Search student</label>
     <div class="fx-search-wrap">
-      <span class="fx-search-icon" aria-hidden="true">🔍</span>
+      <span class="fx-search-icon" aria-hidden="true">⌕</span>
       <input
         id="fx-student-search"
         type="search"
@@ -93,7 +100,7 @@
         <strong>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</strong>
         <span>{{ selectedStudent.studentNumber }}</span>
       </div>
-      <button type="button" class="fx-btn-clear" (click)="clearForm()" *ngIf="!editingId">Change</button>
+      <button type="button" class="fx-btn fx-btn--ghost fx-btn--sm" (click)="clearForm()" *ngIf="!editingId">Change</button>
     </div>
 
     <div class="fx-form-body" *ngIf="selectedStudent">
@@ -105,7 +112,7 @@
           *ngFor="let t of typeOptions"
           [class.fx-type-chip--active]="exemptionType === t.value"
           (click)="selectExemptionType(t.value)">
-          <span aria-hidden="true">{{ t.icon }}</span> {{ t.label }}
+          {{ t.label }}
         </button>
       </div>
 
@@ -145,10 +152,11 @@
           <span *ngIf="!saving">{{ editingId ? 'Update exemption' : 'Save exemption' }}</span>
           <span *ngIf="saving" class="fx-btn-loading"><span class="fx-spinner"></span> Saving…</span>
         </button>
-        <button type="button" class="fx-btn fx-btn--ghost" (click)="syncOpenInvoices()" [disabled]="syncing">
+        <button type="button" class="fx-btn fx-btn--outline" (click)="syncOpenInvoices()" [disabled]="syncing">
           <span *ngIf="!syncing">Sync open invoices</span>
-          <span *ngIf="syncing" class="fx-btn-loading"><span class="fx-spinner"></span> Syncing…</span>
+          <span *ngIf="syncing" class="fx-btn-loading"><span class="fx-spinner fx-spinner--navy"></span> Syncing…</span>
         </button>
+        <button type="button" class="fx-btn fx-btn--ghost" (click)="clearForm()" [disabled]="saving || syncing">Clear</button>
       </div>
     </div>
   </section>
@@ -159,11 +167,11 @@
         <h2 class="fx-panel__title">Current exemptions</h2>
         <p class="fx-panel__intro">All students with an active exemption record.</p>
       </div>
-      <button type="button" class="fx-btn-clear" *ngIf="hasListFilters()" (click)="clearListFilters()">Clear filters</button>
+      <button type="button" class="fx-btn fx-btn--ghost fx-btn--sm" *ngIf="hasListFilters()" (click)="clearListFilters()">Clear filters</button>
     </div>
 
     <div class="fx-search-wrap">
-      <span class="fx-search-icon" aria-hidden="true">🔍</span>
+      <span class="fx-search-icon" aria-hidden="true">⌕</span>
       <input
         #listSearchEl
         type="search"
@@ -196,21 +204,20 @@
     </div>
 
     <div class="fx-empty" *ngIf="!loading && loadError">
-      <span aria-hidden="true">⚠️</span>
       <p>{{ loadError }}</p>
-      <button type="button" class="fx-btn fx-btn--ghost" (click)="refresh()">Retry</button>
+      <button type="button" class="fx-btn fx-btn--outline" (click)="refresh()">Retry</button>
     </div>
 
     <div class="fx-empty" *ngIf="!loading && !loadError && exemptions.length === 0">
-      <span class="fx-empty-icon" aria-hidden="true">📭</span>
+      <span class="fx-empty-icon" aria-hidden="true">🎓</span>
       <h3>No exemptions yet</h3>
       <p>Create your first exemption using the form above.</p>
     </div>
 
     <div class="fx-empty" *ngIf="!loading && !loadError && exemptions.length > 0 && filteredExemptions.length === 0">
-      <span class="fx-empty-icon" aria-hidden="true">🔍</span>
       <h3>No matches</h3>
       <p>Try adjusting your search or type filter.</p>
+      <button type="button" class="fx-btn fx-btn--outline" (click)="clearListFilters()">Clear filters</button>
     </div>
 
     <div class="fx-table-scroll" *ngIf="!loading && filteredExemptions.length > 0">
@@ -241,8 +248,8 @@
             <td>{{ s.exemptionDescription || '—' }}</td>
             <td class="fx-col-actions">
               <div class="fx-actions-cell">
-                <button type="button" class="fx-link" (click)="selectStudent(s)">Edit</button>
-                <button type="button" class="fx-link fx-link--danger" (click)="openRemoveConfirm(s)">Remove</button>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--sm" (click)="selectStudent(s)">Edit</button>
+                <button type="button" class="fx-btn fx-btn--ghost fx-btn--sm" (click)="openRemoveConfirm(s)">Remove</button>
               </div>
             </td>
           </tr>
@@ -260,7 +267,7 @@
       </p>
       <div class="fx-confirm__actions">
         <button type="button" class="fx-btn fx-btn--ghost" (click)="cancelRemoveConfirm()">Cancel</button>
-        <button type="button" class="fx-btn fx-btn--danger" (click)="confirmRemoveExemption()">Remove</button>
+        <button type="button" class="fx-btn fx-btn--primary" (click)="confirmRemoveExemption()">Remove</button>
       </div>
     </div>
   </div>

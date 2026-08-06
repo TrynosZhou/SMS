@@ -1,7 +1,7 @@
 <div class="um-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="um-toast-stack" *ngIf="error">
-    <div class="um-toast um-toast--error" *ngIf="error" role="alert">
+  <div class="um-toast-stack" *ngIf="error">
+    <div class="um-toast um-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="um-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,23 +10,23 @@
   <header class="um-hero">
     <div class="um-hero__main">
       <div class="um-hero-left">
-        <span class="um-hero-icon" aria-hidden="true">👥</span>
+        <span class="um-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="um-hero-eyebrow">System Admin</span>
           <h1>User Management</h1>
           <p class="um-hero-sub">Manage user accounts, roles, and portal access — reset passwords, unlock accounts, and create logins.</p>
         </div>
       </div>
-      <aside class="um-hero-aside">
-        <span class="um-hero-badge">{{ dashboardStats.showing }} showing</span>
-        <span class="um-hero-badge um-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
-      </aside>
       <div class="um-hero__actions">
+        <aside class="um-hero-aside">
+          <span class="um-hero-badge">{{ dashboardStats.showing }} showing</span>
+          <span class="um-hero-badge um-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+        </aside>
         <button type="button" class="um-hero-refresh" (click)="refreshUsers()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="um-hero-btn um-hero-btn--white" (click)="goToSystemActivity()">System activity</button>
-        <button type="button" class="um-hero-btn um-hero-btn--accent" (click)="openAddUser()">+ Add user</button>
+        <button type="button" class="um-hero-btn" (click)="goToSystemActivity()">System activity</button>
+        <button type="button" class="um-hero-btn um-hero-btn--solid" (click)="openAddUser()">+ Add user</button>
       </div>
     </div>
 
@@ -87,14 +87,15 @@
         <h2 class="um-panel__title">Search &amp; filters</h2>
         <p class="um-panel__intro">Find users by name, username, email, or role. Filter by status.</p>
       </div>
-      <button type="button" class="um-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <button type="button" class="um-btn um-btn--ghost um-btn--sm" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
     <div class="um-filters-row">
       <div class="um-search-wrap">
-        <span class="um-search-icon" aria-hidden="true">🔍</span>
+        <span class="um-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
+          class="um-search-input"
           [(ngModel)]="searchQuery"
           (ngModelChange)="applyFilters()"
           placeholder="Search users…"
@@ -120,7 +121,7 @@
         class="um-chip"
         *ngFor="let chip of statusChips"
         [class.um-chip--active]="statusFilter === chip.id"
-        [class.um-chip--rose]="chip.id === 'Locked'"
+        [class.um-chip--locked]="chip.id === 'Locked'"
         (click)="setStatusFilter(chip.id)">
         {{ chip.label }}<span class="um-chip__count"> ({{ chip.count }})</span>
       </button>
@@ -133,6 +134,7 @@
         <h2 class="um-panel__title">User accounts</h2>
         <p class="um-panel__intro">{{ filteredUsers.length }} of {{ users.length }} accounts</p>
       </div>
+      <button type="button" class="um-btn um-btn--primary um-btn--sm" (click)="openAddUser()">+ Add user</button>
     </div>
 
     <div *ngIf="loading" class="um-loading">
@@ -144,30 +146,28 @@
       <table class="um-table">
         <thead>
           <tr>
-            <th class="um-col-check"><input type="checkbox" disabled aria-label="Select all" /></th>
-            <th>USERNAME</th>
-            <th>NAME</th>
-            <th>ROLE</th>
-            <th>STATUS</th>
-            <th>CREATED</th>
-            <th>ACTIONS</th>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let user of filteredUsers">
-            <td class="um-col-check"><input type="checkbox" disabled [attr.aria-label]="'Select ' + user.username" /></td>
             <td><code class="um-username">{{ user.username }}</code></td>
             <td>
               <span class="um-name-cell">
                 <span class="um-name-text">{{ user.name }}</span>
                 <button
                   type="button"
-                  class="um-edit-name-btn"
+                  class="um-btn um-btn--ghost um-btn--sm"
                   *ngIf="canEditUserName(user)"
                   (click)="openEditNameModal(user)"
                   title="Edit name"
                   aria-label="Edit name for {{ user.username }}">
-                  ✏️
+                  Edit
                 </button>
               </span>
             </td>
@@ -184,26 +184,26 @@
             </td>
             <td>{{ formatCreated(user.createdAt) }}</td>
             <td class="um-actions-cell">
-              <button type="button" class="btn btn-action" (click)="openResetModal(user)" title="Reset password">
-                🔑 Reset
+              <button type="button" class="um-btn um-btn--outline um-btn--sm" (click)="openResetModal(user)" title="Reset password">
+                Reset
               </button>
               <button
                 type="button"
-                class="btn btn-action"
+                class="um-btn um-btn--ghost um-btn--sm"
                 *ngIf="canUnlockUser(user)"
                 (click)="unlockUser(user)"
                 [disabled]="unlockingUserId === user.id"
                 title="Unlock account">
-                {{ unlockingUserId === user.id ? '…' : '🔓 Unlock' }}
+                {{ unlockingUserId === user.id ? '…' : 'Unlock' }}
               </button>
               <button
                 type="button"
-                class="btn btn-action btn-action--danger"
+                class="um-btn um-btn--ghost um-btn--sm"
                 *ngIf="canDeleteUser(user)"
                 (click)="deleteUser(user)"
                 [disabled]="deletingUserId === user.id"
                 title="Delete account">
-                {{ deletingUserId === user.id ? '…' : '🗑️' }}
+                {{ deletingUserId === user.id ? '…' : 'Delete' }}
               </button>
             </td>
           </tr>
@@ -399,8 +399,8 @@
         </div>
       </div>
       <div class="um-modal-actions">
-        <button type="button" class="btn btn-secondary" (click)="closeEditNameModal()" [disabled]="savingName">Cancel</button>
-        <button type="submit" class="btn btn-primary" [disabled]="savingName">
+        <button type="button" class="um-btn um-btn--ghost" (click)="closeEditNameModal()" [disabled]="savingName">Cancel</button>
+        <button type="submit" class="um-btn um-btn--primary" [disabled]="savingName">
           {{ savingName ? 'Saving…' : 'Save name' }}
         </button>
       </div>
@@ -412,12 +412,13 @@
 <div class="um-modal-overlay" *ngIf="showResetModal && selectedUser" (click)="closeResetModal()">
   <div class="um-modal" (click)="$event.stopPropagation()">
     <div class="um-modal-header">
-      <h2>Reset Password</h2>
+      <div class="um-modal-header-text">
+        <h2>Reset Password</h2>
+        <p class="um-modal-subtitle">Reset password for <strong>{{ selectedUser.username }}</strong> ({{ getRoleLabel(selectedUser.role) }})</p>
+      </div>
       <button type="button" class="um-modal-close" (click)="closeResetModal()" aria-label="Close">×</button>
     </div>
     <div class="um-modal-body">
-      <p>Reset password for <strong>{{ selectedUser.username }}</strong> ({{ getRoleLabel(selectedUser.role) }}).</p>
-
       <div class="um-alert um-alert--error" *ngIf="error && showResetModal">{{ error }}</div>
 
       <div class="um-checkbox-row">
@@ -436,7 +437,7 @@
       <ng-container *ngIf="!resetGeneratePassword">
         <div class="um-form-row">
           <label>New password *</label>
-          <div class="um-password-field">
+          <div class="um-input-group">
             <input
               [type]="showResetPasswordNew ? 'text' : 'password'"
               [(ngModel)]="resetPassword"
@@ -447,18 +448,18 @@
               [disabled]="resettingPassword" />
             <button
               type="button"
-              class="um-password-toggle"
+              class="um-input-addon"
               (click)="toggleResetPasswordNewVisibility()"
               [attr.aria-label]="showResetPasswordNew ? 'Hide password' : 'Show password'"
               [disabled]="resettingPassword"
               tabindex="-1">
-              <span aria-hidden="true">{{ showResetPasswordNew ? '🙈' : '👁️' }}</span>
+              {{ showResetPasswordNew ? 'Hide' : 'Show' }}
             </button>
           </div>
         </div>
         <div class="um-form-row">
           <label>Confirm password *</label>
-          <div class="um-password-field">
+          <div class="um-input-group">
             <input
               [type]="showResetPasswordConfirm ? 'text' : 'password'"
               [(ngModel)]="resetPasswordConfirm"
@@ -468,19 +469,19 @@
               [disabled]="resettingPassword" />
             <button
               type="button"
-              class="um-password-toggle"
+              class="um-input-addon"
               (click)="toggleResetPasswordConfirmVisibility()"
               [attr.aria-label]="showResetPasswordConfirm ? 'Hide password' : 'Show password'"
               [disabled]="resettingPassword"
               tabindex="-1">
-              <span aria-hidden="true">{{ showResetPasswordConfirm ? '🙈' : '👁️' }}</span>
+              {{ showResetPasswordConfirm ? 'Hide' : 'Show' }}
             </button>
           </div>
         </div>
       </ng-container>
       <div class="um-modal-actions">
-        <button type="button" class="btn btn-secondary" (click)="closeResetModal()" [disabled]="resettingPassword">Cancel</button>
-        <button type="button" class="btn btn-primary" (click)="confirmResetPassword()" [disabled]="resettingPassword">
+        <button type="button" class="um-btn um-btn--ghost" (click)="closeResetModal()" [disabled]="resettingPassword">Cancel</button>
+        <button type="button" class="um-btn um-btn--primary" (click)="confirmResetPassword()" [disabled]="resettingPassword">
           {{ resettingPassword ? 'Resetting…' : 'Reset Password' }}
         </button>
       </div>

@@ -1,6 +1,5 @@
-/* Record Payment — form, modals, receipt */
+/* Record Payment — form, modals, receipt (classical) */
 
-/* Form */
 .rp-form { display: flex; flex-direction: column; gap: 0; }
 
 .rp-field { margin-bottom: 1.15rem; }
@@ -8,26 +7,29 @@
 .rp-field-label,
 .rp-field label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 0.45rem;
 }
 
-.rp-required { color: #dc2626; }
-.rp-optional { color: #94a3b8; font-weight: 400; }
+.rp-required { color: #92400e; }
+.rp-optional { color: #94a3b8; font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 .rp-input,
 .rp-textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
-  border: 2px solid #000000;
-  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   font-size: 0.95rem;
   box-sizing: border-box;
   background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
-  color: #000000;
+  color: #0f172a;
+  font-family: inherit;
 }
 
 .rp-input:focus,
@@ -35,7 +37,7 @@
 .rp-amount-input:focus {
   outline: none;
   border-color: #1e3a5f;
-  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .rp-textarea { resize: vertical; min-height: 72px; }
@@ -68,30 +70,41 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.75rem 0.5rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
 }
 
-.rp-amount-btn:hover { border-color: #cbd5e1; background: #ffffff; }
+.rp-amount-btn:hover {
+  border-color: #1e3a5f;
+  background: #f8fafc;
+}
 
 .rp-amount-btn--active {
   border-color: #1e3a5f;
-  background: #f1f5f9;
+  background: #1e3a5f;
+}
+
+.rp-amount-btn--active .rp-amount-btn__label,
+.rp-amount-btn--active .rp-amount-btn__value {
+  color: #fff;
 }
 
 .rp-amount-btn__label {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: #64748b;
 }
 
 .rp-amount-btn__value {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #1e3a5f;
   font-variant-numeric: tabular-nums;
 }
 
@@ -106,23 +119,24 @@
   align-items: center;
   padding: 0 1rem;
   background: #f1f5f9;
-  border: 2px solid #000000;
+  border: 1px solid #cbd5e1;
   border-right: none;
-  border-radius: 10px 0 0 10px;
+  border-radius: 8px 0 0 8px;
   font-weight: 700;
-  color: #000000;
+  color: #1e3a5f;
 }
 
 .rp-amount-input {
   flex: 1;
   padding: 0.75rem 1rem;
-  border: 2px solid #000000;
-  border-radius: 0 10px 10px 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 0 8px 8px 0;
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   min-width: 0;
-  color: #000000;
+  color: #0f172a;
+  font-family: inherit;
 }
 
 .rp-amount-hint { margin-top: 0.5rem; }
@@ -130,13 +144,20 @@
 .rp-badge {
   display: inline-block;
   padding: 0.25rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.rp-badge--success { background: #ecfdf5; color: #047857; }
-.rp-badge--warn { background: #fef3c7; color: #92400e; }
+.rp-badge--success {
+  background: rgba(30, 58, 95, 0.1);
+  color: #1e3a5f;
+}
+
+.rp-badge--warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #92400e;
+}
 
 /* Payment method chips */
 .rp-method-chips {
@@ -150,22 +171,26 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.9rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
-  font-size: 0.85rem;
-  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: #475569;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
 }
 
-.rp-method-chip:hover { border-color: #cbd5e1; }
+.rp-method-chip:hover {
+  border-color: #1e3a5f;
+  color: #1e3a5f;
+}
 
 .rp-method-chip--active {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #1e3a5f;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
 }
 
 .rp-form-actions {
@@ -197,11 +222,12 @@
 
 .rp-modal {
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
   width: 100%;
   max-width: 480px;
   overflow: hidden;
+  border-top: 3px solid #1e3a5f;
 }
 
 .rp-modal__head {
@@ -215,22 +241,26 @@
 
 .rp-modal__head h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #1e3a5f;
 }
 
 .rp-modal__close {
-  background: none;
-  border: none;
-  font-size: 1.35rem;
+  width: 32px;
+  height: 32px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1.25rem;
   line-height: 1;
-  color: #64748b;
+  color: #1e3a5f;
   cursor: pointer;
   padding: 0;
+  font-family: inherit;
 }
 
-.rp-modal__close:hover { color: #334155; }
+.rp-modal__close:hover { background: #f1f5f9; }
 
 .rp-modal__body { padding: 1.35rem; }
 
@@ -255,14 +285,15 @@
 
 .rp-confirm-row:last-child { border-bottom: none; }
 
-.rp-confirm-label { color: #64748b; font-size: 0.875rem; }
+.rp-confirm-label { color: #64748b; font-size: 0.875rem; font-weight: 600; }
 .rp-confirm-value { font-weight: 600; color: #1e293b; text-align: right; }
-.rp-confirm-value--highlight { color: #1e3a5f; font-size: 1.1rem; }
+.rp-confirm-value--highlight { color: #1e3a5f; font-size: 1.1rem; font-weight: 700; }
 
 .rp-balance-preview {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-left: 3px solid #f59e0b;
+  border-radius: 8px;
   padding: 0.85rem 1rem;
 }
 
@@ -274,7 +305,7 @@
   color: #475569;
 }
 
-.rp-preview-row--deduct span:last-child { color: #047857; font-weight: 600; }
+.rp-preview-row--deduct span:last-child { color: #1e3a5f; font-weight: 700; }
 
 .rp-preview-row--total {
   border-top: 2px solid #e2e8f0;
@@ -284,7 +315,7 @@
   color: #1e293b;
 }
 
-.rp-text-success { color: #047857 !important; }
+.rp-text-success { color: #1e3a5f !important; }
 
 /* Receipt fullscreen modal */
 .rp-modal-overlay--fullscreen {
@@ -310,13 +341,14 @@
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
   flex-shrink: 0;
+  border-top: 3px solid #1e3a5f;
 }
 
 .rp-receipt-head h3 {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #1e3a5f;
 }
 
 .rp-receipt-toolbar {

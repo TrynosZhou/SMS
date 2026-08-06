@@ -12,7 +12,7 @@
       <div class="rp-hero-left">
         <span class="rp-hero-icon" aria-hidden="true">💳</span>
         <div>
-          <span class="rp-hero-eyebrow">Finance</span>
+          <span class="rp-hero-eyebrow">Finance · Payments</span>
           <h1>Record Payment</h1>
           <p class="rp-hero-sub">Find a student, review their balance, post a payment, and print or download the receipt instantly.</p>
           <p class="rp-hero-meta" *ngIf="lastLoadedAt && studentData">
@@ -20,10 +20,14 @@
           </p>
         </div>
       </div>
-      <aside class="rp-hero-aside">
-        <span class="rp-hero-badge">{{ paymentForm.term || currentTerm || 'Current term' }}</span>
-        <span class="rp-hero-badge rp-hero-badge--muted" *ngIf="studentData">{{ studentData.studentNumber }}</span>
-      </aside>
+      <div class="rp-hero__actions">
+        <aside class="rp-hero-aside">
+          <span class="rp-hero-badge">{{ paymentForm.term || currentTerm || 'Current term' }}</span>
+          <span class="rp-hero-badge rp-hero-badge--muted" *ngIf="studentData">{{ studentData.studentNumber }}</span>
+        </aside>
+        <a routerLink="/finance/balance-enquiry" class="rp-hero-btn">Balance enquiry</a>
+        <a routerLink="/invoices" class="rp-hero-btn rp-hero-btn--solid">Billing</a>
+      </div>
     </div>
 
     <nav class="rp-cross-links" aria-label="Related finance pages">
@@ -34,23 +38,19 @@
     </nav>
 
     <div class="rp-hero-stats">
-      <article class="rp-stat" [class.rp-stat--rose]="studentData && studentData.balance > 0" [class.rp-stat--mint]="studentData && studentData.balance <= 0">
-        <span class="rp-stat__icon" aria-hidden="true">⚖</span>
+      <article class="rp-stat">
         <span class="rp-stat__value">{{ studentData ? currencySymbol + ' ' + formatCurrency(studentData.balance) : '—' }}</span>
         <span class="rp-stat__label">Tuition balance</span>
       </article>
-      <article class="rp-stat rp-stat--rose" *ngIf="studentData && studentData.uniformBalance > 0">
-        <span class="rp-stat__icon" aria-hidden="true">👕</span>
+      <article class="rp-stat" *ngIf="studentData && studentData.uniformBalance > 0">
         <span class="rp-stat__value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
         <span class="rp-stat__label">Uniform</span>
       </article>
       <article class="rp-stat">
-        <span class="rp-stat__icon" aria-hidden="true">📜</span>
         <span class="rp-stat__value">{{ studentData ? recentPayments.length : '—' }}</span>
         <span class="rp-stat__label">Recent payments</span>
       </article>
-      <article class="rp-stat rp-stat--mint">
-        <span class="rp-stat__icon" aria-hidden="true">💵</span>
+      <article class="rp-stat">
         <span class="rp-stat__value">{{ paymentForm.amount > 0 ? currencySymbol + ' ' + formatCurrency(paymentForm.amount) : '—' }}</span>
         <span class="rp-stat__label">Amount to post</span>
       </article>
@@ -65,7 +65,7 @@
 
     <div class="rp-search-row">
       <div class="rp-search-wrap">
-        <span class="rp-search-prefix" aria-hidden="true">🔍</span>
+        <span class="rp-search-prefix" aria-hidden="true">⌕</span>
         <input
           type="search"
           id="studentId"
@@ -327,7 +327,7 @@
           <div class="rp-form-actions">
             <button
               type="submit"
-              class="rp-btn rp-btn--success rp-btn--lg"
+              class="rp-btn rp-btn--primary rp-btn--lg"
               [disabled]="submitting || loading || !paymentForm.amount || paymentForm.amount <= 0">
               <span *ngIf="submitting" class="rp-spinner" aria-hidden="true"></span>
               {{ submitting ? 'Processing…' : 'Record payment' }}
@@ -338,6 +338,9 @@
               (click)="showReceiptPreview()"
               [disabled]="loadingReceipt || !hasReceiptAvailable()">
               View receipt
+            </button>
+            <button type="button" class="rp-btn rp-btn--ghost" (click)="clear()" [disabled]="loading || submitting">
+              Clear
             </button>
           </div>
         </form>
@@ -394,7 +397,7 @@
       </div>
       <div class="rp-modal__foot">
         <button type="button" class="rp-btn rp-btn--ghost" (click)="closeConfirmModal()">Cancel</button>
-        <button type="button" class="rp-btn rp-btn--success" (click)="recordPayment()" [disabled]="submitting">
+        <button type="button" class="rp-btn rp-btn--primary" (click)="recordPayment()" [disabled]="submitting">
           <span *ngIf="submitting" class="rp-spinner" aria-hidden="true"></span>
           {{ submitting ? 'Processing…' : 'Confirm payment' }}
         </button>
@@ -408,9 +411,9 @@
       <div class="rp-receipt-head">
         <h3>Payment receipt</h3>
         <div class="rp-receipt-toolbar" *ngIf="receiptPdfUrl && !loadingReceipt">
-          <button type="button" class="rp-btn rp-btn--outline rp-btn--sm" (click)="openReceiptInNewWindow()">New tab</button>
-          <button type="button" class="rp-btn rp-btn--primary rp-btn--sm" (click)="downloadReceipt()">Download</button>
-          <button type="button" class="rp-btn rp-btn--success rp-btn--sm" (click)="printReceipt()">Print</button>
+          <button type="button" class="rp-btn rp-btn--ghost rp-btn--sm" (click)="openReceiptInNewWindow()">New tab</button>
+          <button type="button" class="rp-btn rp-btn--outline rp-btn--sm" (click)="downloadReceipt()">Download</button>
+          <button type="button" class="rp-btn rp-btn--primary rp-btn--sm" (click)="printReceipt()">Print</button>
         </div>
         <button type="button" class="rp-modal__close" (click)="closeReceipt()" aria-label="Close">×</button>
       </div>

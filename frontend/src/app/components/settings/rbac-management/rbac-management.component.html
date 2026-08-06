@@ -133,7 +133,7 @@
                 <td>
                   <button
                     type="button"
-                    class="row-toggle"
+                    class="rbac-btn rbac-btn--outline rbac-btn--sm row-toggle"
                     [disabled]="isTeacherPeopleRecordsLocked(m.key)"
                     (click)="toggleModuleRow(m.key, !moduleRowAllOn(m.key))">
                     {{ moduleRowAllOn(m.key) ? 'Off' : 'On' }}
@@ -180,7 +180,7 @@
                   <td>
                     <button
                       type="button"
-                      class="row-toggle"
+                      class="rbac-btn rbac-btn--outline rbac-btn--sm row-toggle"
                       (click)="toggleFinancePageRow(p.key, !financePageRowAllOn(p.key))">
                       {{ financePageRowAllOn(p.key) ? 'Off' : 'On' }}
                     </button>
@@ -219,9 +219,9 @@
             </div>
             <p>{{ r.description || '—' }}</p>
             <div class="rbac-role-actions">
-              <button type="button" class="rbac-btn rbac-btn--sm" (click)="selectRole(r.id)">Edit permissions</button>
-              <button type="button" class="rbac-btn rbac-btn--sm rbac-btn--ghost" (click)="startEditRole(r)">Rename</button>
-              <button type="button" class="rbac-btn rbac-btn--sm rbac-btn--danger" *ngIf="!r.isSystem" (click)="deleteRole(r)">Delete</button>
+              <button type="button" class="rbac-btn rbac-btn--outline rbac-btn--sm" (click)="selectRole(r.id)">Edit permissions</button>
+              <button type="button" class="rbac-btn rbac-btn--ghost rbac-btn--sm" (click)="startEditRole(r)">Rename</button>
+              <button type="button" class="rbac-btn rbac-btn--ghost rbac-btn--sm" *ngIf="!r.isSystem" (click)="deleteRole(r)">Delete</button>
             </div>
           </ng-container>
           <ng-container *ngIf="editingRole?.id === r.id">

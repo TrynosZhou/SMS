@@ -1,48 +1,83 @@
 <div class="int-page">
-  <div class="int-toast" *ngIf="toastMessage" [class.int-toast--error]="toastType === 'error'" role="status">
-    <span>{{ toastType === 'success' ? '✓' : '⚠' }}</span>
-    {{ toastMessage }}
+  <div class="int-toast-stack" *ngIf="toastMessage">
+    <div class="int-toast" [class.int-toast--error]="toastType === 'error'" role="status">
+      <span>{{ toastMessage }}</span>
+      <button type="button" class="int-toast__dismiss" (click)="toastMessage = ''" aria-label="Dismiss">×</button>
+    </div>
   </div>
 
   <header class="int-hero">
     <div class="int-hero__main">
-      <span class="int-hero__eyebrow">System Administration</span>
-      <h1>Integrations</h1>
-      <p>Connect payment gateways and mobile money APIs so parents and students can pay school fees online.</p>
+      <div class="int-hero-left">
+        <span class="int-hero-icon" aria-hidden="true">◈</span>
+        <div>
+          <span class="int-hero-eyebrow">System Admin</span>
+          <h1>Integrations</h1>
+          <p class="int-hero-sub">Connect payment gateways and mobile money APIs so parents and students can pay school fees online.</p>
+        </div>
+      </div>
+      <div class="int-hero__actions">
+        <aside class="int-hero-aside">
+          <span class="int-hero-badge">{{ stats.total }} connected</span>
+          <span class="int-hero-badge int-hero-badge--muted" *ngIf="stats.active">{{ stats.active }} active</span>
+        </aside>
+        <button type="button" class="int-hero-refresh" (click)="loadIntegrations()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a routerLink="/system-settings" class="int-hero-btn">Settings</a>
+        <a routerLink="/user-management" class="int-hero-btn int-hero-btn--solid">User management</a>
+      </div>
     </div>
-    <div class="int-hero__badge" aria-hidden="true">
-      <span class="int-hero__badge-icon">🔗</span>
-      <span class="int-hero__badge-text">API Hub</span>
+
+    <nav class="int-cross-links" aria-label="Related admin pages">
+      <a routerLink="/system-settings">System settings</a>
+      <a routerLink="/user-management">User management</a>
+      <a routerLink="/user-log">System activity</a>
+    </nav>
+
+    <div class="int-hero-stats" *ngIf="!loading">
+      <article class="int-stat">
+        <span class="int-stat__value">{{ stats.total }}</span>
+        <span class="int-stat__label">Connected</span>
+      </article>
+      <article class="int-stat">
+        <span class="int-stat__value">{{ stats.active }}</span>
+        <span class="int-stat__label">Active</span>
+      </article>
+      <article class="int-stat">
+        <span class="int-stat__value">{{ stats.inactive }}</span>
+        <span class="int-stat__label">Inactive</span>
+      </article>
+      <article class="int-stat">
+        <span class="int-stat__value">{{ stats.errors }}</span>
+        <span class="int-stat__label">Errors</span>
+      </article>
+    </div>
+    <div class="int-hero-stats int-hero-stats--skeleton" *ngIf="loading" aria-busy="true">
+      <div class="int-skeleton" *ngFor="let _ of [1,2,3,4]"></div>
+    </div>
+
+    <div class="int-steps" aria-label="Progress">
+      <span class="int-step int-step--active" [class.int-step--done]="connectedIntegrations.length > 0">
+        <strong>1</strong> Choose provider
+      </span>
+      <span class="int-step-arrow">→</span>
+      <span class="int-step" [class.int-step--active]="showModal || connectedIntegrations.length > 0">
+        <strong>2</strong> Configure credentials
+      </span>
+      <span class="int-step-arrow">→</span>
+      <span class="int-step" [class.int-step--active]="stats.active > 0">
+        <strong>3</strong> Enable payments
+      </span>
     </div>
   </header>
 
-  <div class="int-stats" *ngIf="!loading">
-    <article class="int-stat int-stat--total">
-      <span class="int-stat__value">{{ stats.total }}</span>
-      <span class="int-stat__label">Connected</span>
-    </article>
-    <article class="int-stat int-stat--active">
-      <span class="int-stat__value">{{ stats.active }}</span>
-      <span class="int-stat__label">Active</span>
-    </article>
-    <article class="int-stat int-stat--inactive">
-      <span class="int-stat__value">{{ stats.inactive }}</span>
-      <span class="int-stat__label">Inactive</span>
-    </article>
-    <article class="int-stat int-stat--error">
-      <span class="int-stat__value">{{ stats.errors }}</span>
-      <span class="int-stat__label">Errors</span>
-    </article>
-  </div>
-
-  <div class="int-stats int-stats--skel" *ngIf="loading" aria-busy="true">
-    <div class="int-stat-skel" *ngFor="let _ of [1,2,3,4]"></div>
-  </div>
-
-  <section class="int-connected" *ngIf="!loading && connectedIntegrations.length > 0">
-    <div class="int-section-head">
-      <h2>Your connections</h2>
-      <p>Manage credentials, test connectivity, and enable live payments.</p>
+  <section class="int-panel int-panel--connected" *ngIf="!loading && connectedIntegrations.length > 0">
+    <div class="int-panel__head">
+      <div>
+        <h2 class="int-panel__title">Your connections</h2>
+        <p class="int-panel__intro">Manage credentials, test connectivity, and enable live payments.</p>
+      </div>
     </div>
     <div class="int-connected-list">
       <article class="int-connected-card" *ngFor="let item of connectedIntegrations">
@@ -68,33 +103,35 @@
           </div>
         </div>
         <div class="int-connected-card__actions">
-          <button type="button" class="int-btn int-btn--ghost" (click)="openEdit(item)">Configure</button>
-          <button type="button" class="int-btn int-btn--ghost" (click)="testConnection(item)" [disabled]="testing">
+          <button type="button" class="int-btn int-btn--outline int-btn--sm" (click)="openEdit(item)">Configure</button>
+          <button type="button" class="int-btn int-btn--ghost int-btn--sm" (click)="testConnection(item)" [disabled]="testing">
             {{ testing ? 'Testing…' : 'Test' }}
           </button>
           <button
             type="button"
-            class="int-btn"
-            [class.int-btn--success]="item.status !== 'active'"
-            [class.int-btn--warn]="item.status === 'active'"
+            class="int-btn int-btn--sm"
+            [class.int-btn--primary]="item.status !== 'active'"
+            [class.int-btn--outline]="item.status === 'active'"
             (click)="toggleIntegrationStatus(item)">
             {{ item.status === 'active' ? 'Disable' : 'Enable' }}
           </button>
-          <button type="button" class="int-btn int-btn--danger-ghost" (click)="removeIntegration(item.id)">Disconnect</button>
+          <button type="button" class="int-btn int-btn--ghost int-btn--sm" (click)="removeIntegration(item.id)">Disconnect</button>
         </div>
       </article>
     </div>
   </section>
 
-  <section class="int-catalog">
-    <div class="int-section-head">
-      <h2>Available integrations</h2>
-      <p>Select a provider to connect PayPal, PayNow, InnBucks, EcoCash, One Money, Visa, and more.</p>
+  <section class="int-panel int-panel--catalog">
+    <div class="int-panel__head">
+      <div>
+        <h2 class="int-panel__title">Available integrations</h2>
+        <p class="int-panel__intro">Select a provider to connect PayPal, PayNow, InnBucks, EcoCash, One Money, Visa, and more.</p>
+      </div>
     </div>
 
     <div class="int-toolbar">
       <div class="int-search-wrap">
-        <span class="int-search-icon" aria-hidden="true">🔍</span>
+        <span class="int-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
           class="int-search"
@@ -111,7 +148,6 @@
           (click)="setCategory(cat.id)"
           role="tab"
           [attr.aria-selected]="activeCategory === cat.id">
-          <span aria-hidden="true">{{ cat.icon }}</span>
           {{ cat.label }}
         </button>
       </div>
@@ -132,9 +168,8 @@
           <p>{{ provider.description }}</p>
         </div>
         <div class="int-provider-card__footer">
-          <span class="int-connected-badge" *ngIf="isConnected(provider.id)">
-            ✓ Connected
-          </span>
+          <span class="int-connected-badge" *ngIf="isConnected(provider.id)">Connected</span>
+          <span *ngIf="!isConnected(provider.id)"></span>
           <button
             type="button"
             class="int-btn int-btn--primary"
@@ -154,8 +189,9 @@
     </div>
 
     <div class="int-empty-filter" *ngIf="!loading && filteredProviders.length === 0">
-      <span>🔍</span>
+      <span class="int-empty__icon" aria-hidden="true">◈</span>
       <p>No integrations match your search. Try another category or keyword.</p>
+      <button type="button" class="int-btn int-btn--outline" (click)="searchQuery = ''; setCategory('all')">Clear filters</button>
     </div>
   </section>
 

@@ -1,7 +1,7 @@
 <div class="fc-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="fc-toast-stack" *ngIf="error">
-    <div class="fc-toast fc-toast--error" *ngIf="error" role="alert">
+  <div class="fc-toast-stack" *ngIf="error">
+    <div class="fc-toast fc-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="fc-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,9 +10,9 @@
   <header class="fc-hero">
     <div class="fc-hero__main">
       <div class="fc-hero-left">
-        <span class="fc-hero-icon" aria-hidden="true">💵</span>
+        <span class="fc-hero-icon" aria-hidden="true">◈</span>
         <div>
-          <span class="fc-hero-eyebrow">Financial Reports</span>
+          <span class="fc-hero-eyebrow">Finance · Reports</span>
           <h1>Fees Collection</h1>
           <p class="fc-hero-sub">
             Track payments recorded for {{ term || 'the selected term' }} — filter by method, search receipts, and export.
@@ -22,24 +22,33 @@
           </p>
         </div>
       </div>
-      <div class="fc-hero__actions" *ngIf="hasData">
+      <div class="fc-hero__actions">
         <button type="button" class="fc-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="fc-hero-btn" (click)="toggleViewMode()" title="Toggle view">
-          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        <button type="button" class="fc-hero-btn" *ngIf="hasData" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? 'Cards view' : 'Table view' }}
         </button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedItems.length || loading">CSV</button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="previewStatement()" [disabled]="loadingPdf || !displayedItems.length || loading">Preview</button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="downloadStatement()" [disabled]="downloadingPdf || !displayedItems.length || loading">
-          {{ downloadingPdf ? '…' : 'Statement' }}
+        <button type="button" class="fc-hero-btn" *ngIf="hasData" (click)="exportCsv()" [disabled]="!displayedItems.length || loading">CSV</button>
+        <button type="button" class="fc-hero-btn" *ngIf="hasData" (click)="previewStatement()" [disabled]="loadingPdf || !displayedItems.length || loading">Preview</button>
+        <button type="button" class="fc-hero-btn" *ngIf="hasData" (click)="printReport()" [disabled]="loadingPdf || !displayedItems.length || loading">Print</button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--solid" *ngIf="hasData" (click)="downloadStatement()" [disabled]="downloadingPdf || !displayedItems.length || loading">
+          {{ downloadingPdf ? 'Generating…' : 'Statement' }}
         </button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="printReport()" [disabled]="loadingPdf || !displayedItems.length || loading">Print</button>
+        <a routerLink="/payments/record" class="fc-hero-btn fc-hero-btn--solid" *ngIf="!hasData">Record payment</a>
       </div>
     </div>
 
+    <nav class="fc-cross-links" aria-label="Related finance pages">
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/balance-enquiry">Balance enquiry</a>
+      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+      <a routerLink="/finance/financial-books">Financial books</a>
+      <a routerLink="/finance/audit">Audit</a>
+    </nav>
+
     <div class="fc-hero-stats" *ngIf="hasData && !loading">
-      <article class="fc-stat fc-stat--mint">
+      <article class="fc-stat">
         <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalCollected) }}</span>
         <span class="fc-stat__label">Term collected</span>
       </article>
@@ -51,7 +60,7 @@
         <span class="fc-stat__value">{{ dashboardStats.transactions }}</span>
         <span class="fc-stat__label">Transactions</span>
       </article>
-      <article class="fc-stat fc-stat--amber">
+      <article class="fc-stat">
         <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.average) }}</span>
         <span class="fc-stat__label">Avg payment</span>
       </article>
@@ -59,7 +68,7 @@
         <span class="fc-stat__value">{{ dashboardStats.collectionRate }}%</span>
         <span class="fc-stat__label">Fully paid</span>
       </article>
-      <article class="fc-stat fc-stat--rose">
+      <article class="fc-stat">
         <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.outstanding) }}</span>
         <span class="fc-stat__label">Outstanding</span>
       </article>
@@ -86,7 +95,7 @@
 
   <section class="fc-panel">
     <div class="fc-panel__head">
-      <h2 class="fc-panel__title">Filters & search</h2>
+      <h2 class="fc-panel__title">Filters &amp; search</h2>
       <p class="fc-panel__intro">Choose a term and payment method, then search students, receipts, or invoices.</p>
     </div>
 
@@ -99,7 +108,7 @@
       </div>
 
       <div class="fc-search-wrap">
-        <span class="fc-search-icon" aria-hidden="true">🔍</span>
+        <span class="fc-search-icon" aria-hidden="true">⌕</span>
         <input
           #fcSearch
           type="search"
@@ -144,13 +153,19 @@
         <div class="fc-skel fc-skel-md"></div>
         <div class="fc-skel fc-skel-sm"></div>
       </div>
-      <p style="text-align:center;color:#64748b;margin:0">Loading fees collection…</p>
+      <p class="fc-loading-text">Loading fees collection…</p>
     </div>
   </section>
 
   <section class="fc-panel fc-table-panel" *ngIf="!loading && data">
     <div class="fc-table-toolbar">
       <h3>Payment transactions ({{ displayedItems.length }})</h3>
+      <div class="fc-table-toolbar__actions">
+        <button type="button" class="fc-btn fc-btn--ghost fc-btn--sm" (click)="toggleViewMode()">
+          {{ viewMode === 'table' ? 'Cards view' : 'Table view' }}
+        </button>
+        <button type="button" class="fc-btn fc-btn--outline fc-btn--sm" (click)="exportCsv()" [disabled]="!displayedItems.length">CSV</button>
+      </div>
     </div>
 
     <div class="fc-table-scroll" *ngIf="viewMode === 'table' && displayedItems.length > 0">
@@ -187,11 +202,11 @@
         </thead>
         <tbody>
           <tr *ngFor="let r of displayedItems; trackBy: trackByReceipt">
-            <td>{{ r.receiptNumber || '—' }}</td>
+            <td><span class="fc-mono">{{ r.receiptNumber || '—' }}</span></td>
             <td>{{ r.paymentDate | date:'mediumDate' }}</td>
             <td>
               <strong>{{ r.studentName }}</strong>
-              <span *ngIf="r.studentNumber" style="color:#64748b;font-size:0.8rem"> · {{ r.studentNumber }}</span>
+              <span class="fc-student-no" *ngIf="r.studentNumber"> · {{ r.studentNumber }}</span>
             </td>
             <td>{{ r.invoiceNumber || '—' }}<span *ngIf="r.invoiceTerm"> · {{ r.invoiceTerm }}</span></td>
             <td class="fc-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
@@ -216,16 +231,15 @@
     </div>
 
     <div class="fc-empty" *ngIf="(data?.items?.length || 0) > 0 && displayedItems.length === 0">
-      <span class="fc-empty-icon" aria-hidden="true">🔎</span>
       <p class="fc-empty-title">No matching transactions</p>
       <p class="fc-empty-text">Try another search term or choose a different payment method.</p>
-      <button type="button" class="fc-btn-reset" (click)="resetFilters()">Reset filters</button>
+      <button type="button" class="fc-btn fc-btn--primary" (click)="resetFilters()">Reset filters</button>
     </div>
 
     <div class="fc-empty" *ngIf="(data?.items?.length || 0) === 0">
-      <span class="fc-empty-icon" aria-hidden="true">📭</span>
       <p class="fc-empty-title">No payments for this term</p>
       <p class="fc-empty-text">Transactions will appear here as soon as receipts are recorded.</p>
+      <a routerLink="/payments/record" class="fc-btn fc-btn--primary">Record payment</a>
     </div>
   </section>
 </div>

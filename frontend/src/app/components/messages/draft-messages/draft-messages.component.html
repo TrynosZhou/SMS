@@ -1,7 +1,7 @@
 <div class="md-page">
   <span class="sms-success-bridge" *ngIf="successMessage" [smsSuccessConfirm]="successMessage" (smsSuccessConfirmClear)="successMessage = ''" aria-hidden="true"></span>
-<div class="md-toast-stack" *ngIf="error">
-    <div class="md-toast md-toast--error" *ngIf="error" role="alert">
+  <div class="md-toast-stack" *ngIf="error">
+    <div class="md-toast md-toast--error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="md-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
@@ -10,7 +10,7 @@
   <header class="md-hero">
     <div class="md-hero__main">
       <div class="md-hero-left">
-        <span class="md-hero-icon" aria-hidden="true">📝</span>
+        <span class="md-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="md-hero-eyebrow">Communication</span>
           <h1>
@@ -20,15 +20,15 @@
           <p class="md-hero-sub">Unsent and failed messages — review, edit, resend, or delete.</p>
         </div>
       </div>
-      <aside class="md-hero-aside">
-        <span class="md-hero-badge">{{ filtered.length }} shown</span>
-        <span class="md-hero-badge md-hero-badge--failed" *ngIf="getFailedCount() > 0">{{ getFailedCount() }} failed</span>
-      </aside>
       <div class="md-hero__actions">
+        <aside class="md-hero-aside">
+          <span class="md-hero-badge">{{ filtered.length }} shown</span>
+          <span class="md-hero-badge md-hero-badge--failed" *ngIf="getFailedCount() > 0">{{ getFailedCount() }} failed</span>
+        </aside>
         <button type="button" class="md-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <a routerLink="/messages/send" class="md-hero-btn md-hero-btn--accent">✉️ New message</a>
+        <a routerLink="/messages/send" class="md-hero-btn md-hero-btn--solid">New message</a>
       </div>
     </div>
 
@@ -41,22 +41,18 @@
 
     <div class="md-hero-stats" *ngIf="!loading">
       <article class="md-stat">
-        <span class="md-stat__icon" aria-hidden="true">📄</span>
         <span class="md-stat__value">{{ messages.length }}</span>
         <span class="md-stat__label">Total</span>
       </article>
-      <article class="md-stat md-stat--rose">
-        <span class="md-stat__icon" aria-hidden="true">!</span>
+      <article class="md-stat">
         <span class="md-stat__value">{{ getFailedCount() }}</span>
         <span class="md-stat__label">Failed</span>
       </article>
-      <article class="md-stat md-stat--amber">
-        <span class="md-stat__icon" aria-hidden="true">○</span>
+      <article class="md-stat">
         <span class="md-stat__value">{{ getPendingCount() }}</span>
         <span class="md-stat__label">Pending</span>
       </article>
-      <article class="md-stat md-stat--mint">
-        <span class="md-stat__icon" aria-hidden="true">📅</span>
+      <article class="md-stat">
         <span class="md-stat__value">{{ getTodayCount() }}</span>
         <span class="md-stat__label">Today</span>
       </article>
@@ -77,8 +73,8 @@
   <section class="md-bulk-bar" *ngIf="selectedIds.size > 0">
     <span class="md-bulk-bar__info"><strong>{{ selectedIds.size }}</strong> selected</span>
     <div class="md-bulk-bar__actions">
-      <button type="button" class="md-btn md-btn--outline md-btn--sm" (click)="bulkResend()" [disabled]="loading">📤 Resend all</button>
-      <button type="button" class="md-btn md-btn--danger md-btn--sm" (click)="bulkDelete()" [disabled]="loading">🗑️ Delete all</button>
+      <button type="button" class="md-btn md-btn--outline md-btn--sm" (click)="bulkResend()" [disabled]="loading">Resend all</button>
+      <button type="button" class="md-btn md-btn--primary md-btn--sm" (click)="bulkDelete()" [disabled]="loading">Delete all</button>
       <button type="button" class="md-btn md-btn--ghost md-btn--sm" (click)="clearSelection()">Clear</button>
     </div>
   </section>
@@ -91,7 +87,7 @@
 
     <div class="md-filter-row">
       <div class="md-search-wrap">
-        <span class="md-search-icon" aria-hidden="true">🔍</span>
+        <span class="md-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
           class="md-search-input"
@@ -112,7 +108,7 @@
       </div>
 
       <button type="button" class="md-btn md-btn--ghost md-btn--sm" (click)="toggleSort()">
-        {{ sortDesc ? '↓ Newest first' : '↑ Oldest first' }}
+        {{ sortDesc ? 'Newest first' : 'Oldest first' }}
       </button>
       <button type="button" class="md-btn md-btn--ghost md-btn--sm" (click)="query = ''; statusFilter = 'all'; applyFilter()" [disabled]="!hasActiveFilters()">Clear filters</button>
     </div>
@@ -134,12 +130,11 @@
       </div>
 
       <div class="md-empty" *ngIf="!loading && filtered.length === 0">
-        <span class="md-empty-icon" aria-hidden="true">📄</span>
         <h3>{{ hasActiveFilters() ? 'No matching drafts' : 'No drafts' }}</h3>
         <p *ngIf="!hasActiveFilters()">All your messages have been sent successfully.</p>
         <p *ngIf="hasActiveFilters()">Try adjusting your search or status filters.</p>
         <button type="button" class="md-btn md-btn--outline" (click)="query = ''; statusFilter = 'all'; applyFilter()" *ngIf="hasActiveFilters()">Clear filters</button>
-        <a routerLink="/messages/send" class="md-btn md-btn--primary" *ngIf="!hasActiveFilters()">✉️ Compose message</a>
+        <a routerLink="/messages/send" class="md-btn md-btn--primary" *ngIf="!hasActiveFilters()">Compose message</a>
       </div>
 
       <div class="md-draft-list" *ngIf="!loading && filtered.length > 0">
@@ -164,9 +159,7 @@
               </div>
               <div class="md-item-subject">{{ m.subject || '(No subject)' }}</div>
               <div class="md-item-preview">{{ getPreview(m.message) || '—' }}</div>
-              <div class="md-item-reason" *ngIf="m.failedReason">
-                <span aria-hidden="true">⚠️</span> {{ m.failedReason }}
-              </div>
+              <div class="md-item-reason" *ngIf="m.failedReason">{{ m.failedReason }}</div>
             </div>
           </div>
         </article>
@@ -175,17 +168,17 @@
 
     <section class="md-panel md-panel--detail" *ngIf="selected">
       <div class="md-detail-head">
-        <button type="button" class="md-btn md-btn--ghost md-btn--sm md-back-btn" (click)="selected = null" title="Back to list">← Back</button>
+        <button type="button" class="md-btn md-btn--ghost md-btn--sm md-back-btn" (click)="selected = null" title="Back to list">Back</button>
         <div class="md-detail-actions">
-          <button type="button" class="md-icon-btn" (click)="editDraft(selected)" title="Edit">✏️</button>
-          <button type="button" class="md-icon-btn" (click)="copyDraft(selected)" title="Copy">📋</button>
-          <button type="button" class="md-icon-btn md-icon-btn--danger" (click)="confirmDelete(selected)" title="Delete">🗑️</button>
+          <button type="button" class="md-btn md-btn--ghost md-btn--sm" (click)="editDraft(selected)" title="Edit">Edit</button>
+          <button type="button" class="md-btn md-btn--ghost md-btn--sm" (click)="copyDraft(selected)" title="Copy">Copy</button>
+          <button type="button" class="md-btn md-btn--outline md-btn--sm" (click)="confirmDelete(selected)" title="Delete">Delete</button>
         </div>
       </div>
 
       <div class="md-detail-body">
         <span class="md-status-pill" [class.md-status-pill--failed]="selected.failedReason" [class.md-status-pill--pending]="!selected.failedReason">
-          {{ selected.failedReason ? '⚠️ Failed' : '○ Pending' }}
+          {{ selected.failedReason ? 'Failed' : 'Pending' }}
         </span>
 
         <h2 class="md-detail-subject">{{ selected.subject || '(No subject)' }}</h2>
@@ -209,23 +202,22 @@
         <div class="md-detail-message">{{ selected.message }}</div>
 
         <div class="md-attachments" *ngIf="selected.attachments?.length">
-          <h4>📎 Attachments</h4>
+          <h4>Attachments</h4>
           <div class="md-attachment-list">
-            <span class="md-attachment-chip" *ngFor="let a of selected.attachments">📄 {{ a.name || 'Attachment' }}</span>
+            <span class="md-attachment-chip" *ngFor="let a of selected.attachments">{{ a.name || 'Attachment' }}</span>
           </div>
         </div>
       </div>
 
       <div class="md-detail-foot">
-        <button type="button" class="md-btn md-btn--outline" (click)="editDraft(selected)">✏️ Edit</button>
+        <button type="button" class="md-btn md-btn--outline" (click)="editDraft(selected)">Edit</button>
         <button type="button" class="md-btn md-btn--primary" (click)="resend(selected)" [disabled]="resending">
-          {{ resending ? 'Sending…' : '📤 Resend now' }}
+          {{ resending ? 'Sending…' : 'Resend now' }}
         </button>
       </div>
     </section>
 
     <section class="md-panel md-panel--empty" *ngIf="!selected">
-      <span class="md-empty-icon" aria-hidden="true">📝</span>
       <h3>Select a draft</h3>
       <p>Choose a draft from the list to review, edit, or resend.</p>
     </section>
@@ -247,7 +239,7 @@
       </div>
       <div class="md-modal__foot">
         <button type="button" class="md-btn md-btn--ghost" (click)="showDeleteConfirm = false">Cancel</button>
-        <button type="button" class="md-btn md-btn--danger" (click)="deleteDraft()">Delete</button>
+        <button type="button" class="md-btn md-btn--primary" (click)="deleteDraft()">Delete</button>
       </div>
     </div>
   </div>

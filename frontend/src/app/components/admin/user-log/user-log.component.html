@@ -9,33 +9,33 @@
   <header class="ul-hero">
     <div class="ul-hero__main">
       <div class="ul-hero-left">
-        <span class="ul-hero-icon" aria-hidden="true">🕐</span>
+        <span class="ul-hero-icon" aria-hidden="true">◈</span>
         <div>
           <span class="ul-hero-eyebrow">System Admin</span>
           <h1>Activity Log</h1>
           <p class="ul-hero-sub">Track staff login sessions, session duration, modules accessed, and sign-out activity across the system.</p>
         </div>
       </div>
-      <aside class="ul-hero-aside">
-        <span class="ul-hero-badge">{{ total }} {{ total === 1 ? 'event' : 'events' }}</span>
-        <span class="ul-hero-badge ul-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
-      </aside>
       <div class="ul-hero__actions">
+        <aside class="ul-hero-aside">
+          <span class="ul-hero-badge">{{ total }} {{ total === 1 ? 'event' : 'events' }}</span>
+          <span class="ul-hero-badge ul-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+        </aside>
         <button type="button" class="ul-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="exportCSV()" [disabled]="!sessions.length">CSV</button>
-        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="previewPdf()" [disabled]="!sessions.length || previewLoading">
+        <button type="button" class="ul-hero-btn" (click)="exportCSV()" [disabled]="!sessions.length">CSV</button>
+        <button type="button" class="ul-hero-btn" (click)="previewPdf()" [disabled]="!sessions.length || previewLoading">
           {{ previewLoading ? 'Loading…' : 'Preview' }}
         </button>
-        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="downloadServerPDF()" [disabled]="!sessions.length">PDF</button>
+        <button type="button" class="ul-hero-btn ul-hero-btn--solid" (click)="downloadServerPDF()" [disabled]="!sessions.length">PDF</button>
       </div>
     </div>
 
     <nav class="ul-cross-links" aria-label="Related admin pages">
       <a routerLink="/user-management">User management</a>
       <a routerLink="/admin/manage-accounts">Advanced accounts</a>
-      <a routerLink="/settings">Settings</a>
+      <a routerLink="/system-settings">Settings</a>
     </nav>
 
     <div class="ul-hero-stats" *ngIf="!loading">
@@ -47,17 +47,31 @@
         <span class="ul-stat__value">{{ dashboardStats.showing }}</span>
         <span class="ul-stat__label">This page</span>
       </article>
-      <article class="ul-stat ul-stat--mint">
+      <article class="ul-stat">
         <span class="ul-stat__value">{{ dashboardStats.active }}</span>
         <span class="ul-stat__label">Active sessions</span>
       </article>
-      <article class="ul-stat ul-stat--slate">
+      <article class="ul-stat">
         <span class="ul-stat__value">{{ dashboardStats.loggedOut }}</span>
         <span class="ul-stat__label">Logged out</span>
       </article>
     </div>
     <div class="ul-hero-stats ul-hero-stats--skeleton" *ngIf="loading">
       <div class="ul-skeleton" *ngFor="let i of [1,2,3,4]"></div>
+    </div>
+
+    <div class="ul-steps" aria-label="Progress">
+      <span class="ul-step" [class.ul-step--active]="true" [class.ul-step--done]="hasActiveFilters() || sessions.length > 0">
+        <strong>1</strong> Filter sessions
+      </span>
+      <span class="ul-step-arrow">→</span>
+      <span class="ul-step" [class.ul-step--active]="sessions.length > 0 || !loading">
+        <strong>2</strong> Review activity
+      </span>
+      <span class="ul-step-arrow">→</span>
+      <span class="ul-step" [class.ul-step--active]="!!pdfPreviewBlobUrl || sessions.length > 0">
+        <strong>3</strong> Export report
+      </span>
     </div>
   </header>
 
@@ -67,12 +81,12 @@
         <h2 class="ul-panel__title">Search &amp; filters</h2>
         <p class="ul-panel__intro">Narrow sessions by status, role, user, or date range.</p>
       </div>
-      <button type="button" class="ul-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
     <div class="ul-filters-row">
       <div class="ul-search-wrap">
-        <span class="ul-search-icon" aria-hidden="true">🔍</span>
+        <span class="ul-search-icon" aria-hidden="true">⌕</span>
         <input
           type="search"
           id="ul-performed-by"
@@ -155,7 +169,7 @@
 
     <div class="ul-table-zone" *ngIf="!loading && sessions.length === 0">
       <div class="ul-empty">
-        <span class="ul-empty__icon" aria-hidden="true">📋</span>
+        <span class="ul-empty__icon" aria-hidden="true">◈</span>
         <h3>No sessions found</h3>
         <p>Try adjusting your filters or date range.</p>
         <button type="button" class="ul-btn ul-btn--outline" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
@@ -202,7 +216,7 @@
                   <span class="ul-user__avatar">{{ getInitials(s.username || s.userId) }}</span>
                   <div class="ul-user__meta">
                     <span class="ul-user__name">{{ s.username || s.userId || '—' }}</span>
-                    <button type="button" class="ul-copy-btn" (click)="copy(s.username || s.userId)" title="Copy username">Copy</button>
+                    <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" (click)="copy(s.username || s.userId)" title="Copy username">Copy</button>
                   </div>
                 </div>
               </td>
@@ -227,7 +241,7 @@
               <td>
                 <div class="ul-session-id" *ngIf="s.sessionId; else noSession">
                   <code>{{ truncateSessionId(s.sessionId) }}</code>
-                  <button type="button" class="ul-copy-btn" (click)="copy(s.sessionId)" title="Copy session ID">Copy</button>
+                  <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" (click)="copy(s.sessionId)" title="Copy session ID">Copy</button>
                 </div>
                 <ng-template #noSession>—</ng-template>
               </td>
@@ -238,9 +252,9 @@
       </div>
 
       <div class="ul-pagination" *ngIf="total > limit">
-        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(false)" [disabled]="page <= 1">← Previous</button>
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(false)" [disabled]="page <= 1">Previous</button>
         <span class="ul-pagination__info">Page {{ page }} of {{ totalPages }}</span>
-        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(true)" [disabled]="page >= totalPages">Next →</button>
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(true)" [disabled]="page >= totalPages">Next</button>
       </div>
     </div>
   </section>
@@ -251,8 +265,8 @@
     <div class="ul-pdf-modal__header">
       <span class="ul-pdf-modal__title">Activity log report preview</span>
       <div class="ul-pdf-modal__actions">
-        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="downloadFromPreview()">Download PDF</button>
-        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm ul-btn--close" (click)="closePdfPreview()">Close</button>
+        <button type="button" class="ul-btn ul-btn--primary ul-btn--sm" (click)="downloadFromPreview()">Download PDF</button>
+        <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" (click)="closePdfPreview()">Close</button>
       </div>
     </div>
     <div class="ul-pdf-modal__body">

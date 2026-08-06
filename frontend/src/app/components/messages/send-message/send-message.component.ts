@@ -24,35 +24,35 @@ export class SendMessageComponent implements OnInit, OnDestroy {
       name: 'Fees Reminder', 
       subject: 'Fees Reminder', 
       body: 'Dear Parent,\n\nThis is a friendly reminder that school fees are due. Kindly settle the outstanding balance at your earliest convenience.\n\nThank you.',
-      icon: '💰',
+      icon: 'Fee',
       preview: 'Reminder about outstanding fees...'
     },
     { 
       name: 'General Notice', 
       subject: 'School Notice', 
       body: 'Dear Parent,\n\nPlease note the following notice from the school:\n\n[Enter notice details here]\n\nRegards.',
-      icon: '📢',
+      icon: 'Note',
       preview: 'Important school announcement...'
     },
     { 
       name: 'Receipt Attached', 
       subject: 'Payment Receipt', 
       body: 'Dear Parent,\n\nPlease find attached your payment receipt for your records.\n\nThank you.',
-      icon: '🧾',
+      icon: 'Rcpt',
       preview: 'Payment receipt notification...'
     },
     { 
       name: 'Event Invitation', 
       subject: 'School Event Invitation', 
       body: 'Dear Parent,\n\nYou are cordially invited to attend:\n\nEvent: [Event Name]\nDate: [Date]\nTime: [Time]\nVenue: [Venue]\n\nWe look forward to seeing you there.\n\nRegards.',
-      icon: '🎉',
+      icon: 'Event',
       preview: 'Invitation to school event...'
     },
     { 
       name: 'Academic Update', 
       subject: 'Academic Progress Update', 
       body: 'Dear Parent,\n\nWe would like to update you on your child\'s academic progress.\n\n[Enter details here]\n\nPlease feel free to contact us for any concerns.\n\nRegards.',
-      icon: '📚',
+      icon: 'Acad',
       preview: 'Update on student progress...'
     }
   ];
@@ -267,18 +267,7 @@ export class SendMessageComponent implements OnInit, OnDestroy {
 
   getFileIcon(filename: string): string {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
-    const icons: { [key: string]: string } = {
-      'pdf': '📄',
-      'doc': '📝',
-      'docx': '📝',
-      'xls': '📊',
-      'xlsx': '📊',
-      'png': '🖼️',
-      'jpg': '🖼️',
-      'jpeg': '🖼️',
-      'gif': '🖼️'
-    };
-    return icons[ext] || '📎';
+    return (ext || 'file').toUpperCase().slice(0, 4);
   }
 
   formatFileSize(bytes: number): string {

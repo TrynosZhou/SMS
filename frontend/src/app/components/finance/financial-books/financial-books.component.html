@@ -12,18 +12,18 @@
       <div class="fb-hero-left">
         <span class="fb-hero-icon" aria-hidden="true">📚</span>
         <div>
-          <span class="fb-hero-eyebrow">{{ heroEyebrow }}</span>
+          <span class="fb-hero-eyebrow">Finance · {{ heroEyebrow }}</span>
           <h1>Financial Management</h1>
           <p class="fb-hero-sub">{{ heroSubtitle }}</p>
         </div>
       </div>
-      <aside class="fb-hero-aside">
-        <span class="fb-hero-badge" *ngIf="lastLoadedAt && !loadingKpis">Updated {{ lastLoadedAt | date : 'shortTime' }}</span>
-        <span class="fb-hero-badge fb-hero-badge--muted" *ngIf="loadingKpis">Loading…</span>
-      </aside>
       <div class="fb-hero__actions">
-        <button type="button" class="fb-hero-btn fb-hero-btn--white" (click)="goRecordPayment()">Record payment</button>
-        <button type="button" class="fb-hero-btn fb-hero-btn--accent" (click)="openAddEntryModal()" *ngIf="canEditCashbook()">+ Add entry</button>
+        <aside class="fb-hero-aside">
+          <span class="fb-hero-badge" *ngIf="lastLoadedAt && !loadingKpis">Updated {{ lastLoadedAt | date : 'shortTime' }}</span>
+          <span class="fb-hero-badge fb-hero-badge--muted" *ngIf="loadingKpis">Loading…</span>
+        </aside>
+        <button type="button" class="fb-hero-btn" (click)="goRecordPayment()">Record payment</button>
+        <button type="button" class="fb-hero-btn fb-hero-btn--solid" (click)="openAddEntryModal()" *ngIf="canEditCashbook()">+ Add entry</button>
         <button type="button" class="fb-hero-refresh" (click)="refreshAll()" [disabled]="loadingKpis" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loadingKpis">↻</span>
         </button>
@@ -89,8 +89,8 @@
       <strong>{{ currencySymbol }}{{ formatMoney(balanceSheet.totalDebtors) }}</strong> in total.
     </span>
     <span class="fb-debtor-banner__actions">
-      <button type="button" class="fb-banner-link" (click)="setTab('debtors')">View debtors</button>
-      <button type="button" class="fb-banner-link" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook()">
+      <button type="button" class="fb-btn fb-btn--outline fb-btn--sm" (click)="setTab('debtors')">View debtors</button>
+      <button type="button" class="fb-btn fb-btn--primary fb-btn--sm" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook()">
         {{ sendingReminders ? 'Sending…' : 'Send reminders' }}
       </button>
     </span>
@@ -107,7 +107,7 @@
         </button>
         <button type="button" class="fb-tab" [class.active]="activeTab() === 'statements'" (click)="setTab('statements')">Statements</button>
       </nav>
-      <button type="button" class="fb-manage-fees" (click)="goManageFees()">Manage fees</button>
+      <button type="button" class="fb-btn fb-btn--outline fb-btn--sm" (click)="goManageFees()">Manage fees</button>
     </div>
 
     <div class="fb-tab-intro" *ngIf="tabIntro as intro">
@@ -164,7 +164,7 @@
     <article class="fb-card fb-card--wide" *ngIf="!loadingOverview">
       <div class="fb-card__head">
         <h2>Recent payments</h2>
-        <button type="button" class="fb-link-btn" (click)="setTab('cashbook')">Open cashbook →</button>
+        <button type="button" class="fb-btn fb-btn--ghost fb-btn--sm" (click)="setTab('cashbook')">Open cashbook →</button>
       </div>
       <div class="fb-table-wrap fb-overview-table">
         <table class="fb-table">
@@ -214,12 +214,12 @@
           <span class="fb-cb-label">TO</span>
           <input type="date" [(ngModel)]="cashbookToDraft" name="cbTo" />
         </label>
-        <button type="button" class="fb-cb-apply" (click)="applyCashbookDates()">Apply dates</button>
-        <button type="button" class="fb-cb-clear" (click)="clearCashbookDates()">Clear</button>
+        <button type="button" class="fb-btn fb-btn--outline" (click)="applyCashbookDates()">Apply dates</button>
+        <button type="button" class="fb-btn fb-btn--ghost" (click)="clearCashbookDates()">Clear</button>
       </div>
       <div class="fb-cb-search-row">
         <label class="fb-cb-search-wrap">
-          <span class="fb-cb-search-icon" aria-hidden="true">🔍</span>
+          <span class="fb-cb-search-icon" aria-hidden="true">⌕</span>
           <input
             type="search"
             class="fb-cb-search"
@@ -229,7 +229,7 @@
         </label>
         <button
           type="button"
-          class="fb-cb-add"
+          class="fb-btn fb-btn--primary"
           *ngIf="canEditCashbook()"
           (click)="openAddEntryModal()"
         >
@@ -251,9 +251,8 @@
           [class.active]="cashbookViewMode() === 'table'"
           (click)="setCashbookViewMode('table')"
           title="Table view"
-          aria-label="Table view"
         >
-          ☰
+          List
         </button>
         <button
           type="button"
@@ -261,9 +260,8 @@
           [class.active]="cashbookViewMode() === 'cards'"
           (click)="setCashbookViewMode('cards')"
           title="Card view"
-          aria-label="Card view"
         >
-          ▦
+          Cards
         </button>
       </div>
     </div>
@@ -322,13 +320,13 @@
         <h2 class="fb-panel__title">Debtors</h2>
         <p class="fb-panel__intro">Students with outstanding balances. Send reminders or open their statement.</p>
       </div>
-      <button type="button" class="fb-link-btn fb-link-btn--action" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook() || !debtors.length">
+      <button type="button" class="fb-btn fb-btn--outline" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook() || !debtors.length">
         {{ sendingReminders ? 'Sending…' : 'Send reminders' }}
       </button>
     </div>
     <div class="fb-filters fb-filters--modern">
       <div class="fb-search-wrap">
-        <span class="fb-search-icon" aria-hidden="true">🔍</span>
+        <span class="fb-search-icon" aria-hidden="true">⌕</span>
         <input type="search" placeholder="Search by name, ID, or class…" (input)="onDebtorSearchInput($any($event.target).value)" />
       </div>
       <span class="fb-filter-meta">{{ filteredDebtors.length }} of {{ debtors.length }} debtors</span>
@@ -353,7 +351,7 @@
             <td>{{ d.className || '—' }}</td>
             <td class="num">{{ currencySymbol }}{{ formatMoney(d.amountOwed) }}</td>
             <td>{{ d.oldestDueDate ? (d.oldestDueDate | date : 'mediumDate') : '—' }}</td>
-            <td><button type="button" class="fb-link-btn" (click)="viewDebtorStatement(d)">View statement</button></td>
+            <td><button type="button" class="fb-btn fb-btn--ghost fb-btn--sm" (click)="viewDebtorStatement(d)">View statement</button></td>
           </tr>
           <tr *ngIf="!filteredDebtors.length"><td colspan="6" class="fb-empty">No debtors found.</td></tr>
         </tbody>
@@ -391,8 +389,8 @@
               <p class="fb-muted">{{ statement.student.studentNumber }} · {{ statement.student.className || '—' }}</p>
             </div>
             <div class="fb-statement-actions">
-              <button type="button" class="fb-hero-btn fb-hero-btn--white" (click)="previewStatementPdf()" [disabled]="loadingPdf">Preview PDF</button>
-              <button type="button" class="fb-hero-btn fb-hero-btn--primary" (click)="downloadStatementPdf()" [disabled]="loadingPdf">Download PDF</button>
+              <button type="button" class="fb-btn fb-btn--outline" (click)="previewStatementPdf()" [disabled]="loadingPdf">Preview PDF</button>
+              <button type="button" class="fb-btn fb-btn--primary" (click)="downloadStatementPdf()" [disabled]="loadingPdf">Download PDF</button>
             </div>
           </div>
 
@@ -500,7 +498,7 @@
 
         <div class="fb-cb-student-block">
           <div class="fb-cb-student-search-wrap">
-            <span class="fb-cb-student-search-icon" aria-hidden="true">🔍</span>
+            <span class="fb-cb-student-search-icon" aria-hidden="true">⌕</span>
             <input
               id="cbStudentSearch"
               type="search"
@@ -644,9 +642,9 @@
         <p class="fb-modal-entry-foot__hint" *ngIf="!cashbookSelectedStudent">Select a student to enable saving.</p>
         <p class="fb-modal-entry-foot__hint fb-modal-entry-foot__hint--ready" *ngIf="cashbookSelectedStudent && canSubmitCashbookEntry()">Ready to save this entry.</p>
         <div class="fb-modal-entry-foot__actions">
-          <button type="button" class="fb-modal-btn fb-modal-btn--ghost" (click)="closeAddEntryModal()">Cancel</button>
-          <button type="submit" class="fb-modal-btn fb-modal-btn--primary" [disabled]="!canSubmitCashbookEntry()">
-            <span *ngIf="!savingCashbookEntry">✓ Save entry</span>
+          <button type="button" class="fb-btn fb-btn--ghost" (click)="closeAddEntryModal()">Cancel</button>
+          <button type="submit" class="fb-btn fb-btn--primary" [disabled]="!canSubmitCashbookEntry()">
+            <span *ngIf="!savingCashbookEntry">Save entry</span>
             <span *ngIf="savingCashbookEntry">Saving…</span>
           </button>
         </div>

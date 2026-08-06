@@ -1,18 +1,18 @@
 <div class="be-page">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="be-toast-stack" *ngIf="error || success">
+  <div class="be-toast-stack" *ngIf="error || success">
     <div class="be-toast be-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="be-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
-    </div>
+  </div>
 
   <header class="be-hero">
     <div class="be-hero__main">
       <div class="be-hero-left">
         <span class="be-hero-icon" aria-hidden="true">💰</span>
         <div>
-          <span class="be-hero-eyebrow">Finance</span>
+          <span class="be-hero-eyebrow">Finance · Enquiry</span>
           <h1>Balance Enquiry</h1>
           <p class="be-hero-sub">Look up a student's tuition and uniform balances, preview statements, and jump to payment or invoices.</p>
           <p class="be-hero-meta" *ngIf="lastLoadedAt && studentData">
@@ -20,12 +20,16 @@
           </p>
         </div>
       </div>
-      <aside class="be-hero-aside">
-        <span class="be-hero-badge" *ngIf="studentData">{{ studentData.studentNumber }}</span>
-        <span class="be-hero-badge be-hero-badge--muted" *ngIf="studentData?.className">{{ studentData.className }}</span>
-        <span class="be-hero-badge be-hero-badge--paid" *ngIf="studentData && studentData.balance <= 0">Fully paid</span>
-        <span class="be-hero-badge be-hero-badge--owed" *ngIf="studentData && studentData.balance > 0">Outstanding</span>
-      </aside>
+      <div class="be-hero__actions">
+        <aside class="be-hero-aside">
+          <span class="be-hero-badge" *ngIf="studentData">{{ studentData.studentNumber }}</span>
+          <span class="be-hero-badge be-hero-badge--muted" *ngIf="studentData?.className">{{ studentData.className }}</span>
+          <span class="be-hero-badge" *ngIf="studentData && studentData.balance <= 0">Fully paid</span>
+          <span class="be-hero-badge be-hero-badge--owed" *ngIf="studentData && studentData.balance > 0">Outstanding</span>
+        </aside>
+        <a routerLink="/payments/record" class="be-hero-btn">Record payment</a>
+        <a routerLink="/invoices" class="be-hero-btn be-hero-btn--solid">Billing</a>
+      </div>
     </div>
 
     <nav class="be-cross-links" aria-label="Related finance pages">
@@ -36,23 +40,19 @@
     </nav>
 
     <div class="be-hero-stats">
-      <article class="be-stat" [class.be-stat--mint]="studentData && studentData.balance <= 0" [class.be-stat--rose]="studentData && studentData.balance > 0">
-        <span class="be-stat__icon" aria-hidden="true">⚖</span>
+      <article class="be-stat">
         <span class="be-stat__value">{{ studentData ? currencySymbol + ' ' + formatCurrency(studentData.balance) : '—' }}</span>
         <span class="be-stat__label">Tuition balance</span>
       </article>
-      <article class="be-stat be-stat--rose" *ngIf="studentData && studentData.uniformBalance > 0">
-        <span class="be-stat__icon" aria-hidden="true">👕</span>
+      <article class="be-stat" *ngIf="studentData && studentData.uniformBalance > 0">
         <span class="be-stat__value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
         <span class="be-stat__label">Uniform</span>
       </article>
       <article class="be-stat">
-        <span class="be-stat__icon" aria-hidden="true">📄</span>
         <span class="be-stat__value">{{ latestInvoice ? '#' + (latestInvoice.invoiceNumber || latestInvoice.id) : '—' }}</span>
         <span class="be-stat__label">Latest invoice</span>
       </article>
-      <article class="be-stat be-stat--mint" *ngIf="latestInvoice">
-        <span class="be-stat__icon" aria-hidden="true">✓</span>
+      <article class="be-stat" *ngIf="latestInvoice">
         <span class="be-stat__value">{{ currencySymbol }} {{ formatCurrency(latestInvoice.paidAmount || 0) }}</span>
         <span class="be-stat__label">Paid on invoice</span>
       </article>
@@ -81,7 +81,7 @@
 
     <div class="be-search-row">
       <div class="be-search-wrap">
-        <span class="be-search-prefix" aria-hidden="true">🔍</span>
+        <span class="be-search-prefix" aria-hidden="true">⌕</span>
         <input
           type="search"
           id="query"
@@ -219,7 +219,6 @@
         </section>
 
         <div class="be-notice" *ngIf="studentData.isStaffChild || studentData.isExempted">
-          <span class="be-notice-icon" aria-hidden="true">ℹ️</span>
           <div>
             <strong>Fee policy applied</strong>
             <p>No tuition or transport fees. Dining Hall charged at 50% if applicable.</p>
@@ -261,30 +260,28 @@
           <div class="be-action-buttons">
             <button type="button" class="be-btn be-btn--primary be-btn--block" (click)="previewStatement()" [disabled]="loadingPdf">
               <span *ngIf="loadingPdf && previewMode" class="be-spinner" aria-hidden="true"></span>
-              <span *ngIf="!loadingPdf || !previewMode" aria-hidden="true">👁️</span>
               {{ loadingPdf && previewMode ? 'Loading…' : 'Preview statement' }}
             </button>
             <button type="button" class="be-btn be-btn--outline be-btn--block" (click)="downloadStatement()" [disabled]="loadingPdf">
-              <span *ngIf="loadingPdf && !previewMode" class="be-spinner be-spinner--purple" aria-hidden="true"></span>
-              <span *ngIf="!loadingPdf || previewMode" aria-hidden="true">⬇️</span>
+              <span *ngIf="loadingPdf && !previewMode" class="be-spinner be-spinner--navy" aria-hidden="true"></span>
               {{ loadingPdf && !previewMode ? 'Generating…' : 'Download PDF' }}
             </button>
             <button type="button" class="be-btn be-btn--ghost be-btn--block" (click)="printStatement()" [disabled]="loadingPdf">
-              <span aria-hidden="true">🖨️</span> Print statement
+              Print statement
+            </button>
+            <button type="button" class="be-btn be-btn--ghost be-btn--block" (click)="clearSearch()" [disabled]="loading || loadingPdf">
+              Clear student
             </button>
           </div>
 
           <div class="be-quick-links">
             <a [routerLink]="['/payments/record']" [queryParams]="recordPaymentQueryParams" class="be-quick-link">
-              <span class="be-quick-link__icon" aria-hidden="true">💳</span>
               <span>Record payment</span>
             </a>
             <a [routerLink]="['/invoices']" [queryParams]="{ studentId: studentData.studentId }" class="be-quick-link">
-              <span class="be-quick-link__icon" aria-hidden="true">📋</span>
               <span>View invoices</span>
             </a>
             <a [routerLink]="['/financial-reports/student-ledger']" [queryParams]="studentLedgerQueryParams" class="be-quick-link">
-              <span class="be-quick-link__icon" aria-hidden="true">📒</span>
               <span>Student ledger</span>
             </a>
           </div>
@@ -298,12 +295,8 @@
       <div class="be-modal__header">
         <h3 id="be-preview-title">Invoice statement preview</h3>
         <div class="be-modal__toolbar">
-          <button type="button" class="be-btn be-btn--primary be-btn--sm" (click)="downloadStatement()">
-            ⬇️ Download
-          </button>
-          <button type="button" class="be-btn be-btn--outline be-btn--sm" (click)="printStatement()">
-            🖨️ Print
-          </button>
+          <button type="button" class="be-btn be-btn--primary be-btn--sm" (click)="downloadStatement()">Download</button>
+          <button type="button" class="be-btn be-btn--outline be-btn--sm" (click)="printStatement()">Print</button>
           <button type="button" class="be-btn be-btn--ghost be-btn--sm" (click)="clearPreview()">Close</button>
         </div>
       </div>

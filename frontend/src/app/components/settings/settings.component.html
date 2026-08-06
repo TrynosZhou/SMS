@@ -889,7 +889,7 @@
       <div class="form-section tab-panel tab-panel--module-access" *ngIf="isTab('module-access')">
         <app-rbac-management *ngIf="authService.isAdmin()"></app-rbac-management>
         <div class="ma-panel ma-panel--notice" *ngIf="!authService.isAdmin()">
-          <span class="ma-empty__icon" aria-hidden="true">🔒</span>
+          <span class="ma-empty__icon" aria-hidden="true">◈</span>
           <h3>Administrator access required</h3>
           <p>Only administrators can manage permissions and roles.</p>
         </div>
@@ -986,7 +986,7 @@
       <section class="ma-panel ma-panel--danger" *ngIf="authService.isAdmin() && !isDemoUser()">
         <div class="ma-panel__head">
           <div>
-            <h2 class="ma-panel__title ma-panel__title--danger">Danger zone</h2>
+            <h2 class="ma-panel__title">Danger zone</h2>
             <p class="ma-panel__intro">Permanently wipe operational school data. Admin accounts and core settings are preserved.</p>
           </div>
         </div>
@@ -1017,7 +1017,7 @@
           </div>
           <button
             type="button"
-            class="ma-btn ma-btn--danger"
+            class="ma-btn ma-btn--outline"
             (click)="resetSystemData()"
             [disabled]="resettingSystem || resetConfirmText !== 'RESET'">
             {{ resettingSystem ? 'Resetting system…' : 'Reset system / wipe database' }}
@@ -1029,8 +1029,7 @@
 
       <div class="settings-form-actions" *ngIf="showSchoolSections() && !usesDedicatedSaveButton()">
         <p class="settings-form-actions__hint">Changes apply after you save this tab’s settings.</p>
-        <button type="submit" class="btn btn-primary settings-save-btn" [disabled]="loading || isDemoUser()">
-          <span class="settings-save-btn__icon" aria-hidden="true">💾</span>
+        <button type="submit" class="ss-btn ss-btn--primary settings-save-btn" [disabled]="loading || isDemoUser()">
           {{ loading ? 'Saving…' : 'Save Settings' }}
         </button>
       </div>

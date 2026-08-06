@@ -195,11 +195,11 @@ export class IntegrationsComponent implements OnInit, OnDestroy {
 
   readonly providers = INTEGRATION_PROVIDERS;
   readonly categories: { id: IntegrationCategory; label: string; icon: string }[] = [
-    { id: 'all', label: 'All', icon: '⊞' },
-    { id: 'payments', label: 'Payments', icon: '💳' },
-    { id: 'mobile_money', label: 'Mobile Money', icon: '📱' },
-    { id: 'cards', label: 'Cards', icon: '🏦' },
-    { id: 'banking', label: 'Banking', icon: '🏛️' }
+    { id: 'all', label: 'All', icon: '' },
+    { id: 'payments', label: 'Payments', icon: '' },
+    { id: 'mobile_money', label: 'Mobile Money', icon: '' },
+    { id: 'cards', label: 'Cards', icon: '' },
+    { id: 'banking', label: 'Banking', icon: '' }
   ];
 
   integrations: IntegrationItem[] = [];
