@@ -249,8 +249,13 @@ export class FinanceService {
     );
   }
 
-  getReceiptPDF(invoiceId: string): Observable<Blob> {
+  getReceiptPDF(invoiceId: string, options?: { paymentLogId?: string }): Observable<Blob> {
+    const params: Record<string, string> = {};
+    if (options?.paymentLogId) {
+      params['paymentLogId'] = options.paymentLogId;
+    }
     return this.http.get(`${this.apiUrl}/finance/${invoiceId}/receipt`, {
+      params,
       responseType: 'blob',
       observe: 'response'
     }).pipe(

@@ -818,29 +818,36 @@
     aria-labelledby="be-quick-title"
     (click)="$event.stopPropagation()">
     <div class="be-quick-modal__header">
-      <div>
-        <span class="be-quick-modal__eyebrow">Finance</span>
-        <h2 id="be-quick-title">Balance Enquiry</h2>
-        <p>Search by Student ID, First Name, or Last Name.</p>
+      <div class="be-quick-modal__header-main">
+        <span class="be-quick-modal__icon" aria-hidden="true">◈</span>
+        <div>
+          <span class="be-quick-modal__eyebrow">Finance</span>
+          <h2 id="be-quick-title">Balance Enquiry</h2>
+          <p>Search by Student ID, First Name, or Last Name.</p>
+        </div>
       </div>
       <button type="button" class="be-quick-modal__close" (click)="closeBalanceEnquiryModal()" aria-label="Close">×</button>
     </div>
 
     <div class="be-quick-modal__body">
       <div class="be-quick-search">
-        <input
-          id="header-balance-enquiry-query"
-          type="search"
-          class="be-quick-input"
-          [(ngModel)]="balanceEnquiryQuery"
-          [ngModelOptions]="{ standalone: true }"
-          (input)="onBalanceEnquiryInput()"
-          (keyup.enter)="searchBalanceEnquiry()"
-          placeholder="Student ID, First Name, or Last Name…"
-          autocomplete="off" />
+        <div class="be-quick-search-wrap">
+          <span class="be-quick-search-icon" aria-hidden="true">⌕</span>
+          <input
+            id="header-balance-enquiry-query"
+            type="search"
+            class="be-quick-input"
+            [(ngModel)]="balanceEnquiryQuery"
+            [ngModelOptions]="{ standalone: true }"
+            (input)="onBalanceEnquiryInput()"
+            (keyup.enter)="searchBalanceEnquiry()"
+            placeholder="Student ID, First Name, or Last Name…"
+            autocomplete="off"
+            aria-label="Search student for balance enquiry" />
+        </div>
         <button
           type="button"
-          class="be-quick-btn"
+          class="be-quick-btn be-quick-btn--primary"
           (click)="searchBalanceEnquiry()"
           [disabled]="balanceEnquiryLoading || !balanceEnquiryQuery">
           {{ balanceEnquiryLoading ? 'Searching…' : 'Search' }}
@@ -862,7 +869,8 @@
       </div>
 
       <div class="be-quick-loading" *ngIf="balanceEnquiryLoading && !balanceEnquiryStudent && !balanceEnquiryMatches.length">
-        Looking up invoice balance…
+        <span class="be-quick-spinner" aria-hidden="true"></span>
+        <span>Looking up invoice balance…</span>
       </div>
 
       <div class="be-quick-result" *ngIf="balanceEnquiryStudent">
@@ -892,7 +900,7 @@
             </strong>
             <button
               type="button"
-              class="be-quick-pay-btn"
+              class="be-quick-btn be-quick-btn--primary be-quick-btn--sm"
               (click)="payInvoiceFromBalanceEnquiry()"
               [disabled]="!balanceEnquiryStudent">
               Pay Invoice
@@ -900,13 +908,19 @@
           </div>
         </div>
         <div class="be-quick-result__meta" *ngIf="balanceEnquiryStudent.studentNumber">
-          Student ID: {{ balanceEnquiryStudent.studentNumber }}
+          Student ID: <span class="be-quick-mono">{{ balanceEnquiryStudent.studentNumber }}</span>
         </div>
       </div>
 
       <div class="be-quick-empty" *ngIf="!balanceEnquiryLoading && !balanceEnquiryError && !balanceEnquiryStudent && !balanceEnquiryMatches.length">
-        Enter a student ID or name to fetch the current invoice balance.
+        <span class="be-quick-empty__icon" aria-hidden="true">◈</span>
+        <p>Enter a student ID or name to fetch the current invoice balance.</p>
       </div>
+    </div>
+
+    <div class="be-quick-modal__footer">
+      <button type="button" class="be-quick-btn be-quick-btn--ghost" (click)="closeBalanceEnquiryModal()">Close</button>
+      <a routerLink="/balance-enquiry" class="be-quick-btn be-quick-btn--outline" (click)="closeBalanceEnquiryModal()">Full balance enquiry</a>
     </div>
   </div>
 </div>

@@ -61,6 +61,10 @@ export class AuditComponent implements OnInit, OnDestroy {
   fullTotals = { paid: 0, balance: 0, count: 0 };
   deletingId: string | null = null;
 
+  receiptPreviewUrl: string | null = null;
+  receiptPreviewLoading = false;
+  receiptPreviewTitle = 'Payment receipt';
+
   constructor(
     private financeService: FinanceService,
     private settingsService: SettingsService,
@@ -71,6 +75,10 @@ export class AuditComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.receiptPreviewUrl || this.receiptPreviewLoading) {
+      this.closeReceiptPreview();
+      return;
+    }
     this.error = '';
     this.confirmDeleteTx = null;
   }
@@ -113,6 +121,7 @@ export class AuditComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.closeReceiptPreview();
     this.destroy$.next();
     this.destroy$.complete();
     if (this.autoRefreshSub) {
@@ -290,9 +299,11 @@ export class AuditComponent implements OnInit, OnDestroy {
   private mapPaymentLog(log: any): any {
     const student = log.student || {};
     const invoice = log.invoice || {};
+    const invoiceId = log.invoiceId || invoice.id || '';
     return {
       id: log.id,
-      invoiceNumber: invoice.invoiceNumber || log.receiptNumber || log.invoiceId,
+      invoiceId,
+      invoiceNumber: invoice.invoiceNumber || log.receiptNumber || invoiceId,
       status: '',
       amount: Number(invoice.amount || 0),
       paidAmount: Number(log.amountPaid || 0),
@@ -576,25 +587,94 @@ export class AuditComponent implements OnInit, OnDestroy {
   }
 
   viewInvoicePDF(invoiceId: string): void {
-    this.financeService.getInvoicePDF(invoiceId).subscribe(({ blob, filename }) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename || 'Invoice.pdf';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.financeService.getInvoicePDF(invoiceId).subscribe({
+      next: ({ blob, filename }) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'Invoice.pdf';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to load invoice PDF';
+        this.cdr.markForCheck();
+      }
     });
   }
 
-  viewReceiptPDF(invoiceId: string): void {
-    this.financeService.getReceiptPDF(invoiceId).subscribe((blob: Blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'Receipt.pdf';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    });
+  /** Resolve invoice id for receipt generation (payments rows use payment-log id as `tx.id`). */
+  private resolveReceiptInvoiceId(tx: any): string {
+    if (!tx) return '';
+    if (this.mode === 'payments') {
+      return String(tx.invoiceId || '').trim();
+    }
+    return String(tx.id || '').trim();
+  }
+
+  canViewReceipt(tx: any): boolean {
+    return !!this.resolveReceiptInvoiceId(tx);
+  }
+
+  viewReceiptPDF(tx: any): void {
+    const invoiceId = this.resolveReceiptInvoiceId(tx);
+    if (!invoiceId) {
+      this.error = 'Receipt unavailable: this payment has no linked invoice.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const paymentLogId = this.mode === 'payments' ? String(tx?.id || '').trim() : '';
+    const label = tx?.referenceNumber || tx?.invoiceNumber || 'Receipt';
+
+    this.error = '';
+    this.receiptPreviewTitle = `Receipt — ${label}`;
+    this.closeReceiptPreview(false);
+    this.receiptPreviewLoading = true;
+    this.cdr.markForCheck();
+
+    this.financeService
+      .getReceiptPDF(invoiceId, paymentLogId ? { paymentLogId } : undefined)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.receiptPreviewLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          this.receiptPreviewUrl = URL.createObjectURL(blob);
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          this.closeReceiptPreview(false);
+          if (err?.status === 401) {
+            this.error = 'Authentication required. Please log in again.';
+          } else {
+            this.error = err?.error?.message || 'Failed to generate receipt PDF';
+          }
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  downloadReceiptPreview(): void {
+    if (!this.receiptPreviewUrl) return;
+    const a = document.createElement('a');
+    a.href = this.receiptPreviewUrl;
+    a.download = `${(this.receiptPreviewTitle || 'Receipt').replace(/[^\w\-]+/g, '_')}.pdf`;
+    a.click();
+  }
+
+  closeReceiptPreview(clearLoading = true): void {
+    if (this.receiptPreviewUrl) {
+      URL.revokeObjectURL(this.receiptPreviewUrl);
+      this.receiptPreviewUrl = null;
+    }
+    if (clearLoading) {
+      this.receiptPreviewLoading = false;
+    }
   }
 
   exportPaymentsFullCSV(): void {

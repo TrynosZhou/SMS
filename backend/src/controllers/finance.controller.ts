@@ -2288,7 +2288,7 @@ export const generateUniformReceiptPDF = async (req: AuthRequest, res: Response)
 export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { paymentAmount, paymentDate } = req.query;
+    const { paymentAmount, paymentDate, paymentLogId } = req.query;
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
@@ -2341,6 +2341,21 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     });
 
     const latestPaymentLog = positiveNonAdjustmentLogs.length > 0 ? positiveNonAdjustmentLogs[0] : null;
+
+    // When a specific payment log is requested (e.g. audit Receipt button), use that
+    // row for receipt number / date / method so the PDF matches the transaction.
+    let targetedPaymentLog: PaymentLog | null = null;
+    if (paymentLogId) {
+      const requestedId = String(paymentLogId).trim();
+      targetedPaymentLog =
+        paymentLogs.find((l) => l.id === requestedId) ||
+        (await paymentLogRepository.findOne({ where: { id: requestedId, invoiceId: invoice.id } }));
+      if (!targetedPaymentLog) {
+        return res.status(404).json({ message: 'Payment not found for this invoice.' });
+      }
+    }
+    const sourcePaymentLog = targetedPaymentLog || latestPaymentLog;
+
     const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
 
     // Align with invoice statement logic: include ADJUSTMENT logs when computing net paid,
@@ -2433,23 +2448,23 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     // This prevents misleading receipts showing Amount Paid = 0.00 with an outstanding balance.
     const persistedPaid = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
     const persistedPrepaid = Math.max(0, parseFloat(parseAmount(invoice.prepaidAmount).toFixed(2)));
-    if (!latestPaymentLog && netPaidToDate <= 0 && persistedPaid <= 0 && persistedPrepaid <= 0) {
+    if (!sourcePaymentLog && netPaidToDate <= 0 && persistedPaid <= 0 && persistedPrepaid <= 0) {
       return res.status(404).json({ message: 'Receipt not found for this invoice (no payment recorded).' });
     }
 
-    const receiptNumber = latestPaymentLog?.receiptNumber
-      ? String(latestPaymentLog.receiptNumber)
+    const receiptNumber = sourcePaymentLog?.receiptNumber
+      ? String(sourcePaymentLog.receiptNumber)
       : `RCP-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
 
     const resolvedPaymentAmount = paymentAmount
       ? parseAmount(paymentAmount)
-      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : netPaidToDate);
+      : (sourcePaymentLog ? parseAmount((sourcePaymentLog as any).amountPaid) : netPaidToDate);
 
     // Guardrail: after desk-fee reversals/status corrections, invoice totals may be reduced.
     // Never display an "Amount Paid" on a receipt that exceeds the actual cash paid-to-date.
     const effectiveResolvedPaymentAmount = (resolvedPaymentAmount > 0)
       ? resolvedPaymentAmount
-      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : netPaidToDate);
+      : (sourcePaymentLog ? parseAmount((sourcePaymentLog as any).amountPaid) : netPaidToDate);
     let safePaymentAmount = Math.min(effectiveResolvedPaymentAmount, paidRounded);
     if (shouldRemoveDeskFromPaid) {
       const amtRounded = Math.max(0, parseFloat(safePaymentAmount.toFixed(2)));
@@ -2472,10 +2487,10 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     const resolvedPaymentDate = paymentDate
       ? new Date(paymentDate as string)
-      : (latestPaymentLog?.paymentDate ? new Date(latestPaymentLog.paymentDate) : new Date());
+      : (sourcePaymentLog?.paymentDate ? new Date(sourcePaymentLog.paymentDate) : new Date());
 
-    const resolvedPaymentMethod = latestPaymentLog ? normalizePm(latestPaymentLog.paymentMethod) : null;
-    const resolvedNotes = latestPaymentLog?.notes ? String(latestPaymentLog.notes) : undefined;
+    const resolvedPaymentMethod = sourcePaymentLog ? normalizePm(sourcePaymentLog.paymentMethod) : null;
+    const resolvedNotes = sourcePaymentLog?.notes ? String(sourcePaymentLog.notes) : undefined;
 
     // Derive canonical paid & balance from the invoice record itself so that
     // receipts and invoice statements ALWAYS agree for the same invoice.

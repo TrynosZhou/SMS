@@ -266,7 +266,15 @@
             <td>
               <div class="fa-pdf-btns">
                 <button type="button" class="fa-btn fa-btn--outline fa-btn--sm" *ngIf="mode === 'invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" title="Invoice PDF">Invoice</button>
-                <button type="button" class="fa-btn fa-btn--ghost fa-btn--sm" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)" title="Receipt PDF">Receipt</button>
+                <button
+                  type="button"
+                  class="fa-btn fa-btn--ghost fa-btn--sm"
+                  *ngIf="canViewReceipt(tx)"
+                  (click)="viewReceiptPDF(tx)"
+                  [disabled]="receiptPreviewLoading"
+                  title="View receipt PDF">
+                  {{ receiptPreviewLoading ? '…' : 'Receipt' }}
+                </button>
               </div>
             </td>
             <td *ngIf="mode === 'payments'">
@@ -319,6 +327,30 @@
       <div class="fa-confirm__actions">
         <button type="button" class="fa-btn fa-btn--ghost" (click)="cancelDeleteConfirm()" [disabled]="!!deletingId">Cancel</button>
         <button type="button" class="fa-btn fa-btn--primary" (click)="confirmDeletePayment()" [disabled]="!!deletingId">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fa-pdf-overlay" *ngIf="receiptPreviewLoading || receiptPreviewUrl" (click)="closeReceiptPreview()">
+    <div class="fa-pdf-modal" (click)="$event.stopPropagation()" role="dialog" aria-labelledby="fa-receipt-title">
+      <div class="fa-pdf-modal__header">
+        <span class="fa-pdf-modal__title" id="fa-receipt-title">{{ receiptPreviewTitle }}</span>
+        <div class="fa-pdf-modal__actions">
+          <button type="button" class="fa-btn fa-btn--primary fa-btn--sm" *ngIf="receiptPreviewUrl" (click)="downloadReceiptPreview()">Download</button>
+          <button type="button" class="fa-btn fa-btn--ghost fa-btn--sm" (click)="closeReceiptPreview()">Close</button>
+        </div>
+      </div>
+      <div class="fa-pdf-modal__body">
+        <div class="fa-pdf-loading" *ngIf="receiptPreviewLoading && !receiptPreviewUrl">
+          <div class="fa-spinner fa-spinner--lg" aria-hidden="true"></div>
+          <p>Generating receipt…</p>
+        </div>
+        <app-pdf-blob-viewer
+          *ngIf="receiptPreviewUrl"
+          [blobUrl]="receiptPreviewUrl"
+          [loadingExternal]="receiptPreviewLoading"
+          title="Payment receipt PDF">
+        </app-pdf-blob-viewer>
       </div>
     </div>
   </div>

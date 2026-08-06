@@ -21,26 +21,6 @@
         <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedClassLabel }}</span>
         <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedExamTypeLabel }}</span>
       </aside>
-      <div class="ra-hero__actions">
-        <button
-          type="button"
-          class="ra-hero-btn ra-hero-btn--white"
-          (click)="previewPDF()"
-          [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
-          <span *ngIf="loadingPdf" class="ra-hero-spinner" aria-hidden="true"></span>
-          {{ loadingPdf ? 'Preparing…' : 'Preview PDF' }}
-        </button>
-        <button
-          type="button"
-          class="ra-hero-btn ra-hero-btn--accent"
-          (click)="downloadPDF()"
-          [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
-          <span *ngIf="downloadingPdf" class="ra-hero-spinner ra-hero-spinner--dark" aria-hidden="true"></span>
-          {{ downloadingPdf ? 'Saving…' : 'Download PDF' }}
-        </button>
-        <a routerLink="/mark-sheet" class="ra-hero-btn ra-hero-btn--white">Mark sheet</a>
-        <a routerLink="/report-cards" class="ra-hero-btn">Report cards</a>
-      </div>
     </div>
 
     <nav class="ra-cross-links" aria-label="Related exam pages">
@@ -144,6 +124,27 @@
           {{ loading ? 'Loading…' : 'Get analysis' }}
         </button>
       </div>
+    </div>
+
+    <div class="ra-panel-actions" aria-label="Analysis exports and related pages">
+      <button
+        type="button"
+        class="ra-btn ra-btn--outline"
+        (click)="previewPDF()"
+        [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
+        <span *ngIf="loadingPdf" class="ra-spinner" aria-hidden="true"></span>
+        {{ loadingPdf ? 'Preparing…' : 'Preview PDF' }}
+      </button>
+      <button
+        type="button"
+        class="ra-btn ra-btn--accent"
+        (click)="downloadPDF()"
+        [disabled]="!analysisLoaded || loading || loadingPdf || downloadingPdf">
+        <span *ngIf="downloadingPdf" class="ra-spinner ra-spinner--dark" aria-hidden="true"></span>
+        {{ downloadingPdf ? 'Saving…' : 'Download PDF' }}
+      </button>
+      <a routerLink="/mark-sheet" class="ra-btn ra-btn--outline">Mark sheet</a>
+      <a routerLink="/report-cards" class="ra-btn ra-btn--primary">Report cards</a>
     </div>
   </section>
 

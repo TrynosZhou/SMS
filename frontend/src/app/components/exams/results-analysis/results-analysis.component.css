@@ -419,6 +419,33 @@
   border-color: #1e3a5f;
 }
 
+.ra-btn--accent {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #422006;
+}
+
+.ra-btn--accent:hover:not(:disabled) {
+  background: #d97706;
+  border-color: #d97706;
+  color: #422006;
+}
+
+.ra-btn--accent:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ra-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ra-border);
+}
+
 .ra-btn--ghost {
   background: #fff;
   border-color: #94a3b8;
@@ -441,9 +468,16 @@
   animation: ra-spin 0.7s linear infinite;
 }
 
+.ra-btn--outline .ra-spinner,
+.ra-btn--accent .ra-spinner,
+.ra-spinner--dark {
+  border-color: rgba(30, 58, 95, 0.25);
+  border-top-color: #1e3a5f;
+}
+
 @keyframes ra-spin { to { transform: rotate(360deg); } }
 
-/* Tabs */
+/* Tabs — locked colors so hover/focus/active never wipe navy/white */
 .ra-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -454,24 +488,51 @@
 .ra-tab {
   flex: 1 1 180px;
   padding: 0.55rem 1rem;
-  border: 1px solid #94a3b8;
+  border: 1.5px solid #94a3b8 !important;
   border-radius: 8px;
-  background: #fff;
-  color: #1e3a5f;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1e3a5f !important;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   font-family: inherit;
   box-shadow: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.ra-tab:hover { background: #f1f5f9; border-color: #1e3a5f; }
+.ra-tab:hover,
+.ra-tab:focus,
+.ra-tab:focus-visible,
+.ra-tab:active {
+  background: #f1f5f9 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #1e3a5f !important;
+  color: #1e3a5f !important;
+}
 
-.ra-tab--active {
-  background: #1e3a5f;
-  border-color: #1e3a5f;
-  color: #fff;
+.ra-tab--active,
+.ra-tab.ra-tab--active,
+.ra-tab--active:hover,
+.ra-tab.ra-tab--active:hover,
+.ra-tab--active:focus,
+.ra-tab.ra-tab--active:focus,
+.ra-tab--active:focus-visible,
+.ra-tab.ra-tab--active:focus-visible,
+.ra-tab--active:active,
+.ra-tab.ra-tab--active:active,
+.ra-tab[aria-selected='true'],
+.ra-tab[aria-selected='true']:hover,
+.ra-tab[aria-selected='true']:focus,
+.ra-tab[aria-selected='true']:focus-visible,
+.ra-tab[aria-selected='true']:active {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  border-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .ra-subtabs {
@@ -483,24 +544,46 @@
 
 .ra-subtab {
   padding: 0.45rem 0.95rem;
-  border: 1px solid #94a3b8;
+  border: 1.5px solid #94a3b8 !important;
   border-radius: 8px;
-  background: #fff;
-  color: #1e3a5f;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1e3a5f !important;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   font-family: inherit;
   box-shadow: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.ra-subtab:hover { background: #f1f5f9; border-color: #1e3a5f; }
+.ra-subtab:hover,
+.ra-subtab:focus,
+.ra-subtab:focus-visible,
+.ra-subtab:active {
+  background: #f1f5f9 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #1e3a5f !important;
+  color: #1e3a5f !important;
+}
 
-.ra-subtab--active {
-  background: #1e3a5f;
-  border-color: #1e3a5f;
-  color: #fff;
+.ra-subtab--active,
+.ra-subtab.ra-subtab--active,
+.ra-subtab--active:hover,
+.ra-subtab.ra-subtab--active:hover,
+.ra-subtab--active:focus,
+.ra-subtab.ra-subtab--active:focus,
+.ra-subtab--active:focus-visible,
+.ra-subtab.ra-subtab--active:focus-visible,
+.ra-subtab--active:active,
+.ra-subtab.ra-subtab--active:active {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  border-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .ra-student-meta {
@@ -889,6 +972,7 @@
   .ra-form-grid--with-action { grid-template-columns: 1fr; }
   .ra-field--action { grid-column: auto; }
   .ra-btn--inline { width: 100%; }
+  .ra-panel-actions .ra-btn { flex: 1 1 auto; justify-content: center; }
   .ra-cards-grid { grid-template-columns: 1fr; }
   .ra-card--pass { grid-row: auto; }
   .ra-tab { flex: 1 1 100%; }

@@ -961,6 +961,99 @@
   line-height: 1.5;
 }
 
+.fa-pdf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.fa-pdf-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 96vw);
+  height: min(90vh, 900px);
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 24px 72px rgba(15, 23, 42, 0.35);
+  border-top: 3px solid var(--fa-navy);
+}
+
+.fa-pdf-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1.15rem;
+  background: linear-gradient(135deg, #152a45 0%, #1e3a5f 100%);
+  color: #fff;
+}
+
+.fa-pdf-modal__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.fa-pdf-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fa-pdf-modal__actions .fa-btn--primary {
+  background: #fff;
+  border-color: #fff;
+  color: var(--fa-navy);
+}
+
+.fa-pdf-modal__actions .fa-btn--primary:hover:not(:disabled) {
+  background: #f8fafc;
+  color: var(--fa-navy-deep, #152a45);
+}
+
+.fa-pdf-modal__actions .fa-btn--ghost {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.fa-pdf-modal__actions .fa-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.fa-pdf-modal__body {
+  flex: 1;
+  min-height: 0;
+  background: #f8fafc;
+}
+
+.fa-pdf-modal__body app-pdf-blob-viewer {
+  display: block;
+  height: 100%;
+}
+
+.fa-pdf-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 100%;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.fa-pdf-loading p {
+  margin: 0;
+}
+
 .fa-confirm__actions {
   display: flex;
   gap: 10px;
