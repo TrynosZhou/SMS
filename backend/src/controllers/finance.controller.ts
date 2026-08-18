@@ -41,7 +41,7 @@ import { PaymentLog } from '../entities/PaymentLog';
 import { UniformCharge } from '../entities/UniformCharge';
 import { UniformChargeItem } from '../entities/UniformChargeItem';
 import { UniformPaymentLog } from '../entities/UniformPaymentLog';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import {
   allocatePaymentLogsWaterfall,
   outstandingExcludingTransportBucket,
@@ -50,9 +50,11 @@ import {
   WATERFALL_EPS as LOGISTICS_WATERFALL_EPS
 } from '../utils/transportDhWaterfall';
 import {
-  assertUserCanAccessStudentFinance,
-  resolvePortalFinanceStudentScope,
-} from '../utils/portalFinanceAccess';
+  findActiveInvoiceForStudentTerm,
+  findInvoiceForStudentTermInList,
+  invoiceTermExistsMessage,
+} from '../utils/invoiceTermGuard';
+import { resolvePortalFinanceStudentScope, assertUserCanAccessStudentFinance } from '../utils/portalFinanceAccess';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -151,6 +153,8 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Term is required' });
     }
 
+    const invoiceTerm = String(term).trim();
+
     // Find student and validate
     const student = await studentRepository.findOne({ 
       where: { id: studentId },
@@ -158,6 +162,21 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const existingForTerm = await findActiveInvoiceForStudentTerm(
+      invoiceRepository,
+      student.id,
+      invoiceTerm,
+      student.studentNumber
+    );
+    if (existingForTerm) {
+      return res.status(409).json({
+        message: invoiceTermExistsMessage(invoiceTerm, existingForTerm),
+        code: 'INVOICE_TERM_EXISTS',
+        existingInvoiceId: existingForTerm.id,
+        existingInvoiceNumber: existingForTerm.invoiceNumber,
+      });
     }
 
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -169,16 +188,16 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
 
     // Duplicate billing guard moved below after fee components are computed
 
-    // Get previous balance and prepaid amount from last invoice
+    // Get previous balance and prepaid amount from last NON-VOIDED invoice
     // Query using multiple criteria to handle any reference mismatches
     const lastInvoiceQuery = invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.student', 'student')
-      .where('invoice.studentId = :studentId', { studentId })
-      .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
+      .where('COALESCE(invoice.isVoided, false) = false')
+      .andWhere('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', { studentId, studentNumber: student.studentNumber })
       .orderBy('invoice.createdAt', 'DESC')
       .limit(1);
-    
+
     const lastInvoice = await lastInvoiceQuery.getOne();
     
     if (lastInvoice && lastInvoice.studentId !== student.id) {
@@ -288,15 +307,6 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
 
     let finalDescription = description;
-    const existingTermInvoice = await invoiceRepository
-      .createQueryBuilder('invoice')
-      .leftJoin('invoice.student', 'student')
-      .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', { studentId, studentNumber: student.studentNumber })
-      .andWhere('invoice.term = :term', { term })
-      .getOne();
-    if (existingTermInvoice && isTermFeeInvoice) {
-      return res.status(400).json({ message: 'Duplicate term fees are not allowed. An invoice for this term already exists for this student.' });
-    }
     const breakdownParts: string[] = [];
     if (tuitionVal > 0) breakdownParts.push(`Tuition: ${tuitionVal.toFixed(2)}`);
     if (diningVal > 0) breakdownParts.push(`Dining Hall: ${diningVal.toFixed(2)}`);
@@ -327,7 +337,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       prepaidAmount: remainingPrepaidAmount,
       balance: finalBalance,
       dueDate,
-      term,
+      term: invoiceTerm,
       description: finalDescription,
       status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING,
       uniformTotal,
@@ -1133,12 +1143,14 @@ export const calculateNextTermBalance = async (req: AuthRequest, res: Response) 
 
 export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
   try {
-    // term is the CURRENT term - invoices will be created for the FOLLOWING term
+    // `term` is the billing term invoices are created for (e.g. "Term 3 2026").
     const { term, dueDate, description, batchOffset: batchOffsetBody, batchSize: batchSizeBody } = req.body;
 
     if (!term || !dueDate) {
-      return res.status(400).json({ message: 'Current term and due date are required' });
+      return res.status(400).json({ message: 'Invoice term and due date are required' });
     }
+
+    const invoiceTerm = String(term).trim();
 
     const batchSizeNum = batchSizeBody != null && batchSizeBody !== '' ? Number(batchSizeBody) : NaN;
     const batchMode = Number.isFinite(batchSizeNum) && batchSizeNum > 0;
@@ -1166,9 +1178,6 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const transportCost = parseAmount(feesConfig.transportCost);
     const diningHallCost = parseAmount(feesConfig.diningHallCost);
     const deskFee = parseAmount(feesConfig.deskFee);
-    // Library, sports, and other fees are no longer part of the term fee
-    // structure. Bulk invoices must only include tuition, one‑time desk fee,
-    // one‑time registration fee, transport, and dining hall as configured.
 
     // Get all active students (stable order so batch offsets are repeatable)
     const students = await studentRepository.find({
@@ -1190,9 +1199,11 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const results = {
       total: students.length,
       created: 0,
+      skipped: 0,
       failed: 0,
       invoices: [] as any[],
-      errors: [] as string[]
+      errors: [] as string[],
+      skippedReasons: [] as string[]
     };
 
     // Next invoice number must follow the highest existing sequence for this year — count() can be lower if rows were removed or numbers are non-contiguous
@@ -1213,106 +1224,213 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Process each student (full list, or one batch when batchMode)
-    for (const student of studentsToProcess) {
-      try {
-        // Get previous balance from last invoice (this is the outstanding fees balance)
-        const lastInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id },
-          order: { createdAt: 'DESC' }
-        });
+    // Wrap bulk processing in a single transaction to eliminate race conditions
+    // between "already billed?" lookup and the insert.
+    const txResult = await AppDataSource.manager.transaction(async (trxManager) => {
+      const trxInvoiceRepo = trxManager.getRepository(Invoice);
+      const trxStudentRepo = trxManager.getRepository(Student);
+      const trxSettingsRepo = trxManager.getRepository(Settings);
 
-        const settingsListForBatch = await settingsRepository.find({
-          order: { createdAt: 'DESC' },
-          take: 1
-        });
-        const deskFeeBatch = getConfiguredDeskFee(settingsListForBatch[0] ?? null);
+      const txResults = {
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        invoices: [] as any[],
+        errors: [] as string[],
+        skippedReasons: [] as string[]
+      };
 
-        // Previous balance = canonical owed on last invoice (not stale balance column)
-        const previousBalance = computeCarryForwardBalance(lastInvoice, student, deskFeeBatch);
-        const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
+      const studentIdsInBatch = studentsToProcess.map((s) => s.id);
+      const studentNumbersInBatch = studentsToProcess
+        .map((s) => s.studentNumber)
+        .filter((sn) => !!sn && String(sn).trim() !== '');
 
-        // Determine tuition fee for the NEXT term (following term)
-        // The term provided is the current term, so we calculate fees for the following term
-        const nextTerm = getNextTerm(term);
-        
-        // Ignore voided invoices so a replacement can be generated after voiding
-        const existingNextTermInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id, term: nextTerm, isVoided: false }
-        });
-        if (existingNextTermInvoice) {
-          results.failed++;
-          results.errors.push(`${student.firstName} ${student.lastName}: Invoice for ${nextTerm} already exists`);
-          continue;
+      // Pre-fetch existing NON-VOIDED invoices for this batch's students by BOTH studentId AND studentNumber
+      // (joins to student table to handle reference mismatches).
+      const batchExistingInvoices =
+        studentIdsInBatch.length > 0
+          ? await trxInvoiceRepo
+              .createQueryBuilder('invoice')
+              .leftJoinAndSelect('invoice.student', 'student')
+              .where('COALESCE(invoice.isVoided, false) = false')
+              .andWhere(
+                new Brackets((qb) => {
+                  qb.where('invoice.studentId IN (:...studentIds)', { studentIds: studentIdsInBatch });
+                  if (studentNumbersInBatch.length > 0) {
+                    qb.orWhere('student.studentNumber IN (:...studentNumbers)', { studentNumbers: studentNumbersInBatch });
+                  }
+                })
+              )
+              .getMany()
+          : [];
+
+      const invoicesByStudent = new Map<string, Invoice[]>();
+      for (const inv of batchExistingInvoices) {
+        const list = invoicesByStudent.get(inv.studentId) || [];
+        list.push(inv);
+        invoicesByStudent.set(inv.studentId, list);
+        if (inv.student && inv.student.studentNumber && inv.studentId !== inv.student.id) {
+          // Also index under the actual student's id so the lookup by student.id still hits
+          const altList = invoicesByStudent.get(inv.student.id) || [];
+          altList.push(inv);
+          invoicesByStudent.set(inv.student.id, altList);
         }
-
-        if (shouldSkipTermFeeInvoiceCreation(student)) {
-          continue;
-        }
-
-        const appliedPrepaid = Math.min(previousPrepaid, previousBalance);
-        const remainingPrepaid = Math.max(0, previousPrepaid - appliedPrepaid);
-
-        const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
-
-        const invoice = invoiceRepository.create({
-          invoiceNumber,
-          studentId: student.id,
-          amount: 0,
-          previousBalance,
-          balance: 0,
-          prepaidAmount: remainingPrepaid,
-          paidAmount: appliedPrepaid,
-          tuitionAmount: 0,
-          transportAmount: 0,
-          diningHallAmount: 0,
-          registrationAmount: 0,
-          deskFeeAmount: 0,
-          dueDate: new Date(dueDate),
-          term: nextTerm,
-          description: description || `Fees for ${nextTerm} - ${student.studentType}`,
-          status: InvoiceStatus.PENDING,
-          uniformTotal: 0,
-        });
-
-        applyExemptionToInvoice(student, invoice, feesConfig as Record<string, unknown>);
-
-        const termFees = parseAmount(invoice.amount);
-        const finalBalance = parseAmount(invoice.balance);
-
-        if (termFees <= 0.005 && previousBalance <= 0.005) {
-          continue;
-        }
-
-        const savedInvoice = await invoiceRepository.save(invoice);
-
-        if (lastInvoice && previousBalance > 0.005) {
-          applyCarryForwardToPriorInvoice(lastInvoice, previousBalance, savedInvoice.invoiceNumber);
-          await invoiceRepository.save(lastInvoice);
-        }
-
-        nextSequence += 1;
-
-        results.created++;
-        results.invoices.push({
-          invoiceNumber: savedInvoice.invoiceNumber,
-          studentName: `${student.firstName} ${student.lastName}`,
-          studentNumber: student.studentNumber,
-          termFees: termFees,
-          previousBalance,
-          totalBalance: finalBalance,
-          prepaidApplied: appliedPrepaid,
-          remainingPrepaid,
-          term: nextTerm
-        });
-      } catch (error: any) {
-        results.failed++;
-        results.errors.push(`${student.firstName} ${student.lastName}: ${error.message || 'Unknown error'}`);
-        console.error(`Error creating invoice for student ${student.id}:`, error);
       }
-    }
 
-    const baseMessage = `Bulk invoice creation completed. Created: ${results.created}, Failed: ${results.failed}`;
+      let localSequence = nextSequence;
+
+      for (const student of studentsToProcess) {
+        try {
+          // Reload student inside transaction to have attached entity
+          const txStudent = await trxStudentRepo.findOne({
+            where: { id: student.id },
+            relations: ['classEntity']
+          });
+          if (!txStudent) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(`${student.firstName} ${student.lastName}: Student not found in transaction`);
+            continue;
+          }
+
+          // Get previous balance from last NON-VOIDED invoice — check both studentId and studentNumber
+          const lastInvoice = await trxInvoiceRepo
+            .createQueryBuilder('invoice')
+            .leftJoinAndSelect('invoice.student', 's')
+            .where('COALESCE(invoice.isVoided, false) = false')
+            .andWhere('(invoice.studentId = :sid OR s.studentNumber = :sn)', {
+              sid: txStudent.id,
+              sn: txStudent.studentNumber
+            })
+            .orderBy('invoice.createdAt', 'DESC')
+            .limit(1)
+            .getOne();
+
+          if (lastInvoice && lastInvoice.studentId !== txStudent.id) {
+            lastInvoice.studentId = txStudent.id;
+            await trxInvoiceRepo.save(lastInvoice);
+          }
+
+          const settingsListForBatch = await trxSettingsRepo.find({
+            order: { createdAt: 'DESC' },
+            take: 1
+          });
+          const deskFeeBatch = getConfiguredDeskFee(settingsListForBatch[0] ?? null);
+
+          // Previous balance = canonical owed on last invoice (not stale balance column)
+          const previousBalance = computeCarryForwardBalance(lastInvoice, txStudent, deskFeeBatch);
+          const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
+
+          // One invoice per student per term — skip if already billed.
+          // Check both studentId (indexed list) AND studentNumber (iterates over candidates via helper).
+          const candidateList = invoicesByStudent.get(txStudent.id) || batchExistingInvoices;
+          const existingTermInvoice = findInvoiceForStudentTermInList(
+            candidateList,
+            txStudent.id,
+            invoiceTerm,
+            txStudent.studentNumber
+          );
+
+          if (existingTermInvoice) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(
+              `${txStudent.firstName} ${txStudent.lastName} (${txStudent.studentNumber}): Invoice for ${invoiceTerm} already exists (${existingTermInvoice.invoiceNumber})`
+            );
+            continue;
+          }
+
+          if (shouldSkipTermFeeInvoiceCreation(txStudent)) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(
+              `${txStudent.firstName} ${txStudent.lastName} (${txStudent.studentNumber}): Skipped (full fee exemption applied — staff/sibling or active ${invoiceTerm} exemption)`
+            );
+            continue;
+          }
+
+          const appliedPrepaid = Math.min(previousPrepaid, previousBalance);
+          const remainingPrepaid = Math.max(0, previousPrepaid - appliedPrepaid);
+
+          const invoiceNumber = `${invoicePrefix}${String(localSequence).padStart(6, '0')}`;
+
+          const invoice = trxInvoiceRepo.create({
+            invoiceNumber,
+            studentId: txStudent.id,
+            amount: 0,
+            previousBalance,
+            balance: 0,
+            prepaidAmount: remainingPrepaid,
+            paidAmount: appliedPrepaid,
+            tuitionAmount: 0,
+            transportAmount: 0,
+            diningHallAmount: 0,
+            registrationAmount: 0,
+            deskFeeAmount: 0,
+            dueDate: new Date(dueDate),
+            term: invoiceTerm,
+            description: description || `Fees for ${invoiceTerm} - ${txStudent.studentType}`,
+            status: InvoiceStatus.PENDING,
+            uniformTotal: 0,
+            isVoided: false,
+            voidReason: null,
+            voidedAt: null,
+            voidByAdminId: null
+          });
+
+          applyExemptionToInvoice(txStudent, invoice, feesConfig as Record<string, unknown>);
+
+          const termFees = parseAmount(invoice.amount);
+          const finalBalance = parseAmount(invoice.balance);
+
+          if (termFees <= 0.005 && previousBalance <= 0.005) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(
+              `${txStudent.firstName} ${txStudent.lastName} (${txStudent.studentNumber}): Skipped (no term fees and no previous balance due for ${invoiceTerm})`
+            );
+            continue;
+          }
+
+          const savedInvoice = await trxInvoiceRepo.save(invoice);
+
+          if (lastInvoice && previousBalance > 0.005) {
+            applyCarryForwardToPriorInvoice(lastInvoice, previousBalance, savedInvoice.invoiceNumber);
+            await trxInvoiceRepo.save(lastInvoice);
+          }
+
+          localSequence += 1;
+
+          const studentInvoiceList = invoicesByStudent.get(txStudent.id) || [];
+          studentInvoiceList.push(savedInvoice);
+          invoicesByStudent.set(txStudent.id, studentInvoiceList);
+
+          txResults.created++;
+          txResults.invoices.push({
+            invoiceNumber: savedInvoice.invoiceNumber,
+            studentName: `${txStudent.firstName} ${txStudent.lastName}`,
+            studentNumber: txStudent.studentNumber,
+            termFees: termFees,
+            previousBalance,
+            totalBalance: finalBalance,
+            prepaidApplied: appliedPrepaid,
+            remainingPrepaid,
+            term: invoiceTerm
+          });
+        } catch (error: any) {
+          txResults.failed++;
+          txResults.errors.push(`${student.firstName} ${student.lastName}: ${error.message || 'Unknown error'}`);
+          console.error(`Error creating invoice for student ${student.id}:`, error);
+        }
+      }
+
+      return txResults;
+    });
+
+    results.created = txResult.created;
+    results.skipped = txResult.skipped;
+    results.failed = txResult.failed;
+    results.invoices = txResult.invoices;
+    results.errors = txResult.errors;
+    results.skippedReasons = txResult.skippedReasons;
+
+    const baseMessage = `Bulk invoice creation completed. Created: ${results.created}, Skipped: ${results.skipped}, Failed: ${results.failed}`;
 
     if (batchMode) {
       const rangeMsg =
@@ -1370,27 +1488,37 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: `No invoices found for ${targetTerm}` });
     }
 
+    const explicitDateWindow = !!(startDate || endDate);
     let windowStart: Date;
     let windowEnd: Date;
-    if (startDate || endDate) {
+    if (explicitDateWindow) {
       windowStart = startDate ? new Date(startDate) : new Date(0);
       windowEnd = endDate ? new Date(endDate) : new Date();
+      if (endDate && !String(endDate).includes('T')) {
+        windowEnd.setHours(23, 59, 59, 999);
+      }
     } else {
       const latestCreatedAt = allForTargetTerm[0].createdAt ? new Date(allForTargetTerm[0].createdAt).getTime() : Date.now();
-      windowStart = new Date(latestCreatedAt - 5 * 60 * 1000);
+      // Bulk create runs in batches — allow a wider window than 5 minutes.
+      windowStart = new Date(latestCreatedAt - 60 * 60 * 1000);
       windowEnd = new Date(latestCreatedAt + 5 * 60 * 1000);
     }
 
     const candidates = allForTargetTerm.filter(inv => {
       const created = inv.createdAt ? new Date(inv.createdAt) : new Date();
-      const updated = inv.updatedAt ? new Date(inv.updatedAt) : created;
       const withinWindow = created >= windowStart && created <= windowEnd;
+      if (!withinWindow) return false;
+      if (explicitDateWindow) return true;
+      const updated = inv.updatedAt ? new Date(inv.updatedAt) : created;
       const notManuallyModified = Math.abs(updated.getTime() - created.getTime()) < 2 * 60 * 1000;
-      return withinWindow && notManuallyModified;
+      return notManuallyModified;
     });
 
-    if (candidates.length < 5) {
-      return res.status(400).json({ message: 'No recent bulk-created invoices detected to reverse' });
+    if (candidates.length === 0) {
+      const hint = explicitDateWindow
+        ? 'No invoices matched the selected term and date range.'
+        : 'No recent bulk-created invoices detected. Try setting a date range, or reverse only works on invoices created in the last hour that have not been edited.';
+      return res.status(400).json({ message: hint });
     }
 
     await invoiceRepository.remove(candidates);

@@ -28,6 +28,9 @@ export function effectiveTermFeesForBalance(invoice: Invoice | null | undefined)
   if (fromLines <= 0.005) return amountCol;
   if (Math.abs(fromLines - amountCol) <= 0.05) return fromLines;
 
+  // Bulk-created rows may have line items populated but amount still 0.
+  if (amountCol <= 0.005) return fromLines;
+
   if (fromLines > amountCol + 0.02) {
     const tuition = tryNum(invoice.tuitionAmount);
     const transport = tryNum(invoice.transportAmount);

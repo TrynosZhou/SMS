@@ -128,42 +128,174 @@
   </div>
     
     <!-- Bulk Invoice Creation Form Modal -->
-    <div *ngIf="showBulkInvoiceForm" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-      <div class="card" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
-        <button (click)="closeBulkInvoiceForm()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-        <h2 style="margin-top: 0;">Create Invoices for All Students</h2>
-        <div class="alert alert-info" style="margin-bottom: 20px;">
-          <p><strong>Note:</strong> Invoices will be created for the <strong>following term</strong> based on the current term you select.</p>
-          <p>Example: If you select "Term 1 2024", invoices will be created for "Term 2 2024".</p>
+    <div *ngIf="showBulkInvoiceForm" class="bulk-invoice-overlay" (click.self)="closeBulkInvoiceForm()">
+      <div class="bulk-invoice-modal" role="dialog" aria-modal="true" aria-labelledby="bulkInvoiceTitle">
+        <button
+          type="button"
+          class="bulk-invoice-close"
+          (click)="closeBulkInvoiceForm()"
+          [disabled]="creatingBulk"
+          aria-label="Close"
+        >
+          &times;
+        </button>
+
+        <div class="bulk-invoice-accent"></div>
+
+        <div class="bulk-invoice-header">
+          <div class="bulk-invoice-emblem" aria-hidden="true">
+            <svg viewBox="0 0 48 48" width="32" height="32">
+              <defs>
+                <linearGradient id="biGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#c9a962"/>
+                  <stop offset="100%" stop-color="#8c6a2c"/>
+                </linearGradient>
+              </defs>
+              <rect x="8" y="4" width="32" height="40" rx="4" fill="url(#biGrad)" opacity="0.12"/>
+              <rect x="8" y="4" width="32" height="40" rx="4" stroke="url(#biGrad)" stroke-width="2" fill="none"/>
+              <rect x="14" y="14" width="20" height="2.5" rx="1.25" fill="url(#biGrad)"/>
+              <rect x="14" y="20" width="20" height="2.5" rx="1.25" fill="#c9a962" opacity="0.6"/>
+              <rect x="14" y="26" width="14" height="2.5" rx="1.25" fill="#c9a962" opacity="0.6"/>
+              <rect x="14" y="32" width="10" height="3" rx="1.5" fill="url(#biGrad)"/>
+              <circle cx="34" cy="33" r="5" fill="url(#biGrad)" opacity="0.18"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="bulkInvoiceTitle" class="bulk-invoice-title">Create Invoices for All Students</h2>
+            <p class="bulk-invoice-subtitle">Batch‑generate term invoices for every active student.</p>
+          </div>
         </div>
-        <form (ngSubmit)="createBulkInvoices()">
-          <div class="form-group">
-            <label>Current Term *</label>
-            <input type="text" [(ngModel)]="bulkInvoiceForm.currentTerm" name="currentTerm" 
-                   placeholder="e.g., Term 1 2024" required 
-                   class="form-control">
-            <small style="color: #666;">Enter the current term. Invoices will be created for the following term.</small>
-            <div *ngIf="bulkInvoiceForm.currentTerm" style="margin-top: 8px; padding: 8px; background: #E8F4F8; border-radius: 4px;">
-              <strong>Following Term:</strong> <span style="color: #003366;">{{ getFollowingTerm(bulkInvoiceForm.currentTerm) }}</span>
+
+        <div class="bulk-invoice-note">
+          <div class="bulk-note-column">
+            <div class="bulk-note-label">
+              <span class="bulk-note-badge" aria-hidden="true">i</span>
+              How it works
+            </div>
+            <p class="bulk-note-body">
+              Invoices will be created for the <strong>invoice term</strong> you enter below
+              <span class="bulk-note-muted">(for all active students)</span>.
+            </p>
+          </div>
+          <div class="bulk-note-divider" aria-hidden="true"></div>
+          <div class="bulk-note-column">
+            <div class="bulk-note-label bulk-note-label--example">
+              <span class="bulk-note-badge bulk-note-badge--example" aria-hidden="true">e.g.</span>
+              Example
+            </div>
+            <p class="bulk-note-body">
+              Enter <strong>Term 3 2026</strong> to bill every student for
+              <span class="bulk-note-muted">Term 3 2026</span>.
+            </p>
+          </div>
+        </div>
+
+        <form (ngSubmit)="createBulkInvoices()" class="bulk-invoice-form" novalidate>
+          <div class="bulk-field">
+            <label class="bulk-field-label" for="bulkCurrentTerm">
+              <span class="bulk-field-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <rect x="2.5" y="3" width="15" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M2.5 7.5h15" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M6.25 2v3M13.75 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </span>
+              Invoice Term
+              <span class="bulk-field-required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="bulkCurrentTerm"
+              type="text"
+              class="bulk-field-input"
+              [(ngModel)]="bulkInvoiceForm.currentTerm"
+              name="currentTerm"
+              placeholder="e.g. Term 1 2027"
+              required
+              autocomplete="off"
+              [disabled]="creatingBulk"
+            >
+            <p class="bulk-field-hint">
+              The term fees are billed for. Defaults to the term after the school&rsquo;s current term in settings.
+            </p>
+            <div *ngIf="bulkInvoiceForm.currentTerm" class="bulk-term-preview">
+              <span class="bulk-term-preview-label">Following Term Preview</span>
+              <span class="bulk-term-preview-chip">{{ getFollowingTerm(bulkInvoiceForm.currentTerm) }}</span>
             </div>
           </div>
-          <div class="form-group">
-            <label>Due Date *</label>
-            <input type="date" [(ngModel)]="bulkInvoiceForm.dueDate" name="dueDate" required 
-                   class="form-control">
+
+          <div class="bulk-field">
+            <label class="bulk-field-label" for="bulkDueDate">
+              <span class="bulk-field-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <circle cx="10" cy="10" r="7.25" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M10 5.5v5l3.25 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              Due Date
+              <span class="bulk-field-required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="bulkDueDate"
+              type="date"
+              class="bulk-field-input bulk-field-input--date"
+              [(ngModel)]="bulkInvoiceForm.dueDate"
+              name="dueDate"
+              required
+              [disabled]="creatingBulk"
+            >
           </div>
-          <div class="form-group">
-            <label>Description (Optional)</label>
-            <textarea [(ngModel)]="bulkInvoiceForm.description" name="description" 
-                      placeholder="e.g., Tuition fees for next term" 
-                      class="form-control" rows="3"></textarea>
+
+          <div class="bulk-field">
+            <label class="bulk-field-label" for="bulkDescription">
+              <span class="bulk-field-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <path d="M4 3.5h9l3 3v10a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  <path d="M13 3.5v3h3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  <path d="M6.5 9.5h7M6.5 12.25h7M6.5 15h4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </span>
+              Description
+              <span class="bulk-field-optional">(Optional)</span>
+            </label>
+            <textarea
+              id="bulkDescription"
+              class="bulk-field-textarea"
+              [(ngModel)]="bulkInvoiceForm.description"
+              name="description"
+              placeholder="e.g. Tuition fees for next term"
+              rows="4"
+              [disabled]="creatingBulk"
+            ></textarea>
           </div>
-          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-            <button type="button" class="btn btn-secondary" (click)="closeBulkInvoiceForm()" [disabled]="creatingBulk">
-              ❌ Cancel
+
+          <div class="bulk-invoice-actions">
+            <button
+              type="button"
+              class="bulk-btn bulk-btn--ghost"
+              (click)="closeBulkInvoiceForm()"
+              [disabled]="creatingBulk"
+            >
+              <span class="bulk-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                </svg>
+              </span>
+              Cancel
             </button>
-            <button type="submit" class="btn btn-primary" [disabled]="creatingBulk">
-              {{ creatingBulk ? 'Creating...' : '📋 Create Invoices' }}
+            <button
+              type="submit"
+              class="bulk-btn bulk-btn--primary"
+              [disabled]="creatingBulk || !bulkInvoiceForm.currentTerm || !bulkInvoiceForm.dueDate"
+            >
+              <span *ngIf="creatingBulk" class="bulk-spinner" aria-hidden="true"></span>
+              <span *ngIf="!creatingBulk" class="bulk-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <rect x="3" y="3" width="14" height="14" rx="2.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M6 7.5h8M6 10.25h5.5M6 13h6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M14.5 10h-2.75a1 1 0 0 0-.707.293L9.5 11.836a.5.5 0 0 1-.707 0l-.543-.543a1 1 0 0 0-.707-.293H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0"/>
+                </svg>
+              </span>
+              {{ creatingBulk ? 'Generating Invoices…' : 'Generate Invoices' }}
             </button>
           </div>
         </form>

@@ -42,7 +42,14 @@ interface LedgerReport {
     totalDebits: number;
     totalCredits: number;
     closingBalance: number;
+    totalOutstanding: number;
   };
+  outstandingInvoices?: Array<{
+    invoiceId: string;
+    invoiceNumber: string;
+    term: string | null;
+    owed: number;
+  }>;
 }
 
 @Component({
@@ -122,8 +129,13 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     return this.report?.summary?.closingBalance || 0;
   }
 
+  /** Matches outstanding-fees / balance enquiry (all terms, carry-forward aware). */
+  get totalOutstanding(): number {
+    return this.report?.summary?.totalOutstanding ?? 0;
+  }
+
   get balanceStatus(): BalanceStatus {
-    const b = this.closingBalance;
+    const b = this.totalOutstanding;
     if (Math.abs(b) < 0.005) return 'settled';
     return b > 0 ? 'owed' : 'credit';
   }

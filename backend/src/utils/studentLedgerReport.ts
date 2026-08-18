@@ -6,7 +6,10 @@ import { Settings } from '../entities/Settings';
 import { Student } from '../entities/Student';
 import {
   computeCanonicalInvoiceBalance,
+  computeStudentTotalOutstanding,
+  getConfiguredDeskFee,
   hydrateInvoiceLineItemsFromAmount,
+  listStudentOutstandingInvoices,
 } from './invoiceFeesBalance';
 import { effectiveTermFeesForBalance } from './invoiceTermFees';
 
@@ -37,7 +40,17 @@ export type StudentLedgerSummary = {
   openingBalance: number;
   totalDebits: number;
   totalCredits: number;
+  /** Closing balance for the selected term only (ledger lines). */
   closingBalance: number;
+  /** Total owed across all terms — same rules as outstanding-fees report. */
+  totalOutstanding: number;
+};
+
+export type StudentLedgerOutstandingInvoice = {
+  invoiceId: string;
+  invoiceNumber: string;
+  term: string | null;
+  owed: number;
 };
 
 export type StudentLedgerStudent = {
@@ -61,6 +74,7 @@ export type StudentLedgerReport = {
   term: StudentLedgerTerm;
   lines: StudentLedgerLine[];
   summary: StudentLedgerSummary;
+  outstandingInvoices: StudentLedgerOutstandingInvoice[];
 };
 
 export type StudentLedgerMatch = StudentLedgerStudent;
@@ -139,9 +153,23 @@ export async function loadAcademicTerms(): Promise<AcademicTermRecord[]> {
   }
   if (!terms.length) {
     terms = await loadDistinctInvoiceTerms();
+  } else {
+    terms = await mergeInvoiceTermsIntoList(terms);
   }
 
   return terms;
+}
+
+async function mergeInvoiceTermsIntoList(terms: AcademicTermRecord[]): Promise<AcademicTermRecord[]> {
+  const invoiceTerms = await loadDistinctInvoiceTerms();
+  const merged = [...terms];
+  for (const invTerm of invoiceTerms) {
+    const alreadyCovered = merged.some((t) => invoiceMatchesTerm(invTerm.name, t));
+    if (!alreadyCovered) {
+      merged.push(invTerm);
+    }
+  }
+  return merged.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function parseAcademicTermsRaw(raw: unknown): unknown[] {
@@ -365,6 +393,7 @@ export async function buildStudentLedgerReport(
   const studentRepository = AppDataSource.getRepository(Student);
   const invoiceRepository = AppDataSource.getRepository(Invoice);
   const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+  const settingsRepository = AppDataSource.getRepository(Settings);
 
   const student = await studentRepository.findOne({
     where: { id: studentId },
@@ -372,11 +401,16 @@ export async function buildStudentLedgerReport(
   });
   if (!student) return null;
 
+  const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+  const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
+
   const allInvoices = await invoiceRepository.find({
     where: { studentId },
     order: { dueDate: 'ASC', createdAt: 'ASC' },
   });
   const termInvoices = resolveTermInvoices(allInvoices, termMeta);
+  const outstandingInvoiceRows = listStudentOutstandingInvoices(allInvoices, student, configuredDeskFee);
+  const totalOutstanding = computeStudentTotalOutstanding(allInvoices, student, configuredDeskFee);
 
   const invoiceIds = termInvoices.map((i) => i.id);
   const paymentLogs =
@@ -580,6 +614,13 @@ export async function buildStudentLedgerReport(
       totalDebits,
       totalCredits,
       closingBalance,
+      totalOutstanding,
     },
+    outstandingInvoices: outstandingInvoiceRows.map((row) => ({
+      invoiceId: row.invoiceId,
+      invoiceNumber: row.invoiceNumber,
+      term: row.term,
+      owed: row.owed,
+    })),
   };
 }

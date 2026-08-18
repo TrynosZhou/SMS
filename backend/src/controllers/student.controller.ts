@@ -21,6 +21,7 @@ import { createStudentIdCardPDF, createStudentIdCardsPDFBatch } from '../utils/s
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { parseBoolean } from '../utils/booleanUtils';
+import { findActiveInvoiceForStudentTerm } from '../utils/invoiceTermGuard';
 import {
   computeLogisticsFees,
   logisticsProfileChanged,
@@ -357,17 +358,24 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
 
           const term = settings.currentTerm || settings.activeTerm || `Term 1 ${new Date().getFullYear()}`;
 
-          // Build description from invoice items
+          const studentIdForInvoice = savedStudent?.id || student.id;
+          const existingForTerm = await findActiveInvoiceForStudentTerm(
+            invoiceRepository,
+            studentIdForInvoice,
+            term
+          );
+          if (existingForTerm) {
+            console.log(
+              `ℹ️ Skipping initial invoice for ${studentIdForInvoice} — ${term} already has ${existingForTerm.invoiceNumber}`
+            );
+          } else {
           const description = invoiceItems.length > 0 
             ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
               : 'Initial fees upon registration';
           
-          // Ensure balance is a proper decimal number
           const balanceValue = parseFloat(totalAmount.toFixed(2));
           const amountValue = parseFloat(totalAmount.toFixed(2));
           
-          // Use savedStudent.id to ensure we have the correct student ID
-          const studentIdForInvoice = savedStudent?.id || student.id;
           console.log('📋 Using student ID for invoice:', studentIdForInvoice);
           
           // Recompute canonical fee components for storage on the invoice
@@ -442,6 +450,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             console.log('✅ Verified invoice balance from DB:', verifyInvoice.balance);
           } else {
             console.error('❌ Could not verify invoice after save');
+          }
           }
         } else {
           console.warn('⚠️ No invoice created - total amount is 0');
@@ -1471,9 +1480,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     try {
       const invoiceRepository = AppDataSource.getRepository(Invoice);
       const settingsRepository = AppDataSource.getRepository(Settings);
-      const invoiceCount = await invoiceRepository.count({ where: { studentId: updatedStudent.id } });
-      if (invoiceCount === 0) {
-        const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+      const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+      const termText = settings?.activeTerm || settings?.currentTerm || `Term 1 ${new Date().getFullYear()}`;
+      const existingForTerm = await findActiveInvoiceForStudentTerm(
+        invoiceRepository,
+        updatedStudent.id,
+        termText
+      );
+      if (!existingForTerm) {
         const fees = settings?.feesSettings || {};
         const feesRecord = fees as Record<string, unknown>;
         const draftInvoice = invoiceRepository.create({
@@ -1486,7 +1500,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           prepaidAmount: 0,
           uniformTotal: 0,
           dueDate: new Date(),
-          term: settings?.activeTerm || settings?.currentTerm || `Term 1 ${new Date().getFullYear()}`,
+          term: termText,
           description: 'Initial fees upon registration',
           status: InvoiceStatus.PENDING,
           uniformItems: []
@@ -1511,7 +1525,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           const invoiceNumber = `${invoicePrefix}${String(nextSeq).padStart(6, '0')}`;
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 30);
-          const termText = settings?.activeTerm || settings?.currentTerm || `Term 1 ${currentYear}`;
           draftInvoice.invoiceNumber = invoiceNumber;
           draftInvoice.dueDate = dueDate;
           draftInvoice.term = termText;

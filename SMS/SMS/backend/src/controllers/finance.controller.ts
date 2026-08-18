@@ -101,16 +101,16 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
 
     // Duplicate billing guard moved below after fee components are computed
 
-    // Get previous balance and prepaid amount from last invoice
+    // Get previous balance and prepaid amount from last NON-VOIDED invoice
     // Query using multiple criteria to handle any reference mismatches
     const lastInvoiceQuery = invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.student', 'student')
-      .where('invoice.studentId = :studentId', { studentId })
-      .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
+      .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', { studentId, studentNumber: student.studentNumber })
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
       .orderBy('invoice.createdAt', 'DESC')
       .limit(1);
-    
+
     const lastInvoice = await lastInvoiceQuery.getOne();
     
     if (lastInvoice && lastInvoice.studentId !== student.id) {
@@ -221,6 +221,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       .leftJoin('invoice.student', 'student')
       .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', { studentId, studentNumber: student.studentNumber })
       .andWhere('invoice.term = :term', { term })
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
       .getOne();
     if (existingTermInvoice && isTermFeeInvoice) {
       return res.status(400).json({ message: 'Duplicate term fees are not allowed. An invoice for this term already exists for this student.' });
@@ -901,10 +902,12 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
   try {
     // term is the CURRENT term - invoices will be created for the FOLLOWING term
     const { term, dueDate, description } = req.body;
-    
+
     if (!term || !dueDate) {
       return res.status(400).json({ message: 'Current term and due date are required' });
     }
+
+    const nextTerm = getNextTerm(term);
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
@@ -927,9 +930,6 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const transportCost = parseAmount(feesConfig.transportCost);
     const diningHallCost = parseAmount(feesConfig.diningHallCost);
     const deskFee = parseAmount(feesConfig.deskFee);
-    // Library, sports, and other fees are no longer part of the term fee
-    // structure. Bulk invoices must only include tuition, one‑time desk fee,
-    // one‑time registration fee, transport, and dining hall as configured.
 
     // Get all active students
     const students = await studentRepository.find({
@@ -944,141 +944,235 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const results = {
       total: students.length,
       created: 0,
+      skipped: 0,
       failed: 0,
       invoices: [] as any[],
-      errors: [] as string[]
+      errors: [] as string[],
+      skippedReasons: [] as string[]
     };
 
-    // Get current invoice count for numbering
-    const invoiceCount = await invoiceRepository.count();
-    let invoiceCounter = invoiceCount + 1;
+    // Pre-compute year-based invoice sequence ONCE before the loop to match createInvoice logic
+    const currentYear = new Date().getFullYear();
+    const invoicePrefix = `INV-${currentYear}-`;
+    const lastInvoiceForYear = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+      .orderBy('invoice.invoiceNumber', 'DESC')
+      .getOne();
 
-    // Process each student
-    for (const student of students) {
-      try {
-        // Get previous balance from last invoice (this is the outstanding fees balance)
-        const lastInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id },
-          order: { createdAt: 'DESC' }
-        });
-
-        // Previous balance and prepaid credit from the last invoice
-        const previousBalance = parseAmount(lastInvoice?.balance);
-        const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
-
-        // Determine tuition fee for the NEXT term (following term)
-        // The term provided is the current term, so we calculate fees for the following term
-        const nextTerm = getNextTerm(term);
-        
-        // Prevent duplicate invoice in the following term
-        const existingNextTermInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id, term: nextTerm }
-        });
-        if (existingNextTermInvoice) {
-          results.failed++;
-          results.errors.push(`${student.firstName} ${student.lastName}: Invoice for ${nextTerm} already exists`);
-          continue;
-        }
-        
-        // Desk fee and registration fee: only charged once at registration (first invoice only; does not apply to staff children)
-        const shouldChargeOneTimeFees = !lastInvoice;
-        
-        // Calculate fees based on staff child/exempted status
-        let termFees = 0;
-        
-        // Staff children and exempted students don't pay tuition fees
-        if (!student.isStaffChild && !student.isExempted) {
-          const tuitionFeeNum = student.studentType === 'Boarder' 
-            ? boarderTuitionFee
-            : dayScholarTuitionFee;
-          
-          if (tuitionFeeNum <= 0) {
-            results.failed++;
-            results.errors.push(`${student.firstName} ${student.lastName}: Tuition fee not set for ${student.studentType}`);
-            continue;
-          }
-          
-          termFees += tuitionFeeNum;
-        }
-
-        // Registration fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
-          termFees += registrationFee;
-        }
-
-        // Desk fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
-          termFees += deskFee;
-        }
-        
-        // Transport cost: only for day scholars who use transport AND are not staff children or exempted
-        if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
-          termFees += transportCost;
-        }
-
-        // Dining hall cost: full price for regular students, 50% for staff children or exempted
-        if (student.usesDiningHall) {
-          const diningCost = diningHallCost;
-          if (student.isStaffChild || student.isExempted) {
-            termFees += diningCost * 0.5; // 50% for staff children/exempted
-          } else {
-            termFees += diningCost; // Full price for regular students
-          }
-        }
-
-        if (!Number.isFinite(termFees)) {
-          termFees = 0;
-        }
-
-        // Calculate total amount due for the new invoice (before applying prepaid credit)
-        const totalAmount = previousBalance + termFees;
-        const appliedPrepaid = Math.min(previousPrepaid, totalAmount);
-        const remainingPrepaid = previousPrepaid - appliedPrepaid;
-        const finalBalance = totalAmount - appliedPrepaid;
-
-        // Generate invoice number
-        const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCounter).padStart(6, '0')}`;
-        invoiceCounter++;
-
-        // Create invoice for the following term
-        // term variable is the current term, but we're creating invoice for next term
-        const invoice = invoiceRepository.create({
-          invoiceNumber,
-          studentId: student.id,
-          amount: termFees,
-          previousBalance,
-          balance: finalBalance,
-          prepaidAmount: remainingPrepaid,
-          paidAmount: appliedPrepaid,
-          dueDate: new Date(dueDate),
-          term: nextTerm,
-          description: description || `Fees for ${nextTerm} - ${student.studentType}${(student.isStaffChild || student.isExempted) ? ' (Staff/Exempted)' : ''}`,
-          status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING
-        });
-
-        const savedInvoice = await invoiceRepository.save(invoice);
-        
-        results.created++;
-        results.invoices.push({
-          invoiceNumber: savedInvoice.invoiceNumber,
-          studentName: `${student.firstName} ${student.lastName}`,
-          studentNumber: student.studentNumber,
-          termFees: termFees,
-          previousBalance,
-          totalBalance: finalBalance,
-          prepaidApplied: appliedPrepaid,
-          remainingPrepaid,
-          term: nextTerm
-        });
-      } catch (error: any) {
-        results.failed++;
-        results.errors.push(`${student.firstName} ${student.lastName}: ${error.message || 'Unknown error'}`);
-        console.error(`Error creating invoice for student ${student.id}:`, error);
+    let nextSequence = 1;
+    if (lastInvoiceForYear?.invoiceNumber) {
+      const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+      const lastSeqRaw = parts[2] || '';
+      const lastSeq = parseInt(lastSeqRaw, 10);
+      if (!isNaN(lastSeq) && lastSeq >= 1) {
+        nextSequence = lastSeq + 1;
       }
     }
 
+    // Wrap bulk processing in a single transaction to eliminate race conditions
+    const txResult = await AppDataSource.manager.transaction(async (trxManager) => {
+      const trxInvoiceRepo = trxManager.getRepository(Invoice);
+      const trxStudentRepo = trxManager.getRepository(Student);
+
+      const txResults = {
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        invoices: [] as any[],
+        errors: [] as string[],
+        skippedReasons: [] as string[]
+      };
+
+      let localSequence = nextSequence;
+
+      for (const student of students) {
+        try {
+          // Reload student inside transaction to have attached entity
+          const txStudent = await trxStudentRepo.findOne({
+            where: { id: student.id },
+            relations: ['classEntity']
+          });
+          if (!txStudent) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(`${student.firstName} ${student.lastName}: Student not found in transaction`);
+            continue;
+          }
+
+          // Get previous balance from last non-voided invoice
+          const lastInvoice = await trxInvoiceRepo
+            .createQueryBuilder('invoice')
+            .leftJoinAndSelect('invoice.student', 'student')
+            .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', {
+              studentId: txStudent.id,
+              studentNumber: txStudent.studentNumber
+            })
+            .andWhere('COALESCE(invoice.isVoided, false) = false')
+            .orderBy('invoice.createdAt', 'DESC')
+            .limit(1)
+            .getOne();
+
+          if (lastInvoice && lastInvoice.studentId !== txStudent.id) {
+            lastInvoice.studentId = txStudent.id;
+            await trxInvoiceRepo.save(lastInvoice);
+          }
+
+          const previousBalance = parseAmount(lastInvoice?.balance);
+          const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
+
+          // ---- ROBUST DUPLICATE CHECK: one non-voided invoice per student per term ----
+          // Match the logic from createInvoice: check by studentId OR studentNumber
+          // and exclude voided invoices so voided ones don't block recreation.
+          const existingTermInvoice = await trxInvoiceRepo
+            .createQueryBuilder('invoice')
+            .leftJoin('invoice.student', 'student')
+            .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', {
+              studentId: txStudent.id,
+              studentNumber: txStudent.studentNumber
+            })
+            .andWhere('invoice.term = :term', { term: nextTerm })
+            .andWhere('COALESCE(invoice.isVoided, false) = false')
+            .getOne();
+
+          if (existingTermInvoice) {
+            txResults.skipped++;
+            txResults.skippedReasons.push(
+              `${txStudent.firstName} ${txStudent.lastName} (${txStudent.studentNumber}): Invoice for ${nextTerm} already exists`
+            );
+            continue;
+          }
+
+          // Desk fee and registration fee: only charged once at registration (first non-voided invoice only)
+          const shouldChargeOneTimeFees = !lastInvoice;
+
+          let termFees = 0;
+
+          if (!txStudent.isStaffChild && !txStudent.isExempted) {
+            const tuitionFeeNum = txStudent.studentType === 'Boarder'
+              ? boarderTuitionFee
+              : dayScholarTuitionFee;
+
+            if (tuitionFeeNum <= 0) {
+              txResults.failed++;
+              txResults.errors.push(`${txStudent.firstName} ${txStudent.lastName}: Tuition fee not set for ${txStudent.studentType}`);
+              continue;
+            }
+
+            termFees += tuitionFeeNum;
+          }
+
+          if (!txStudent.isStaffChild && !txStudent.isExempted && shouldChargeOneTimeFees) {
+            termFees += registrationFee;
+          }
+
+          if (!txStudent.isStaffChild && !txStudent.isExempted && shouldChargeOneTimeFees) {
+            termFees += deskFee;
+          }
+
+          if (txStudent.studentType === 'Day Scholar' && txStudent.usesTransport && !txStudent.isStaffChild && !txStudent.isExempted) {
+            termFees += transportCost;
+          }
+
+          if (txStudent.usesDiningHall) {
+            if (txStudent.isStaffChild || txStudent.isExempted) {
+              termFees += diningHallCost * 0.5;
+            } else {
+              termFees += diningHallCost;
+            }
+          }
+
+          if (!Number.isFinite(termFees)) {
+            termFees = 0;
+          }
+
+          const totalAmount = previousBalance + termFees;
+          const appliedPrepaid = Math.min(previousPrepaid, totalAmount);
+          const remainingPrepaid = Math.max(0, previousPrepaid - appliedPrepaid);
+          const finalBalance = totalAmount - appliedPrepaid;
+
+          // Generate invoice number using the shared year-based sequence
+          const invoiceNumber = `${invoicePrefix}${String(localSequence).padStart(6, '0')}`;
+          localSequence++;
+
+          const breakdownParts: string[] = [];
+          const tuitionVal = txStudent.isStaffChild || txStudent.isExempted
+            ? 0
+            : (txStudent.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee);
+          const diningVal = !txStudent.usesDiningHall
+            ? 0
+            : (txStudent.isStaffChild || txStudent.isExempted ? diningHallCost * 0.5 : diningHallCost);
+          const transportVal = txStudent.studentType === 'Day Scholar' && txStudent.usesTransport && !txStudent.isStaffChild && !txStudent.isExempted
+            ? transportCost
+            : 0;
+          const registrationVal = !txStudent.isStaffChild && !txStudent.isExempted && shouldChargeOneTimeFees ? registrationFee : 0;
+          const deskVal = !txStudent.isStaffChild && !txStudent.isExempted && shouldChargeOneTimeFees ? deskFee : 0;
+
+          if (tuitionVal > 0) breakdownParts.push(`Tuition: ${tuitionVal.toFixed(2)}`);
+          if (diningVal > 0) breakdownParts.push(`Dining Hall: ${diningVal.toFixed(2)}`);
+          if (registrationVal > 0) breakdownParts.push(`Registration Fee: ${registrationVal.toFixed(2)}`);
+          if (deskVal > 0) breakdownParts.push(`Desk Fee: ${deskVal.toFixed(2)}`);
+          if (transportVal > 0) breakdownParts.push(`Transport: ${transportVal.toFixed(2)}`);
+
+          let finalDescription = description || `Fees for ${nextTerm} - ${txStudent.studentType}${(txStudent.isStaffChild || txStudent.isExempted) ? ' (Staff/Exempted)' : ''}`;
+          if (breakdownParts.length > 0) {
+            const breakdownText = `Breakdown → ${breakdownParts.join(' | ')}`;
+            finalDescription = finalDescription
+              ? `${finalDescription}\n${breakdownText}`
+              : breakdownText;
+          }
+
+          const invoice = trxInvoiceRepo.create({
+            invoiceNumber,
+            studentId: txStudent.id,
+            amount: termFees,
+            previousBalance,
+            balance: finalBalance,
+            prepaidAmount: remainingPrepaid,
+            paidAmount: appliedPrepaid,
+            dueDate: new Date(dueDate),
+            term: nextTerm,
+            description: finalDescription,
+            status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING,
+            uniformTotal: 0,
+            isVoided: false,
+            voidReason: null,
+            voidedAt: null,
+            voidByAdminId: null
+          });
+
+          const savedInvoice = await trxInvoiceRepo.save(invoice);
+
+          txResults.created++;
+          txResults.invoices.push({
+            invoiceNumber: savedInvoice.invoiceNumber,
+            studentName: `${txStudent.firstName} ${txStudent.lastName}`,
+            studentNumber: txStudent.studentNumber,
+            termFees: termFees,
+            previousBalance,
+            totalBalance: finalBalance,
+            prepaidApplied: appliedPrepaid,
+            remainingPrepaid,
+            term: nextTerm
+          });
+        } catch (error: any) {
+          txResults.failed++;
+          txResults.errors.push(`${student.firstName} ${student.lastName}: ${error.message || 'Unknown error'}`);
+          console.error(`Error creating invoice for student ${student.id}:`, error);
+        }
+      }
+
+      return txResults;
+    });
+
+    results.created = txResult.created;
+    results.skipped = txResult.skipped;
+    results.failed = txResult.failed;
+    results.invoices = txResult.invoices;
+    results.errors = txResult.errors;
+    results.skippedReasons = txResult.skippedReasons;
+
     res.status(201).json({
-      message: `Bulk invoice creation completed. Created: ${results.created}, Failed: ${results.failed}`,
+      message: `Bulk invoice creation completed. Created: ${results.created}, Skipped: ${results.skipped}, Failed: ${results.failed}`,
       summary: results
     });
   } catch (error: any) {

@@ -48,7 +48,7 @@ export class SmsSuccessConfirmDirective implements OnChanges {
         this.opening = false;
       });
 
-    // Clear local message immediately so no local toast/banner can render
-    this.smsSuccessConfirmClear.emit();
+    // Defer clear to the next tick — synchronous emit causes NG0100 on the host component.
+    queueMicrotask(() => this.smsSuccessConfirmClear.emit());
   }
 }

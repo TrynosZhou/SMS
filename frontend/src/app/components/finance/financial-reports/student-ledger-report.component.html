@@ -194,7 +194,7 @@
           [class.sl-balance-badge--owed]="balanceStatus === 'owed'"
           [class.sl-balance-badge--credit]="balanceStatus === 'credit'"
           [class.sl-balance-badge--settled]="balanceStatus === 'settled'">
-          {{ balanceStatusLabel }}: {{ currencySymbol }}{{ formatAmount(absAmount(r.summary.closingBalance)) }}
+          {{ balanceStatusLabel }}: {{ currencySymbol }}{{ formatAmount(absAmount(totalOutstanding)) }}
         </span>
         <a class="sl-btn sl-btn--primary" [routerLink]="recordPaymentLink()" [queryParams]="recordPaymentQuery()">
           Record payment
@@ -216,8 +216,15 @@
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalCredits) }}</span>
       </article>
       <article class="sl-summary-card sl-summary-card--closing">
-        <span class="sl-summary-label">Closing balance</span>
+        <span class="sl-summary-label">Term closing balance</span>
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.closingBalance) }}</span>
+      </article>
+      <article class="sl-summary-card sl-summary-card--outstanding">
+        <span class="sl-summary-label">Total outstanding</span>
+        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalOutstanding || 0) }}</span>
+        <span class="sl-summary-hint" *ngIf="(r.summary.totalOutstanding || 0) > 0.005 && r.outstandingInvoices?.length">
+          {{ r.outstandingInvoices!.length }} invoice(s) — same as Outstanding fees report
+        </span>
       </article>
     </div>
 

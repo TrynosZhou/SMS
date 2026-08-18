@@ -327,32 +327,11 @@ export class PublishResultsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           const count = response?.publishedCount ?? 0;
-          const wa = response?.whatsapp;
-          const parents = Number(wa?.parentsNotified ?? 0);
-          const parentsSkipped = Number(wa?.parentsSkipped ?? 0);
-          const parentsFailed = Number(wa?.parentsFailed ?? 0);
-          const parentsAttempted = Number(wa?.parentsAttempted ?? 0);
-          const enabled = wa?.enabled;
-          const configured = wa?.configured;
-          const dryRun = wa?.dryRun === true;
+          const queued = response?.notificationsQueued === true || response?.whatsapp?.queued === true;
 
           let msg = `Published ${count} exam(s). Results are now visible.`;
-          if (enabled === false) {
-            msg += ' WhatsApp parent notifications are turned off in System Settings → Notifications.';
-          } else if (dryRun || parentsSkipped > 0) {
-            const n = parentsSkipped || parentsAttempted || 0;
-            msg += ` WhatsApp dry-run is on — ${n} parent${n === 1 ? '' : 's'} would be notified (messages logged on the server only; no real WhatsApp sent).`;
-          } else if (configured === false && parentsAttempted === 0) {
-            msg += ' WhatsApp is not configured on the server, so parent notifications were not sent.';
-          } else if (parents > 0) {
-            msg += ` ${parents} parent${parents === 1 ? '' : 's'} received WhatsApp notification${parents === 1 ? '' : 's'} about the published results.`;
-            if (parentsFailed > 0) {
-              msg += ` (${parentsFailed} failed.)`;
-            }
-          } else if (parentsAttempted > 0 && parentsFailed > 0) {
-            msg += ` WhatsApp parent notifications failed for ${parentsFailed} parent${parentsFailed === 1 ? '' : 's'}.`;
-          } else {
-            msg += ' No parents with valid WhatsApp numbers were notified.';
+          if (queued) {
+            msg += ' Parent and staff WhatsApp notifications are being sent in the background.';
           }
           this.success = msg;
           this.lastActionAt = new Date();

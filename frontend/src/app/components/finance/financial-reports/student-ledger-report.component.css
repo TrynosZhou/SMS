@@ -785,8 +785,17 @@
   box-shadow: var(--sl-shadow);
 }
 
-.sl-summary-card--closing {
+.sl-summary-card--closing,
+.sl-summary-card--outstanding {
   border-top-color: var(--sl-gold);
+}
+
+.sl-summary-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--sl-muted);
+  line-height: 1.35;
 }
 
 .sl-summary-label {

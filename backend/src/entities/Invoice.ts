@@ -12,6 +12,7 @@ export enum InvoiceStatus {
 
 @Entity('invoices')
 @Index(['invoiceNumber'], { unique: true })
+@Index(['studentId', 'term'], { unique: true, where: 'COALESCE("isVoided", false) = false' })
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -31,7 +31,7 @@ import {
   findInvoiceForReportCardAccess,
   getConfiguredDeskFee
 } from '../utils/invoiceFeesBalance';
-import { sendResultsPublishedNotifications, queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
+import { queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
 import { generateReportCardRemarkAlternatives, isOpenAiConfigured } from '../services/reportCardAi.service';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
@@ -913,21 +913,30 @@ export const publishExam = async (req: AuthRequest, res: Response) => {
     }
     
     const relatedExams = await examRepository.find({
-      where: whereCondition
+      where: whereCondition,
+      select: ['id', 'classId', 'type', 'term', 'status']
     });
 
-    // Update all related exams to published status
-    for (const relatedExam of relatedExams) {
-      relatedExam.status = ExamStatus.PUBLISHED;
-      await examRepository.save(relatedExam);
+    const toPublish = relatedExams.filter((e) => e.status !== ExamStatus.PUBLISHED);
+    if (toPublish.length > 0) {
+      await examRepository
+        .createQueryBuilder()
+        .update(Exam)
+        .set({ status: ExamStatus.PUBLISHED })
+        .where({ id: In(toPublish.map((e) => e.id)) })
+        .execute();
+      for (const relatedExam of toPublish) {
+        relatedExam.status = ExamStatus.PUBLISHED;
+      }
     }
 
-    queueResultsPublishedNotifications(relatedExams);
+    // Fire-and-forget WhatsApp — never block the publish response
+    queueResultsPublishedNotifications(toPublish.length > 0 ? toPublish : relatedExams);
 
     res.json({ 
       message: `Exam results published successfully. Results for all students in ${relatedExams.length} exam(s) are now visible to all users.`,
       exam: exam,
-      publishedCount: relatedExams.length,
+      publishedCount: toPublish.length,
       notificationsQueued: true
     });
   } catch (error: any) {
@@ -956,15 +965,14 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Term is required' });
     }
 
-    // Find all exams of the specified type and term (across all classes)
-    const whereCondition: any = {
-      type: examType as ExamType,
-      term: term
-    };
-    
+    // Find all exams of the specified type and term (across all classes).
+    // Avoid heavy relations — publish only needs ids + classId for notifications.
     const exams = await examRepository.find({
-      where: whereCondition,
-      relations: ['classEntity', 'subjects']
+      where: {
+        type: examType as ExamType,
+        term: term
+      },
+      select: ['id', 'classId', 'type', 'term', 'status']
     });
 
     if (exams.length === 0) {
@@ -973,72 +981,45 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update all exams to published status
-    let publishedCount = 0;
-    const newlyPublished: Exam[] = [];
-    for (const exam of exams) {
-      if (exam.status !== ExamStatus.PUBLISHED) {
-        exam.status = ExamStatus.PUBLISHED;
-        await examRepository.save(exam);
-        publishedCount++;
-        newlyPublished.push(exam);
-      }
-    }
+    const newlyPublished = exams.filter((exam) => exam.status !== ExamStatus.PUBLISHED);
+    const publishedCount = newlyPublished.length;
 
-    let whatsappSummary = null;
-    if (newlyPublished.length > 0) {
-      try {
-        whatsappSummary = await sendResultsPublishedNotifications(newlyPublished);
-      } catch (notifyErr: any) {
-        console.error('[publishExamByType] WhatsApp notification error:', notifyErr);
-        whatsappSummary = {
-          enabled: true,
-          configured: false,
-          dryRun: true,
-          attempted: 0,
-          sent: 0,
-          failed: 0,
-          skipped: 0,
-          recipients: 0,
-          parentsNotified: 0,
-          parentsAttempted: 0,
-          parentsFailed: 0,
-          parentsSkipped: 0,
-          error: notifyErr?.message || 'Notification failed'
-        };
+    if (publishedCount > 0) {
+      // Single bulk UPDATE instead of N individual saves (critical in production)
+      await examRepository
+        .createQueryBuilder()
+        .update(Exam)
+        .set({ status: ExamStatus.PUBLISHED })
+        .where({ id: In(newlyPublished.map((e) => e.id)) })
+        .execute();
+
+      for (const exam of newlyPublished) {
+        exam.status = ExamStatus.PUBLISHED;
       }
+
+      // Queue WhatsApp in the background — awaiting sends (with per-message delay)
+      // was making publish take minutes when many parents exist.
+      queueResultsPublishedNotifications(newlyPublished);
     }
 
     res.json({ 
       message: `Exam results published successfully. ${publishedCount} exam(s) published across all classes. Results are now visible to all users.`,
-      publishedCount: publishedCount,
+      publishedCount,
       totalExams: exams.length,
-      notificationsQueued: newlyPublished.length > 0,
-      whatsapp: whatsappSummary
-        ? {
-            enabled: whatsappSummary.enabled,
-            configured: whatsappSummary.configured,
-            dryRun: whatsappSummary.dryRun,
-            parentsNotified: whatsappSummary.parentsNotified,
-            parentsAttempted: whatsappSummary.parentsAttempted,
-            parentsFailed: whatsappSummary.parentsFailed,
-            parentsSkipped: whatsappSummary.parentsSkipped,
-            totalSent: whatsappSummary.sent,
-            totalFailed: whatsappSummary.failed,
-            totalRecipients: whatsappSummary.recipients
-          }
-        : {
-            enabled: false,
-            configured: false,
-            dryRun: true,
-            parentsNotified: 0,
-            parentsAttempted: 0,
-            parentsFailed: 0,
-            parentsSkipped: 0,
-            totalSent: 0,
-            totalFailed: 0,
-            totalRecipients: 0
-          }
+      notificationsQueued: publishedCount > 0,
+      whatsapp: {
+        queued: publishedCount > 0,
+        enabled: null,
+        configured: null,
+        dryRun: null,
+        parentsNotified: 0,
+        parentsAttempted: 0,
+        parentsFailed: 0,
+        parentsSkipped: 0,
+        totalSent: 0,
+        totalFailed: 0,
+        totalRecipients: 0
+      }
     });
   } catch (error: any) {
     console.error('Error publishing exams by type:', error);
@@ -1066,15 +1047,12 @@ export const unpublishExamByType = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Term is required' });
     }
 
-    // Find all exams of the specified type and term (across all classes)
-    const whereCondition: any = {
-      type: examType as ExamType,
-      term: term
-    };
-    
     const exams = await examRepository.find({
-      where: whereCondition,
-      relations: ['classEntity', 'subjects']
+      where: {
+        type: examType as ExamType,
+        term: term
+      },
+      select: ['id', 'status']
     });
 
     if (exams.length === 0) {
@@ -1083,15 +1061,8 @@ export const unpublishExamByType = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update all exams back to draft status
-    let unpublishedCount = 0;
-    for (const exam of exams) {
-      if (exam.status === ExamStatus.PUBLISHED) {
-        exam.status = ExamStatus.DRAFT;
-        await examRepository.save(exam);
-        unpublishedCount++;
-      }
-    }
+    const toUnpublish = exams.filter((exam) => exam.status === ExamStatus.PUBLISHED);
+    const unpublishedCount = toUnpublish.length;
 
     if (unpublishedCount === 0) {
       return res.status(400).json({ 
@@ -1099,9 +1070,16 @@ export const unpublishExamByType = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.json({ 
-      message: `Exam results unpublished successfully. ${unpublishedCount} exam(s) unpublished across all classes. Results are no longer visible to students, parents, and teachers. Marks and comments can now be edited.`,
-      unpublishedCount: unpublishedCount,
+    await examRepository
+      .createQueryBuilder()
+      .update(Exam)
+      .set({ status: ExamStatus.DRAFT })
+      .where({ id: In(toUnpublish.map((e) => e.id)) })
+      .execute();
+
+    res.json({
+      message: `Exam results unpublished successfully. ${unpublishedCount} exam(s) unpublished across all classes. Marks and comments can be edited again.`,
+      unpublishedCount,
       totalExams: exams.length
     });
   } catch (error: any) {
@@ -2460,10 +2438,15 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     const classMarks = allMarks.filter(mark => classStudentIds.has(mark.studentId));
     
     // Calculate class rankings using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
+    const classMarksByStudent = new Map<string, typeof classMarks>();
+    for (const mark of classMarks) {
+      const list = classMarksByStudent.get(mark.studentId);
+      if (list) list.push(mark);
+      else classMarksByStudent.set(mark.studentId, [mark]);
+    }
     const classStudentAverages: { [key: string]: number } = {};
     for (const studentId of classStudentIds) {
-      const studentMarks = classMarks.filter(m => m.studentId === studentId);
-      classStudentAverages[studentId] = computeCoreAverageFromMarks(studentMarks);
+      classStudentAverages[studentId] = computeCoreAverageFromMarks(classMarksByStudent.get(studentId) || []);
     }
 
     const classRankingsUnsorted = Object.entries(classStudentAverages)
@@ -2528,12 +2511,17 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       forms.forEach(form => {
         const formStudents = allFormStudentsList.filter(s => s.classEntity?.form === form);
         const formStudentIdsSet = new Set(formStudents.map(s => s.id));
-        const formStudentMarks = formMarks.filter(m => formStudentIdsSet.has(m.studentId));
+        const formMarksByStudent = new Map<string, typeof formMarks>();
+        for (const m of formMarks) {
+          if (!formStudentIdsSet.has(m.studentId)) continue;
+          const list = formMarksByStudent.get(m.studentId);
+          if (list) list.push(m);
+          else formMarksByStudent.set(m.studentId, [m]);
+        }
         
         const formStudentAverages: { [key: string]: number } = {};
         for (const studentId of formStudentIdsSet) {
-          const studentMarks = formStudentMarks.filter(m => m.studentId === studentId);
-          formStudentAverages[studentId] = computeCoreAverageFromMarks(studentMarks);
+          formStudentAverages[studentId] = computeCoreAverageFromMarks(formMarksByStudent.get(studentId) || []);
         }
         
         const formRanksUnsorted = Object.entries(formStudentAverages)
@@ -2554,6 +2542,63 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Prefetch remarks + attendance once for the whole class (avoids N+1 queries).
+    const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
+    const attendanceRepository = AppDataSource.getRepository(Attendance);
+    const studentIdsForCards = students
+      .filter((student) => {
+        if (isParent && studentId && student.id !== studentId) return false;
+        if (isStudent) {
+          const loggedInStudentId = user?.student?.id;
+          if (!loggedInStudentId || student.id !== loggedInStudentId) return false;
+        }
+        return true;
+      })
+      .map((s) => s.id);
+
+    const remarksByStudentId = new Map<string, ReportCardRemarks>();
+    if (studentIdsForCards.length > 0) {
+      const examTypeVariants = Array.from(
+        new Set([normalizedExamType, String(examType || '').trim()].filter(Boolean))
+      );
+      const allRemarks = await remarksRepository.find({
+        where: {
+          studentId: In(studentIdsForCards),
+          classId: classId as string,
+          examType: In(examTypeVariants),
+        },
+      });
+      for (const row of allRemarks) {
+        const existing = remarksByStudentId.get(row.studentId);
+        // Prefer normalized examType row when both formats exist
+        if (!existing || row.examType === normalizedExamType) {
+          remarksByStudentId.set(row.studentId, row);
+        }
+      }
+    }
+
+    const attendanceByStudentId = new Map<string, Attendance[]>();
+    if (studentIdsForCards.length > 0 && termValue) {
+      const allAttendance = await attendanceRepository.find({
+        where: {
+          studentId: In(studentIdsForCards),
+          term: termValue,
+        },
+      });
+      for (const row of allAttendance) {
+        const list = attendanceByStudentId.get(row.studentId);
+        if (list) list.push(row);
+        else attendanceByStudentId.set(row.studentId, [row]);
+      }
+    }
+
+    const marksByStudentId = new Map<string, typeof allMarks>();
+    for (const mark of allMarks) {
+      const list = marksByStudentId.get(mark.studentId);
+      if (list) list.push(mark);
+      else marksByStudentId.set(mark.studentId, [mark]);
+    }
+
     // Second pass: generate report cards for each student
     for (const student of students) {
       // Filter for parent access
@@ -2569,8 +2614,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         }
       }
       // Get all marks for this student across all exams of this type
-      const studentMarks = allMarks.filter(m => m.studentId === student.id);
-      console.log(`[getReportCard] Student ${student.studentNumber} (${student.id}): Found ${studentMarks.length} marks across ${exams.length} exams`);
+      const studentMarks = marksByStudentId.get(student.id) || [];
 
       // Group marks by subject AND exam (to prevent duplicate marks for the same exam being summed)
       // If duplicates exist for the same exam, the latest one is preferred
@@ -2674,60 +2718,11 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         }
       }
       
-      // Get remarks for this student's report card
-      // Try both normalized and original exam type formats (in case remarks were saved with original format)
-      const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
-      let remarks = await remarksRepository.findOne({
-        where: {
-          studentId: student.id,
-          classId: classId as string,
-          examType: normalizedExamType, // Try normalized exam type first
-        }
-      });
-      
-      // If not found with normalized type, try original format (for backward compatibility)
-      if (!remarks && examType !== normalizedExamType) {
-        console.log('[getReportCard] Remarks not found with normalized type, trying original format...');
-        remarks = await remarksRepository.findOne({
-          where: {
-            studentId: student.id,
-            classId: classId as string,
-            examType: examType as string, // Try original format
-          }
-        });
-      }
-      
-      console.log('[getReportCard] Remarks query:', {
-        studentId: student.id,
-        classId: classId as string,
-        examType: normalizedExamType,
-        originalExamType: examType,
-        found: !!remarks
-      });
-      
-      if (remarks) {
-        console.log('[getReportCard] Remarks found:', {
-          id: remarks.id,
-          examType: remarks.examType,
-          hasClassTeacherRemarks: !!remarks.classTeacherRemarks,
-          hasHeadmasterRemarks: !!remarks.headmasterRemarks,
-          classTeacherRemarks: remarks.classTeacherRemarks?.substring(0, 50) + '...',
-          headmasterRemarks: remarks.headmasterRemarks?.substring(0, 50) + '...'
-        });
-      } else {
-        console.log('[getReportCard] No remarks found for this student/exam type combination');
-      }
-
-      // Get total attendance for this student for the term
-      const attendanceRepository = AppDataSource.getRepository(Attendance);
-      const attendanceRecords = await attendanceRepository.find({
-        where: {
-          studentId: student.id,
-          term: termValue,
-        }
-      });
+      // Prefetched remarks + attendance (templates only — OpenAI is via AI remark button)
+      const remarks = remarksByStudentId.get(student.id) || null;
+      const attendanceRecords = attendanceByStudentId.get(student.id) || [];
       const totalAttendance = attendanceRecords.length;
-      const presentAttendance = attendanceRecords.filter(a => 
+      const presentAttendance = attendanceRecords.filter(a =>
         a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.EXCUSED
       ).length;
 
@@ -2747,6 +2742,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         subjects: subjectData,
         existing: remarks,
         persist: true,
+        useAi: false,
       });
 
       reportCards.push({
@@ -3412,6 +3408,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         subjects: subjectData,
         existing: remarks,
         persist: true,
+        useAi: false,
       });
 
       reportCardData = {
@@ -3675,6 +3672,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         subjects: subjectData,
         existing: remarks,
         persist: true,
+        useAi: false,
       });
 
       reportCardData = {

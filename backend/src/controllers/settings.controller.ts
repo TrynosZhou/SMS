@@ -21,6 +21,7 @@ import { Parent } from '../entities/Parent';
 import { ParentStudent } from '../entities/ParentStudent';
 import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
+import { findActiveInvoiceForStudentTerm } from '../utils/invoiceTermGuard';
 
 const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
   universalTeacher: {
@@ -874,6 +875,15 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
     today.setHours(0, 0, 0, 0);
 
     for (const student of students) {
+      const existingForTerm = await findActiveInvoiceForStudentTerm(
+        invoiceRepository,
+        student.id,
+        nextTerm
+      );
+      if (existingForTerm) {
+        continue;
+      }
+
       // Get latest invoice for the student
       const latestInvoice = await invoiceRepository.findOne({
         where: { studentId: student.id },

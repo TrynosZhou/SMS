@@ -45,26 +45,25 @@ function balanceTone(balance: number): 'owed' | 'credit' | 'settled' {
 }
 
 function statusCopy(report: StudentLedgerReport, sym: string): { tone: 'owed' | 'credit' | 'settled'; text: string; amount: string } {
-  const closing = report.summary.closingBalance;
-  const term = report.term.name;
-  const tone = balanceTone(closing);
+  const outstanding = report.summary.totalOutstanding ?? report.summary.closingBalance;
+  const tone = balanceTone(outstanding);
   if (tone === 'owed') {
     return {
       tone,
-      text: `Balance due for ${term}`,
-      amount: money(sym, closing),
+      text: 'Total outstanding (all terms)',
+      amount: money(sym, outstanding),
     };
   }
   if (tone === 'credit') {
     return {
       tone,
-      text: `Credit balance for ${term}`,
-      amount: money(sym, Math.abs(closing)),
+      text: 'Credit balance',
+      amount: money(sym, Math.abs(outstanding)),
     };
   }
   return {
     tone,
-    text: `Account settled for ${term}`,
+    text: 'Account settled',
     amount: money(sym, 0),
   };
 }
@@ -592,8 +591,12 @@ export function createStudentLedgerHTML(data: StudentLedgerHTMLData): string {
           <span class="value">${escapeHtml(money(sym, report.summary.totalCredits))}</span>
         </article>
         <article class="summary-card summary-card--closing">
-          <span class="label">Closing Balance</span>
+          <span class="label">Term Closing Balance</span>
           <span class="value">${escapeHtml(money(sym, report.summary.closingBalance))}</span>
+        </article>
+        <article class="summary-card summary-card--closing">
+          <span class="label">Total Outstanding</span>
+          <span class="value">${escapeHtml(money(sym, report.summary.totalOutstanding ?? report.summary.closingBalance))}</span>
         </article>
       </section>
 

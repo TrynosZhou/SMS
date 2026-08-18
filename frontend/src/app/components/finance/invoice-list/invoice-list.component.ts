@@ -55,7 +55,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
   lastLoadedAt: Date | null = null;
   showBulkInvoiceForm = false;
   bulkInvoiceForm: any = {
-    currentTerm: '',
+    invoiceTerm: '',
     dueDate: '',
     description: ''
   };
@@ -344,7 +344,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
           if (this.invoices.length > 0 && this.filteredInvoices.length === 0 && this.hasActiveInvoiceFilters()) {
             this.error =
               `${this.invoices.length} invoice(s) loaded but none match the current filters. Clear filters to see all.`;
-          } else {
+          } else if (this.error?.includes('match the current filters')) {
             this.error = '';
           }
         },
@@ -1963,14 +1963,19 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       setTimeout(() => (this.error = ''), 5000);
       return;
     }
-    if (!confirm('Confirm: You are about to create invoices for all students. Proceed?')) {
+    if (
+      !confirm(
+        'Confirm: You are about to open bulk-create invoices for all students.\n\nStudents who already have an invoice for the selected term will be skipped automatically.\n\nProceed?'
+      )
+    ) {
       return;
     }
     // Set default due date to 30 days from now
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 30);
     this.bulkInvoiceForm.dueDate = defaultDueDate.toISOString().split('T')[0];
-    this.bulkInvoiceForm.currentTerm = '';
+    this.bulkInvoiceForm.invoiceTerm =
+      this.getFollowingTerm(this.currentTermFromSettings) || this.currentTermFromSettings || '';
     this.bulkInvoiceForm.description = '';
     this.showBulkInvoiceForm = true;
     this.error = '';
@@ -1983,7 +1988,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     }
     this.showBulkInvoiceForm = false;
     this.bulkInvoiceForm = {
-      currentTerm: '',
+      invoiceTerm: '',
       dueDate: '',
       description: ''
     };
@@ -1999,8 +2004,8 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.bulkInvoiceForm.currentTerm || !this.bulkInvoiceForm.dueDate) {
-      this.error = 'Please fill in all required fields (Current Term and Due Date)';
+    if (!this.bulkInvoiceForm.invoiceTerm || !this.bulkInvoiceForm.dueDate) {
+      this.error = 'Please fill in all required fields (Invoice Term and Due Date)';
       return;
     }
 
@@ -2010,9 +2015,10 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const term = this.bulkInvoiceForm.invoiceTerm;
     if (
       !confirm(
-        `This will create invoices for all active students for the following term (based on current term: ${this.bulkInvoiceForm.currentTerm}). Continue?`
+        `This will create invoices for all active students for ${term}.\n\nImportant: Students who already have an invoice for ${term} will be skipped automatically.\n\nContinue?`
       )
     ) {
       return;
@@ -2028,15 +2034,16 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     this.success = '';
     this.bulkCreateProgress = 0;
 
-    const term = this.bulkInvoiceForm.currentTerm;
     const due = this.bulkInvoiceForm.dueDate;
     const desc = this.bulkInvoiceForm.description || undefined;
     const batchSize = this.bulkInvoiceBatchSize;
 
     let offset = 0;
     let totalCreated = 0;
+    let totalSkipped = 0;
     let totalFailed = 0;
     const allErrors: string[] = [];
+    const allSkippedReasons: string[] = [];
 
     try {
       while (true) {
@@ -2049,9 +2056,13 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
         if (batch && typeof batch.totalStudents === 'number') {
           totalCreated += summary.created ?? 0;
+          totalSkipped += summary.skipped ?? 0;
           totalFailed += summary.failed ?? 0;
           if (Array.isArray(summary.errors)) {
             allErrors.push(...summary.errors);
+          }
+          if (Array.isArray(summary.skippedReasons)) {
+            allSkippedReasons.push(...summary.skippedReasons);
           }
           offset = batch.nextOffset ?? offset + batchSize;
           const total = batch.totalStudents;
@@ -2063,9 +2074,13 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
           }
         } else {
           totalCreated += summary.created ?? 0;
+          totalSkipped += summary.skipped ?? 0;
           totalFailed += summary.failed ?? 0;
           if (Array.isArray(summary.errors)) {
             allErrors.push(...summary.errors);
+          }
+          if (Array.isArray(summary.skippedReasons)) {
+            allSkippedReasons.push(...summary.skippedReasons);
           }
           this.bulkCreateProgress = 100;
           break;
@@ -2073,9 +2088,18 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       }
 
       this.bulkCreateProgress = 100;
-      this.success = `Bulk invoices finished. Created: ${totalCreated}, Failed: ${totalFailed}`;
 
-      let message = `Created: ${totalCreated} invoices\nFailed: ${totalFailed}`;
+      let message =
+        `Created: ${totalCreated} invoices\n` +
+        `Skipped: ${totalSkipped} (already billed / exempt / zero balance)\n` +
+        `Failed: ${totalFailed}`;
+
+      if (allSkippedReasons.length > 0 && allSkippedReasons.length <= 10) {
+        message += `\n\nSkipped details:\n${allSkippedReasons.join('\n')}`;
+      } else if (allSkippedReasons.length > 10) {
+        message += `\n\nSkipped details (first 10):\n${allSkippedReasons.slice(0, 10).join('\n')}\n... and ${allSkippedReasons.length - 10} more`;
+      }
+
       if (allErrors.length > 0) {
         message += `\n\nErrors:\n${allErrors.slice(0, 5).join('\n')}`;
         if (allErrors.length > 5) {
@@ -2089,7 +2113,15 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       this.bulkCreateProgress = 0;
       this.closeBulkInvoiceForm(true);
 
-      setTimeout(() => (this.success = ''), 5000);
+      if (totalCreated > 0 || totalSkipped > 0) {
+        this.success =
+          `Bulk invoices finished. Created: ${totalCreated}, Skipped: ${totalSkipped}, Failed: ${totalFailed}`;
+      } else if (totalFailed > 0) {
+        this.error =
+          allErrors[0] ||
+          `Bulk invoice creation finished with no new invoices (${totalFailed} failed).`;
+        setTimeout(() => (this.error = ''), 8000);
+      }
     } catch (err: any) {
       this.bulkCreateProgress = 0;
       if (err?.status === 401) {
@@ -2111,11 +2143,14 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const infoTerm = this.reverseFilter.term || this.getFollowingTerm(this.currentTermFromSettings);
+    const reverseTerm =
+      this.reverseFilter.term?.trim() ||
+      this.getFollowingTerm(this.currentTermFromSettings) ||
+      this.currentTermFromSettings;
     const windowText = (this.reverseFilter.startDate || this.reverseFilter.endDate)
       ? `\nDate window: ${this.reverseFilter.startDate || '—'} to ${this.reverseFilter.endDate || '—'}`
       : '';
-    const confirmMsg = `This will reverse bulk-created invoices for ${infoTerm}.${windowText}\n\nContinue?`;
+    const confirmMsg = `This will reverse bulk-created invoices for ${reverseTerm}.${windowText}\n\nContinue?`;
     if (!confirm(confirmMsg)) {
       return;
     }
@@ -2129,8 +2164,10 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     this.error = '';
     this.success = '';
 
-    const payload: any = { currentTerm: this.currentTermFromSettings };
-    if (this.reverseFilter.term) payload.term = this.reverseFilter.term;
+    const payload: any = {
+      currentTerm: this.currentTermFromSettings,
+      term: reverseTerm,
+    };
     if (this.reverseFilter.startDate) payload.startDate = this.reverseFilter.startDate;
     if (this.reverseFilter.endDate) payload.endDate = this.reverseFilter.endDate;
 

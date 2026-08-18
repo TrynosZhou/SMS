@@ -29,6 +29,12 @@ export interface EnsureReportCardRemarksInput {
   existing?: ReportCardRemarks | null;
   /** Persist generated remarks (default true). */
   persist?: boolean;
+  /**
+   * When true (default), missing remarks may call OpenAI.
+   * Bulk class report-card generation should pass false — OpenAI per student
+   * makes /report-cards take minutes in production.
+   */
+  useAi?: boolean;
 }
 
 export interface EnsuredRemarks {
@@ -60,7 +66,7 @@ async function generateOneRemark(
           subjects: input.subjects as HeadmasterRemarkSubject[],
         });
 
-  if (!isOpenAiConfigured()) {
+  if (!isOpenAiConfigured() || input.useAi === false) {
     return fallback;
   }
 
