@@ -998,6 +998,10 @@ export async function buildStudentLedgerReport(
 
   let totalDebits = round2(lines.reduce((s, l) => s + l.debit, 0));
   let totalCredits = round2(lines.reduce((s, l) => s + l.credit, 0));
+  // Calculate actual payments (excluding carry-forward) for correct term closing balance
+  let actualPaymentsOnly = round2(
+    lines.reduce((s, l) => s + (l.type === 'carry_forward' ? 0 : l.credit), 0)
+  );
   let openingBalance = openingBalanceTotal;
   const termInvoicesForClosing = termInvoices.length > 0
     ? termInvoices
@@ -1010,10 +1014,22 @@ export async function buildStudentLedgerReport(
   const canonicalClosing = round2(
     termInvoicesForClosing.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
   );
+  // Calculate closing balance using actual payments only (excluding carry-forward)
+  let closingBalanceFromPayments = round2(totalDebits - actualPaymentsOnly);
   let closingBalance =
-    Math.abs(round2(totalDebits - totalCredits) - canonicalClosing) > 0.02
+    Math.abs(closingBalanceFromPayments - canonicalClosing) > 0.02
       ? canonicalClosing
-      : round2(totalDebits - totalCredits);
+      : closingBalanceFromPayments;
+  
+  // Fix: If closing balance is still incorrect due to carry-forward logic, recalculate
+  // Carry-forward amounts should not reduce the term closing balance
+  const carryForwardTotal = round2(
+    lines.reduce((s, l) => s + (l.type === 'carry_forward' ? l.credit : 0), 0)
+  );
+  if (carryForwardTotal > 0.005 && Math.abs(closingBalance - (totalDebits - totalCredits)) < 0.02) {
+    // If the current calculation includes carry-forward, recalculate without it
+    closingBalance = round2(totalDebits - actualPaymentsOnly);
+  }
 
   if (
     lines.length === 0 &&
@@ -1049,8 +1065,8 @@ export async function buildStudentLedgerReport(
     summary: {
       openingBalance,
       totalDebits,
-      totalCredits,
-      closingBalance,
+      totalCredits, // Keep total credits including carry-forward for display
+      closingBalance, // Closing balance calculated using actual payments only
       totalOutstanding,
     },
     outstandingInvoices: outstandingInvoiceRows.map((row) => ({
