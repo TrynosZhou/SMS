@@ -673,6 +673,7 @@ export async function buildStudentLedgerReport(
           credit: amt,
           sortKey: 3,
         });
+        // Don't add to loggedPayments since this is carry-forward, not actual payment
       } else {
         loggedPayments = round2(loggedPayments + amt);
         events.push({
