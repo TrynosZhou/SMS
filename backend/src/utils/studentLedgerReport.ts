@@ -648,19 +648,39 @@ export async function buildStudentLedgerReport(
       const amt = round2(parseFloat(String(log.amountPaid ?? 0)));
       if (amt <= 0.005) continue;
       if (String(log.paymentMethod || '').toUpperCase() === 'ADJUSTMENT') continue;
-      loggedPayments = round2(loggedPayments + amt);
-      events.push({
-        date: parseDateOnly(log.paymentDate) || new Date(),
-        type: 'payment',
-        reference: log.receiptNumber || log.id,
-        description: (() => {
-          const method = shortPaymentMethod(log.paymentMethod || '');
-          return method ? `Payment — ${method}` : 'Payment';
-        })(),
-        debit: 0,
-        credit: amt,
-        sortKey: 2,
-      });
+      
+      // Check if this specific payment log should be classified as carry-forward
+      // If the amount matches previousBalance and there are no other payments, treat as carry-forward
+      const isCarryForwardPayment = Math.abs(amt - prevBal) < 0.01 && prevBal > 0.005 && 
+                                    invoiceLogs.length === 1 && 
+                                    !String(log.paymentMethod || '').toLowerCase().includes('cash') &&
+                                    !String(log.paymentMethod || '').toLowerCase().includes('transfer');
+      
+      if (isCarryForwardPayment) {
+        events.push({
+          date: parseDateOnly(log.paymentDate) || new Date(),
+          type: 'carry_forward',
+          reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
+          description: `Balance carried forward to ${nextTermName}`,
+          debit: 0,
+          credit: amt,
+          sortKey: 3,
+        });
+      } else {
+        loggedPayments = round2(loggedPayments + amt);
+        events.push({
+          date: parseDateOnly(log.paymentDate) || new Date(),
+          type: 'payment',
+          reference: log.receiptNumber || log.id,
+          description: (() => {
+            const method = shortPaymentMethod(log.paymentMethod || '');
+            return method ? `Payment — ${method}` : 'Payment';
+          })(),
+          debit: 0,
+          credit: amt,
+          sortKey: 2,
+        });
+      }
     }
 
     const prepaidApplied = appliedPrepaidOnInvoice(inv, totalOwed);
