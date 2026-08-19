@@ -289,12 +289,12 @@
           <tbody>
             <tr *ngFor="let line of filteredLines" [class.sl-row--opening]="line.type === 'opening'">
               <td class="sl-date">{{ line.date | date : 'mediumDate' }}</td>
-              <td><span class="sl-type-pill sl-type-pill--{{ line.type }}">{{ typeLabel(line.type) }}</span></td>
+              <td><span class="sl-type-pill sl-type-pill--{{ line.type }}">{{ isCarryForwardByReference(line) ? 'Balance carried forward' : typeLabel(line.type) }}</span></td>
               <td class="sl-ref">{{ line.reference || '—' }}</td>
-              <td class="sl-desc" [title]="line.description">{{ line.description }}</td>
+              <td class="sl-desc" [title]="line.description">{{ isCarryForwardByReference(line) ? 'Balance carried forward to next term' : line.description }}</td>
               <td class="sl-num sl-num--debit">{{ line.debit ? currencySymbol + formatAmount(line.debit) : '—' }}</td>
-              <td class="sl-num sl-num--credit">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward')) ? '—' : (line.credit ? currencySymbol + formatAmount(line.credit) : '—') }}</td>
-              <td class="sl-num sl-balance-cell">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward')) && line.credit ? currencySymbol + formatAmount(line.credit) : currencySymbol + formatAmount(line.balance) }}</td>
+              <td class="sl-num sl-num--credit">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward') || isCarryForwardByReference(line)) ? '—' : (line.credit ? currencySymbol + formatAmount(line.credit) : '—') }}</td>
+              <td class="sl-num sl-balance-cell">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward') || isCarryForwardByReference(line)) && line.credit ? currencySymbol + formatAmount(line.credit) : currencySymbol + formatAmount(line.balance) }}</td>
             </tr>
           </tbody>
           <tfoot *ngIf="!filterActive && r.lines.length">

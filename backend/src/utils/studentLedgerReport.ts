@@ -656,7 +656,14 @@ export async function buildStudentLedgerReport(
                                     !String(log.paymentMethod || '').toLowerCase().includes('cash') &&
                                     !String(log.paymentMethod || '').toLowerCase().includes('transfer');
       
-      if (isCarryForwardPayment) {
+      // Additional check: if reference is invoice number and amount equals remaining balance, treat as carry-forward
+      const referenceIsInvoice = String(log.receiptNumber || '').startsWith('INV-');
+      const remainingBalanceBeforeLog = round2(termFees + prevBal - loggedPayments - prepaidApplied);
+      const isInvoiceReferenceCarryForward = referenceIsInvoice && 
+                                             Math.abs(amt - remainingBalanceBeforeLog) < 0.01 && 
+                                             remainingBalanceBeforeLog > 0.005;
+      
+      if (isCarryForwardPayment || isInvoiceReferenceCarryForward) {
         events.push({
           date: parseDateOnly(log.paymentDate) || new Date(),
           type: 'carry_forward',

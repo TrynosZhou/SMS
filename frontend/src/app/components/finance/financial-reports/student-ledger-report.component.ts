@@ -449,6 +449,14 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Helper method to check if a line should be displayed as carry-forward based on reference pattern
+  isCarryForwardByReference(line: LedgerLine): boolean {
+    const ref = String(line.reference || '').trim();
+    const desc = String(line.description || '').trim().toLowerCase();
+    // Check if reference is an invoice number and description suggests carry-forward
+    return ref.startsWith('INV-') && desc.includes('payment applied');
+  }
+
   clearAll(): void {
     this.searchQuery = '';
     this.report = null;
