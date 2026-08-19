@@ -658,7 +658,8 @@ export async function buildStudentLedgerReport(
       
       // Additional check: if reference is invoice number and amount equals remaining balance, treat as carry-forward
       const referenceIsInvoice = String(log.receiptNumber || '').startsWith('INV-');
-      const remainingBalanceBeforeLog = round2(termFees + prevBal - loggedPayments - prepaidApplied);
+      // Use 0 for prepaidApplied here since it's calculated later
+      const remainingBalanceBeforeLog = round2(termFees + prevBal - loggedPayments - 0);
       const isInvoiceReferenceCarryForward = referenceIsInvoice && 
                                              Math.abs(amt - remainingBalanceBeforeLog) < 0.01 && 
                                              remainingBalanceBeforeLog > 0.005;
