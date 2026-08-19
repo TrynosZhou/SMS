@@ -3,7 +3,7 @@
   <div class="be-toast-stack" *ngIf="error || success">
     <div class="be-toast be-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
-      <button type="button" class="be-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+      <button type="button" class="be-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss error">Dismiss</button>
     </div>
   </div>
 
@@ -27,6 +27,13 @@
           <span class="be-hero-badge" *ngIf="studentData && studentData.balance <= 0">Fully paid</span>
           <span class="be-hero-badge be-hero-badge--owed" *ngIf="studentData && studentData.balance > 0">Outstanding</span>
         </aside>
+        <a
+          [routerLink]="['/payments/record']"
+          [queryParams]="recordPaymentQueryParams"
+          class="be-hero-btn be-hero-btn--pay"
+          *ngIf="hasOutstandingBalance">
+          Pay now
+        </a>
         <a routerLink="/payments/record" class="be-hero-btn">Record payment</a>
         <a routerLink="/invoices" class="be-hero-btn be-hero-btn--solid">Billing</a>
       </div>
@@ -196,6 +203,7 @@
                   <th>Term</th>
                   <th>Invoice</th>
                   <th class="be-num">Amount owed</th>
+                  <th class="be-actions-col"></th>
                 </tr>
               </thead>
               <tbody>
@@ -206,12 +214,30 @@
                   </td>
                   <td class="be-ref">{{ row.invoiceNumber }}</td>
                   <td class="be-num be-num--debit">{{ currencySymbol }} {{ row.owed | number : '1.2-2' }}</td>
+                  <td class="be-actions-col">
+                    <a
+                      [routerLink]="['/payments/record']"
+                      [queryParams]="recordPaymentQueryParamsForInvoice(row)"
+                      class="be-btn be-btn--pay be-btn--sm"
+                      aria-label="Pay invoice {{ row.invoiceNumber }}">
+                      Pay
+                    </a>
+                  </td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr class="be-table-foot">
                   <td colspan="2"><strong>Total tuition balance</strong></td>
                   <td class="be-num be-num--debit"><strong>{{ currencySymbol }} {{ studentData.balance | number : '1.2-2' }}</strong></td>
+                  <td class="be-actions-col">
+                    <a
+                      *ngIf="hasOutstandingBalance"
+                      [routerLink]="['/payments/record']"
+                      [queryParams]="recordPaymentQueryParams"
+                      class="be-btn be-btn--pay be-btn--sm">
+                      Pay all
+                    </a>
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -258,6 +284,13 @@
           </div>
 
           <div class="be-action-buttons">
+            <a
+              *ngIf="hasOutstandingBalance"
+              [routerLink]="['/payments/record']"
+              [queryParams]="recordPaymentQueryParams"
+              class="be-btn be-btn--pay be-btn--block be-btn--pay-lg">
+              Pay Balance
+            </a>
             <button type="button" class="be-btn be-btn--primary be-btn--block" (click)="previewStatement()" [disabled]="loadingPdf">
               <span *ngIf="loadingPdf && previewMode" class="be-spinner" aria-hidden="true"></span>
               {{ loadingPdf && previewMode ? 'Loading…' : 'Preview statement' }}

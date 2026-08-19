@@ -307,11 +307,11 @@ async function startServer(): Promise<void> {
     else if (missingTables.length > 0) {
       console.warn('[Server] ⚠️  WARNING: Missing base tables:', missingTables.join(', '));
       console.warn('[Server]    Migrations require base tables to exist first.');
-      console.warn('[Server]    To fix this:');
-      console.warn('[Server]    1. Set DB_SYNC=true in your .env file (development only)');
-      console.warn('[Server]       This will auto-create all tables from entities');
-      console.warn('[Server]    2. Restart the server');
-      console.warn('[Server]    3. After tables are created, set DB_SYNC=false and RUN_MIGRATIONS=true');
+      console.warn('[Server]    To fix this, run the schema sync script ONCE:');
+      console.warn('[Server]      npm run sync-schema');
+      console.warn('[Server]    OR force-initialize from entity classes (first-run only):');
+      console.warn('[Server]      1. Add both to .env: DB_SYNC=true AND DB_SYNC_FORCE=1');
+      console.warn('[Server]      2. Restart the server, then immediately remove both flags');
       console.warn('[Server]    Migrations are being skipped to prevent errors.');
     } 
     // If tables exist, try running migrations

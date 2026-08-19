@@ -6,7 +6,7 @@ import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { activatePageLoad } from '../../../utils/route-activation';
 
-type LedgerLineType = 'opening' | 'invoice' | 'payment' | 'all';
+type LedgerLineType = 'opening' | 'invoice' | 'payment' | 'carry_forward' | 'all';
 type BalanceStatus = 'owed' | 'credit' | 'settled';
 
 interface TermOption {
@@ -87,6 +87,7 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     { key: 'opening', label: 'Opening' },
     { key: 'invoice', label: 'Invoices' },
     { key: 'payment', label: 'Payments' },
+    { key: 'carry_forward', label: 'Balance carried forward' },
   ];
 
   constructor(
@@ -371,7 +372,40 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
           }
           this.needsSelection = false;
           this.matches = [];
-          this.report = res.report;
+          const report = res.report;
+          if (report?.summary) {
+            const s = report.summary;
+            const outstanding = Number(s.totalOutstanding) || 0;
+            const opening = Number(s.openingBalance) || 0;
+            const debits = Number(s.totalDebits) || 0;
+            const credits = Number(s.totalCredits) || 0;
+            const closing = Number(s.closingBalance) || 0;
+            const allZero =
+              Math.abs(opening) < 0.005 &&
+              Math.abs(debits) < 0.005 &&
+              Math.abs(credits) < 0.005 &&
+              Math.abs(closing) < 0.005;
+            if (outstanding > 0.005 && allZero) {
+              const fallbackDebits = outstanding;
+              const fallbackClosing = outstanding;
+              report.summary = {
+                ...s,
+                openingBalance: 0,
+                totalDebits: parseFloat(fallbackDebits.toFixed(2)),
+                totalCredits: 0,
+                closingBalance: parseFloat(fallbackClosing.toFixed(2)),
+              };
+            } else if (outstanding > 0.005 && Math.abs(closing) < 0.005) {
+              report.summary = {
+                ...s,
+                closingBalance: parseFloat(outstanding.toFixed(2)),
+                totalDebits: parseFloat(
+                  (Math.max(debits, closing + credits - opening)).toFixed(2)
+                ),
+              };
+            }
+          }
+          this.report = report;
           this.resolvedStudentId = res.report?.student?.id || opts.studentId || '';
           this.applyLineFilters();
         },
@@ -403,6 +437,16 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
   setTypeFilter(type: LedgerLineType): void {
     this.typeFilter = type;
     this.applyLineFilters();
+  }
+
+  typeLabel(type: string): string {
+    switch (String(type || '').toLowerCase()) {
+      case 'opening': return 'Opening';
+      case 'invoice': return 'Invoice';
+      case 'payment': return 'Payment';
+      case 'carry_forward': return 'Balance carried forward';
+      default: return String(type || '').trim() || '—';
+    }
   }
 
   clearAll(): void {

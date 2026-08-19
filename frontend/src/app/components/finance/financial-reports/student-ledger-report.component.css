@@ -133,17 +133,23 @@
 }
 
 .sl-toast__dismiss {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  line-height: 1;
+  background: #fff;
+  border: 1.5px solid #fecaca;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
-  opacity: 0.6;
-  padding: 0;
-  color: inherit;
+  color: #991b1b;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  opacity: 0.9;
+  white-space: nowrap;
 }
 
 .sl-toast__dismiss:hover {
+  background: #fee2e2;
+  border-color: #f87171;
   opacity: 1;
 }
 

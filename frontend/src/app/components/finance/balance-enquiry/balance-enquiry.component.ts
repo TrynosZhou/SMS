@@ -146,6 +146,21 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
     };
   }
 
+  recordPaymentQueryParamsForInvoice(row?: { invoiceId?: string; invoiceNumber?: string; owed?: number }): Record<string, string | number> {
+    const base = this.recordPaymentQueryParams;
+    if (row) {
+      if (row.invoiceId) base['paymentInvoiceId'] = String(row.invoiceId);
+      if (row.owed != null && !isNaN(Number(row.owed))) {
+        base['balance'] = Number(row.owed);
+      }
+    }
+    return base;
+  }
+
+  get hasOutstandingBalance(): boolean {
+    return !!this.studentData && parseFloat(String(this.studentData.balance || 0)) > 0.005;
+  }
+
   get studentLedgerQueryParams(): Record<string, string> {
     if (!this.studentData) return {};
     const display =

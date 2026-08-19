@@ -24,7 +24,7 @@ export type AcademicTermRecord = {
   name: string;
 };
 
-export type StudentLedgerLineType = 'opening' | 'invoice' | 'payment';
+export type StudentLedgerLineType = 'opening' | 'invoice' | 'payment' | 'carry_forward';
 
 export type StudentLedgerLine = {
   date: string;
@@ -158,6 +158,47 @@ export async function loadAcademicTerms(): Promise<AcademicTermRecord[]> {
   }
 
   return terms;
+}
+
+/**
+ * Compute the next-term display name for carry-forward descriptions.
+ * Prefers the real next term from the ordered academic terms list (by
+ * startDate then name). Falls back to an ordinal-based label:
+ *   "Term 2" → "Term 3", "T1 2024" → "T2 2024", or finally "Next term".
+ */
+function deriveNextTermName(
+  currentTerm: AcademicTermRecord,
+  allTerms: AcademicTermRecord[] | null | undefined
+): string {
+  // Strategy 1: find the immediately-following term in the sorted list
+  const sortedTerms = (allTerms ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aStart = new Date(a.startDate || 0).getTime();
+      const bStart = new Date(b.startDate || 0).getTime();
+      if (aStart && bStart && aStart !== bStart) return aStart - bStart;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  const idx = sortedTerms.findIndex((t) => t.id === currentTerm.id);
+  if (idx >= 0 && idx + 1 < sortedTerms.length) {
+    const next = sortedTerms[idx + 1];
+    const name = termDisplayName(next);
+    if (name) return name;
+  }
+
+  // Strategy 2: ordinal bump on the current term name (most robust fallback)
+  const currentName = termDisplayName(currentTerm) || '';
+  const ordinal = extractTermOrdinal(currentName) || extractTermOrdinal(currentTerm.term) || extractTermOrdinal(currentTerm.label);
+  if (ordinal !== null) {
+    const yearPart = extractYearPart(currentName) || extractYearPart(currentTerm.year) || extractYearPart(currentTerm.label) || '';
+    const nextOrd = ordinal + 1;
+    if (currentName && /^[Tt]\s*\d/.test(currentName.trim())) {
+      return yearPart ? `T${nextOrd} ${yearPart}`.trim() : `T${nextOrd}`;
+    }
+    return yearPart ? `Term ${nextOrd} ${yearPart}`.trim() : `Term ${nextOrd}`;
+  }
+
+  return 'Next term';
 }
 
 async function mergeInvoiceTermsIntoList(terms: AcademicTermRecord[]): Promise<AcademicTermRecord[]> {
@@ -294,6 +335,36 @@ function normalizeTermKey(value: unknown): string {
     .replace(/\s+/g, ' ');
 }
 
+function extractTermOrdinal(value: unknown): number | null {
+  const s = String(value ?? '').toLowerCase();
+  if (!s) return null;
+  const patterns = [
+    /\b(?:term|t|semester|sem)\s*([1-4])\b/i,
+    /\b([1-4])\s*(?:st|nd|rd|th)?\s*(?:term|t|semester|sem)\b/i,
+    /^t([1-4])\b/i,
+    /^term\s*([1-4])\b/i,
+  ];
+  for (const re of patterns) {
+    const m = s.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 1 && n <= 4) return n;
+    }
+  }
+  const bare = s.match(/\b([1-4])\b/);
+  if (bare && /term|t[ -]|semester|sem/i.test(s)) {
+    const n = parseInt(bare[1], 10);
+    if (n >= 1 && n <= 4) return n;
+  }
+  return null;
+}
+
+function extractYearPart(value: unknown): string | null {
+  const s = String(value ?? '');
+  const m = s.match(/\b(20\d{2}|19\d{2})\b/);
+  return m ? m[1] : null;
+}
+
 function invoiceMatchesTerm(invoiceTerm: string, term: AcademicTermRecord): boolean {
   const inv = normalizeTermKey(invoiceTerm);
   if (!inv) return false;
@@ -319,16 +390,75 @@ function invoiceMatchesTerm(invoiceTerm: string, term: AcademicTermRecord): bool
     return true;
   }
 
+  const invOrdinal = extractTermOrdinal(invoiceTerm);
+  const termOrdinal = extractTermOrdinal(term.name) || extractTermOrdinal(term.label) || extractTermOrdinal(term.term);
+  const invYear = extractYearPart(invoiceTerm);
+  const termYear = extractYearPart(term.name) || extractYearPart(term.label) || extractYearPart(term.year);
+
+  if (invOrdinal !== null && termOrdinal !== null && invOrdinal === termOrdinal) {
+    if (!invYear || !termYear || invYear === termYear) {
+      return true;
+    }
+    if (invYear && termYear) {
+      const diff = Math.abs(parseInt(invYear, 10) - parseInt(termYear, 10));
+      if (diff <= 1) return true;
+    }
+  }
+
   return false;
 }
 
-function resolveTermInvoices(allInvoices: Invoice[], termMeta: AcademicTermRecord): Invoice[] {
+function invoiceFallsWithinTermDates(invoice: Invoice, termMeta: AcademicTermRecord): boolean {
+  if (!termMeta.startDate || !termMeta.endDate) return false;
+  const start = parseDateOnly(termMeta.startDate);
+  const end = parseDateOnly(termMeta.endDate);
+  if (!start || !end) return false;
+  const checkPoints: Date[] = [];
+  const due = parseDateOnly(invoice.dueDate);
+  const created = parseDateOnly(invoice.createdAt);
+  if (due) checkPoints.push(due);
+  if (created) checkPoints.push(created);
+  if (checkPoints.length === 0) return false;
+  const startMs = start.getTime();
+  const endMs = end.getTime() + 24 * 60 * 60 * 1000;
+  return checkPoints.some((d) => {
+    const t = d.getTime();
+    return t >= startMs && t <= endMs;
+  });
+}
+
+function resolveTermInvoices(
+  allInvoices: Invoice[],
+  termMeta: AcademicTermRecord,
+  outstandingInvoiceTerms?: Array<string | null>
+): Invoice[] {
   const nonVoid = allInvoices.filter((inv) => !inv.isVoided);
   let matched = nonVoid.filter((inv) => invoiceMatchesTerm(inv.term, termMeta));
 
   if (matched.length === 0) {
     const target = normalizeTermKey(termMeta.name);
     matched = nonVoid.filter((inv) => normalizeTermKey(inv.term) === target);
+  }
+
+  if (matched.length === 0) {
+    matched = nonVoid.filter((inv) => invoiceFallsWithinTermDates(inv, termMeta));
+  }
+
+  if (matched.length === 0 && outstandingInvoiceTerms && outstandingInvoiceTerms.length > 0) {
+    const ordinal = extractTermOrdinal(termMeta.name) || extractTermOrdinal(termMeta.label) || extractTermOrdinal(termMeta.term);
+    const termYear = extractYearPart(termMeta.name) || extractYearPart(termMeta.label) || extractYearPart(termMeta.year);
+    matched = nonVoid.filter((inv) => {
+      const invOrd = extractTermOrdinal(inv.term);
+      const invYr = extractYearPart(inv.term);
+      if (ordinal !== null && invOrd !== null && ordinal === invOrd) {
+        if (!termYear || !invYr || termYear === invYr) return true;
+        if (termYear && invYr) {
+          const diff = Math.abs(parseInt(termYear, 10) - parseInt(invYr, 10));
+          if (diff <= 1) return true;
+        }
+      }
+      return false;
+    });
   }
 
   return matched;
@@ -404,13 +534,41 @@ export async function buildStudentLedgerReport(
   const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
   const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
+  const allTerms = await loadAcademicTerms();
+  const nextTermName = deriveNextTermName(termMeta, allTerms);
+
   const allInvoices = await invoiceRepository.find({
     where: { studentId },
     order: { dueDate: 'ASC', createdAt: 'ASC' },
   });
-  const termInvoices = resolveTermInvoices(allInvoices, termMeta);
   const outstandingInvoiceRows = listStudentOutstandingInvoices(allInvoices, student, configuredDeskFee);
   const totalOutstanding = computeStudentTotalOutstanding(allInvoices, student, configuredDeskFee);
+  const outstandingTerms = outstandingInvoiceRows.map((r) => r.term);
+  let termInvoices = resolveTermInvoices(allInvoices, termMeta, outstandingTerms);
+
+  if (termInvoices.length === 0 && outstandingInvoiceRows.length > 0) {
+    const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
+    const outstandingInvoices = allInvoices.filter((inv) => outstandingIds.has(inv.id));
+    const ordinal = extractTermOrdinal(termMeta.name) || extractTermOrdinal(termMeta.label) || extractTermOrdinal(termMeta.term);
+    const termYear = extractYearPart(termMeta.name) || extractYearPart(termMeta.label) || extractYearPart(termMeta.year);
+    const matchedByOrdinal = outstandingInvoices.filter((inv) => {
+      const invOrd = extractTermOrdinal(inv.term);
+      const invYr = extractYearPart(inv.term);
+      if (ordinal !== null && invOrd !== null && ordinal === invOrd) {
+        if (!termYear || !invYr || termYear === invYr) return true;
+        if (termYear && invYr) {
+          const diff = Math.abs(parseInt(termYear, 10) - parseInt(invYr, 10));
+          if (diff <= 1) return true;
+        }
+      }
+      return false;
+    });
+    if (matchedByOrdinal.length > 0) {
+      termInvoices = matchedByOrdinal;
+    } else if (outstandingInvoices.length === 1) {
+      termInvoices = outstandingInvoices;
+    }
+  }
 
   const invoiceIds = termInvoices.map((i) => i.id);
   const paymentLogs =
@@ -518,23 +676,61 @@ export async function buildStudentLedgerReport(
       });
     }
 
-    const paidOnInvoice = round2(parseFloat(String(inv.paidAmount ?? 0)));
-    const unloggedPaid = round2(Math.max(0, paidOnInvoice - loggedPayments));
+    const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
+    const canonicalPaidViaIdentity = round2(
+      Math.max(0, round2(prevBal + termFees) - prepaidApplied - canonicalBalance)
+    );
+    const rawPaidAmount = round2(parseFloat(String(inv.paidAmount ?? 0)));
+    const paidOnInvoice = canonicalPaidViaIdentity > 0.005 ? canonicalPaidViaIdentity : rawPaidAmount;
+
+    const unloggedPaidRaw = round2(Math.max(0, paidOnInvoice - loggedPayments));
+    const maxCreditableFromPaid = round2(Math.max(0, round2(termFees + prevBal) - canonicalBalance - prepaidApplied));
+    const unloggedPaid = round2(Math.max(0, Math.min(unloggedPaidRaw, Math.max(0, maxCreditableFromPaid - loggedPayments - prepaidApplied))));
+
     if (unloggedPaid > 0.005) {
-      events.push({
-        date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
-        type: 'payment',
-        reference: inv.invoiceNumber,
-        description: 'Payment applied',
-        debit: 0,
-        credit: unloggedPaid,
-        sortKey: 2,
-      });
+      // Carry-forward split: the portion equal to previousBalance is
+      // the unpaid closing balance being forwarded to the next term —
+      // NOT a cash payment. Any remainder is a true unlogged cash payment.
+      const carryForwardPortion = round2(Math.max(0, Math.min(unloggedPaid, Math.max(0, prevBal))));
+      const trueCashRemainder = round2(Math.max(0, unloggedPaid - carryForwardPortion));
+
+      // Special case: if the unloggedPaid exactly matches previousBalance and there are no logged payments,
+      // treat the entire amount as carry-forward
+      const isExactCarryForward = Math.abs(unloggedPaid - prevBal) < 0.005 && loggedPayments <= 0.005;
+      const finalCarryForward = isExactCarryForward ? unloggedPaid : carryForwardPortion;
+      const finalCashRemainder = isExactCarryForward ? 0 : trueCashRemainder;
+
+      if (finalCarryForward > 0.005) {
+        events.push({
+          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+          type: 'carry_forward',
+          reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
+          description: `Balance carried forward to ${nextTermName}`,
+          debit: 0,
+          credit: finalCarryForward,
+          sortKey: 3,
+        });
+      }
+
+      if (finalCashRemainder > 0.005) {
+        events.push({
+          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+          type: 'payment',
+          reference: inv.invoiceNumber,
+          description: 'Payment applied',
+          debit: 0,
+          credit: finalCashRemainder,
+          sortKey: 2,
+        });
+      }
     }
 
-    const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
     const invoiceDebits = round2((prevBal > 0 ? prevBal : 0) + termFees);
-    const invoiceCredits = round2(loggedPayments + prepaidApplied + unloggedPaid);
+    const invoiceCredits = round2(
+      loggedPayments +
+      prepaidApplied +
+      (events.filter((e) => e.type === 'carry_forward' || (e.type === 'payment' && e.sortKey === 2 && e.reference === inv.invoiceNumber)).reduce((s, e) => s + e.credit, 0))
+    );
 
     if (canonicalBalance > 0.005 && invoiceDebits <= 0.005) {
       events.push({
@@ -559,15 +755,144 @@ export async function buildStudentLedgerReport(
           sortKey: 1,
         });
       } else if (delta < -0.02) {
+        // Only emit credit adjustment for actual cash overpayments — never
+        // convert previousBalance (a prior-term DEBIT shown as Opening line)
+        // into a fake "credit payment" here.
+        const openingDebitShown = prevBal > 0.005 ? prevBal : 0;
+        const nonOpeningCredits = round2(invoiceCredits - (openingDebitShown > 0.005 ? 0 : 0));
+        const openingPlusDebits = round2(openingDebitShown + termFees);
+        const expectedNetOfOpening = round2(openingPlusDebits - nonOpeningCredits);
+        if (expectedNetOfOpening < -0.02 && nonOpeningCredits > 0.005) {
+          events.push({
+            date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+            type: 'payment',
+            reference: inv.invoiceNumber,
+            description: 'Credit adjustment',
+            debit: 0,
+            credit: Math.abs(delta),
+            sortKey: 2,
+          });
+        }
+      }
+    }
+  }
+
+  if (events.length === 0 && outstandingInvoiceRows.length > 0) {
+    const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
+    const fallbackInvoices = allInvoices.filter((inv) => outstandingIds.has(inv.id) && !inv.isVoided);
+    for (const inv of fallbackInvoices) {
+      const prevBal = round2(parseFloat(String(inv.previousBalance ?? 0)));
+      const termFees = invoiceTermFeesForLedger(inv);
+      const rawPaidAmount = round2(parseFloat(String(inv.paidAmount ?? 0)));
+      const prepaidRemaining = round2(parseFloat(String(inv.prepaidAmount ?? 0)));
+      const totalOwed = round2(prevBal + termFees);
+      const appliedPrepaid = Math.min(prepaidRemaining, Math.max(0, totalOwed));
+
+      const openDate =
+        parseDateOnly(inv.dueDate) ||
+        parseDateOnly(inv.createdAt) ||
+        parseDateOnly(termMeta.startDate) ||
+        new Date();
+
+      openingBalanceTotal = round2(openingBalanceTotal + prevBal);
+
+      if (Math.abs(prevBal) > 0.005) {
+        const isCredit = prevBal < 0;
         events.push({
-          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+          date: openDate,
+          type: 'opening',
+          reference: inv.invoiceNumber,
+          description: isCredit ? 'Opening — prepaid credit' : 'Opening — prior balance',
+          debit: prevBal > 0 ? prevBal : 0,
+          credit: prevBal < 0 ? Math.abs(prevBal) : 0,
+          sortKey: 0,
+        });
+      }
+
+      const invoiceDebits = round2((prevBal > 0 ? prevBal : 0) + termFees);
+      if (termFees > 0.005) {
+        events.push({
+          date: openDate,
+          type: 'invoice',
+          reference: inv.invoiceNumber,
+          description: (() => {
+            const raw = inv.description?.trim();
+            if (raw && raw.length <= 28) return shortLedgerText(raw, 28);
+            return 'Term fees';
+          })(),
+          debit: termFees,
+          credit: 0,
+          sortKey: 1,
+        });
+      }
+
+      const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
+      if (canonicalBalance > 0.005 && invoiceDebits <= 0.005) {
+        events.push({
+          date: openDate,
+          type: 'invoice',
+          reference: inv.invoiceNumber,
+          description: 'Outstanding balance',
+          debit: canonicalBalance,
+          credit: 0,
+          sortKey: 1,
+        });
+      }
+
+      if (appliedPrepaid > 0.005) {
+        events.push({
+          date: openDate,
           type: 'payment',
           reference: inv.invoiceNumber,
-          description: 'Credit adjustment',
+          description: 'Prepaid applied',
           debit: 0,
-          credit: Math.abs(delta),
+          credit: appliedPrepaid,
           sortKey: 2,
         });
+      }
+
+      // Derive canonical cash paid via identity (consistent with receipt PDF)
+      // so previousBalance artifacts are never converted to payment credits.
+      const canonicalPaidViaIdentity = round2(
+        Math.max(0, round2(prevBal + termFees) - appliedPrepaid - canonicalBalance)
+      );
+      const actualPaidToCredit = canonicalPaidViaIdentity > 0.005 ? canonicalPaidViaIdentity : rawPaidAmount;
+      const maxCreditFromPaid = round2(Math.max(0, round2(prevBal + termFees) - canonicalBalance - appliedPrepaid));
+      const safePaidCredit = round2(Math.min(actualPaidToCredit, maxCreditFromPaid));
+
+      if (safePaidCredit > 0.005) {
+        const carryForwardPortion = round2(Math.max(0, Math.min(safePaidCredit, Math.max(0, prevBal))));
+        const trueCashRemainder = round2(Math.max(0, safePaidCredit - carryForwardPortion));
+
+        // Special case: if the safePaidCredit exactly matches previousBalance,
+        // treat the entire amount as carry-forward
+        const isExactCarryForward = Math.abs(safePaidCredit - prevBal) < 0.005;
+        const finalCarryForward = isExactCarryForward ? safePaidCredit : carryForwardPortion;
+        const finalCashRemainder = isExactCarryForward ? 0 : trueCashRemainder;
+
+        if (finalCarryForward > 0.005) {
+          events.push({
+            date: openDate,
+            type: 'carry_forward',
+            reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
+            description: `Balance carried forward to ${nextTermName}`,
+            debit: 0,
+            credit: finalCarryForward,
+            sortKey: 3,
+          });
+        }
+
+        if (finalCashRemainder > 0.005) {
+          events.push({
+            date: openDate,
+            type: 'payment',
+            reference: inv.invoiceNumber,
+            description: 'Payment applied',
+            debit: 0,
+            credit: finalCashRemainder,
+            sortKey: 2,
+          });
+        }
       }
     }
   }
@@ -590,15 +915,46 @@ export async function buildStudentLedgerReport(
     };
   });
 
-  const totalDebits = round2(lines.reduce((s, l) => s + l.debit, 0));
-  const totalCredits = round2(lines.reduce((s, l) => s + l.credit, 0));
+  let totalDebits = round2(lines.reduce((s, l) => s + l.debit, 0));
+  let totalCredits = round2(lines.reduce((s, l) => s + l.credit, 0));
+  let openingBalance = openingBalanceTotal;
+  const termInvoicesForClosing = termInvoices.length > 0
+    ? termInvoices
+    : outstandingInvoiceRows.length > 0
+      ? (() => {
+          const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
+          return allInvoices.filter((inv) => outstandingIds.has(inv.id) && !inv.isVoided);
+        })()
+      : [];
   const canonicalClosing = round2(
-    termInvoices.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
+    termInvoicesForClosing.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
   );
-  const closingBalance =
+  let closingBalance =
     Math.abs(round2(totalDebits - totalCredits) - canonicalClosing) > 0.02
       ? canonicalClosing
       : round2(totalDebits - totalCredits);
+
+  if (
+    lines.length === 0 &&
+    totalOutstanding > 0.005 &&
+    totalDebits <= 0.005 &&
+    totalCredits <= 0.005 &&
+    closingBalance <= 0.005
+  ) {
+    totalDebits = round2(totalOutstanding);
+    closingBalance = round2(totalOutstanding);
+  }
+
+  if (
+    totalOutstanding > 0.005 &&
+    Math.abs(closingBalance - totalOutstanding) > 0.02 &&
+    closingBalance <= 0.005
+  ) {
+    closingBalance = round2(totalOutstanding);
+    if (totalDebits <= 0.005 && totalCredits <= 0.005) {
+      totalDebits = round2(totalOutstanding);
+    }
+  }
 
   return {
     student: mapStudentRow(student),
@@ -610,7 +966,7 @@ export async function buildStudentLedgerReport(
     },
     lines,
     summary: {
-      openingBalance: openingBalanceTotal,
+      openingBalance,
       totalDebits,
       totalCredits,
       closingBalance,

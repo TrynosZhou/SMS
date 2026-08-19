@@ -257,15 +257,31 @@ try {
   }
   
   const hasPassword = !!dbPassword;
-  // Sync: in development default to true (so tables are created); in production only if DB_SYNC=true
+  // Sync: DEFAULT TO FALSE for safety. synchronize() on a DB with existing tables/migrations
+  // is known to crash TypeORM with "column already exists" errors (e.g. record_books.test5)
+  // because it incorrectly tries to ADD columns that are present but type-mismatched.
+  // Only enable if BOTH: env var DB_SYNC is explicitly truthy AND DB_SYNC_FORCE=1 is set.
   const dbSyncRaw = (process.env.DB_SYNC || '').toLowerCase().trim();
-  const explicitlyTrue = ['true', '1', 'yes', 'on'].includes(dbSyncRaw);
-  const explicitlyFalse = ['false', '0', 'no', 'off'].includes(dbSyncRaw);
+  const dbSyncForce = (process.env.DB_SYNC_FORCE || '').trim() === '1';
+  const explicitlyTrue = ['true', '1', 'yes', 'on'].includes(dbSyncRaw) && dbSyncForce;
   const isProduction = process.env.NODE_ENV === 'production';
-  const shouldSync = explicitlyTrue || (!isProduction && !explicitlyFalse);
-  console.log('[DB Config]   NODE_ENV:', process.env.NODE_ENV ?? '(not set)', '| DB_SYNC:', process.env.DB_SYNC ?? '(not set)', '→ synchronize:', shouldSync);
+  const shouldSync = explicitlyTrue;
+  const wasImplicitSyncDisabled =
+    !explicitlyTrue &&
+    !isProduction &&
+    ['', 'false', '0', 'no', 'off', undefined].includes(process.env.DB_SYNC || '') === false;
+  console.log('[DB Config]   NODE_ENV:', process.env.NODE_ENV ?? '(not set)', '| DB_SYNC:', process.env.DB_SYNC ?? '(not set)', '→ synchronize:', shouldSync, dbSyncForce ? '(forced by DB_SYNC_FORCE=1)' : '');
+  if (wasImplicitSyncDisabled) {
+    console.warn('[DB Config] ⚠️  Previously schema sync would auto-enable in development; it is now DISABLED by default.');
+    console.warn('[DB Config]    Use `npm run sync-schema` for first-run setup, or `npm run migrate-all` to run pending migrations.');
+    console.warn('[DB Config]    To force TypeORM schema sync (risky): set both DB_SYNC=true AND DB_SYNC_FORCE=1 in .env');
+  }
   if (shouldSync && isProduction) {
-    console.warn('[DB Config] ⚠️  DB_SYNC enabled in production: tables will be auto-created/updated. Set DB_SYNC=false after first run if desired.');
+    console.warn('[DB Config] ⚠️  DB_SYNC enabled in production: tables will be auto-created/updated.');
+  }
+  if (shouldSync) {
+    console.warn('[DB Config] ⚠️  SCHEMA SYNC IS ENABLED. This is DANGEROUS on databases with existing data/migrations.');
+    console.warn('[DB Config]    Prefer `npm run migrate-all` instead to apply pending migrations safely.');
   }
 
   // SSL: auto-enable for hosted DBs unless explicitly disabled
