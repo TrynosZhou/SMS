@@ -725,8 +725,16 @@ export async function buildStudentLedgerReport(
       // 5. If balance is zero but there's still a previous balance (suggests it was carried forward)
       const isZeroBalanceWithPrevious = balanceIsZeroButHasPrevious && unloggedPaid > 0.005;
       
+      // 6. SPECIAL CASE: If the payment exactly matches the amount needed to zero out the balance
+      // and there's no clear payment log evidence, treat as carry-forward
+      const isSpecialCarryForwardCase = Math.abs(unloggedPaid - balanceBeforeUnlogged) < 0.01 && 
+                                        balanceBeforeUnlogged > 0.005 && 
+                                        loggedPayments <= 0.005 &&
+                                        !String(inv.description || '').toLowerCase().includes('payment');
+      
       const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
-                                 isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || isZeroBalanceWithPrevious;
+                                 isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || 
+                                 isZeroBalanceWithPrevious || isSpecialCarryForwardCase;
       
       const finalCarryForward = isCarryForwardCase ? unloggedPaid : carryForwardPortion;
       const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
@@ -903,9 +911,13 @@ export async function buildStudentLedgerReport(
         const descriptionSuggestsCarryForward = String(inv.description || '').toLowerCase().includes('carry') || 
                                                String(inv.description || '').toLowerCase().includes('forward');
         const isZeroBalanceWithPrevious = Math.abs(canonicalBalance) < 0.005 && prevBal > 0.005;
+        const isSpecialCarryForwardCase = Math.abs(safePaidCredit - balanceBeforeUnlogged) < 0.01 && 
+                                          balanceBeforeUnlogged > 0.005 && 
+                                          !String(inv.description || '').toLowerCase().includes('payment');
         
         const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
-                                   isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || isZeroBalanceWithPrevious;
+                                   isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || 
+                                   isZeroBalanceWithPrevious || isSpecialCarryForwardCase;
         
         const finalCarryForward = isCarryForwardCase ? safePaidCredit : carryForwardPortion;
         const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
