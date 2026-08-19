@@ -687,6 +687,12 @@ export async function buildStudentLedgerReport(
     const maxCreditableFromPaid = round2(Math.max(0, round2(termFees + prevBal) - canonicalBalance - prepaidApplied));
     const unloggedPaid = round2(Math.max(0, Math.min(unloggedPaidRaw, Math.max(0, maxCreditableFromPaid - loggedPayments - prepaidApplied))));
 
+    // Check if this invoice has a previousBalance that should be treated as carry-forward
+    const hasPreviousBalance = prevBal > 0.005;
+    // If the invoice has previousBalance but the total payments don't account for it separately,
+    // treat the previousBalance portion as carry-forward
+    const previousBalanceNeedsCarryForward = hasPreviousBalance && loggedPayments <= 0.005;
+
     if (unloggedPaid > 0.005) {
       // Carry-forward split: the portion equal to previousBalance is
       // the unpaid closing balance being forwarded to the next term —
@@ -694,11 +700,12 @@ export async function buildStudentLedgerReport(
       const carryForwardPortion = round2(Math.max(0, Math.min(unloggedPaid, Math.max(0, prevBal))));
       const trueCashRemainder = round2(Math.max(0, unloggedPaid - carryForwardPortion));
 
-      // Special case: if the unloggedPaid exactly matches previousBalance and there are no logged payments,
-      // treat the entire amount as carry-forward
-      const isExactCarryForward = Math.abs(unloggedPaid - prevBal) < 0.005 && loggedPayments <= 0.005;
-      const finalCarryForward = isExactCarryForward ? unloggedPaid : carryForwardPortion;
-      const finalCashRemainder = isExactCarryForward ? 0 : trueCashRemainder;
+      // SIMPLIFIED LOGIC: If unloggedPaid equals previousBalance (within rounding), treat ALL as carry-forward
+      // This handles the case where previous balance is being carried forward without actual payment logs
+      const isCarryForwardCase = Math.abs(unloggedPaid - prevBal) < 0.01 && prevBal > 0.005;
+      
+      const finalCarryForward = isCarryForwardCase ? unloggedPaid : carryForwardPortion;
+      const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
 
       if (finalCarryForward > 0.005) {
         events.push({
@@ -864,11 +871,11 @@ export async function buildStudentLedgerReport(
         const carryForwardPortion = round2(Math.max(0, Math.min(safePaidCredit, Math.max(0, prevBal))));
         const trueCashRemainder = round2(Math.max(0, safePaidCredit - carryForwardPortion));
 
-        // Special case: if the safePaidCredit exactly matches previousBalance,
-        // treat the entire amount as carry-forward
-        const isExactCarryForward = Math.abs(safePaidCredit - prevBal) < 0.005;
-        const finalCarryForward = isExactCarryForward ? safePaidCredit : carryForwardPortion;
-        const finalCashRemainder = isExactCarryForward ? 0 : trueCashRemainder;
+        // SIMPLIFIED LOGIC: If safePaidCredit equals previousBalance (within rounding), treat ALL as carry-forward
+        const isCarryForwardCase = Math.abs(safePaidCredit - prevBal) < 0.01 && prevBal > 0.005;
+        
+        const finalCarryForward = isCarryForwardCase ? safePaidCredit : carryForwardPortion;
+        const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
 
         if (finalCarryForward > 0.005) {
           events.push({
