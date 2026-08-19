@@ -692,6 +692,14 @@ export async function buildStudentLedgerReport(
     // If the invoice has previousBalance but the total payments don't account for it separately,
     // treat the previousBalance portion as carry-forward
     const previousBalanceNeedsCarryForward = hasPreviousBalance && loggedPayments <= 0.005;
+    
+    // Calculate what the remaining balance should be before this unlogged payment
+    const balanceBeforeUnlogged = round2(termFees + prevBal - loggedPayments - prepaidApplied);
+    // Check if this unlogged payment zeroes out the remaining balance exactly
+    const zeroesOutRemainingBalance = Math.abs(unloggedPaid - balanceBeforeUnlogged) < 0.01 && balanceBeforeUnlogged > 0.005;
+    
+    // Additional check: if the invoice balance is 0 but there's still a previousBalance, it suggests carry-forward
+    const balanceIsZeroButHasPrevious = Math.abs(canonicalBalance) < 0.005 && hasPreviousBalance;
 
     if (unloggedPaid > 0.005) {
       // Carry-forward split: the portion equal to previousBalance is
@@ -700,9 +708,25 @@ export async function buildStudentLedgerReport(
       const carryForwardPortion = round2(Math.max(0, Math.min(unloggedPaid, Math.max(0, prevBal))));
       const trueCashRemainder = round2(Math.max(0, unloggedPaid - carryForwardPortion));
 
-      // SIMPLIFIED LOGIC: If unloggedPaid equals previousBalance (within rounding), treat ALL as carry-forward
-      // This handles the case where previous balance is being carried forward without actual payment logs
-      const isCarryForwardCase = Math.abs(unloggedPaid - prevBal) < 0.01 && prevBal > 0.005;
+      // ENHANCED LOGIC: Multiple conditions to detect carry-forward
+      // 1. If unloggedPaid equals previousBalance (within rounding)
+      const isExactPreviousBalanceMatch = Math.abs(unloggedPaid - prevBal) < 0.01 && prevBal > 0.005;
+      
+      // 2. If unloggedPaid zeroes out the remaining balance exactly
+      const isZeroingRemainingBalance = zeroesOutRemainingBalance;
+      
+      // 3. If there's a previous balance but no payment logs, and the unlogged amount is significant
+      const isPreviousBalanceWithNoLogs = previousBalanceNeedsCarryForward && unloggedPaid > 0.005;
+      
+      // 4. If the description or reference suggests this is a carry-forward (check invoice description)
+      const descriptionSuggestsCarryForward = String(inv.description || '').toLowerCase().includes('carry') || 
+                                             String(inv.description || '').toLowerCase().includes('forward');
+      
+      // 5. If balance is zero but there's still a previous balance (suggests it was carried forward)
+      const isZeroBalanceWithPrevious = balanceIsZeroButHasPrevious && unloggedPaid > 0.005;
+      
+      const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
+                                 isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || isZeroBalanceWithPrevious;
       
       const finalCarryForward = isCarryForwardCase ? unloggedPaid : carryForwardPortion;
       const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
@@ -871,8 +895,17 @@ export async function buildStudentLedgerReport(
         const carryForwardPortion = round2(Math.max(0, Math.min(safePaidCredit, Math.max(0, prevBal))));
         const trueCashRemainder = round2(Math.max(0, safePaidCredit - carryForwardPortion));
 
-        // SIMPLIFIED LOGIC: If safePaidCredit equals previousBalance (within rounding), treat ALL as carry-forward
-        const isCarryForwardCase = Math.abs(safePaidCredit - prevBal) < 0.01 && prevBal > 0.005;
+        // ENHANCED LOGIC: Multiple conditions to detect carry-forward (same as main logic)
+        const isExactPreviousBalanceMatch = Math.abs(safePaidCredit - prevBal) < 0.01 && prevBal > 0.005;
+        const balanceBeforeUnlogged = round2(termFees + prevBal - appliedPrepaid);
+        const isZeroingRemainingBalance = Math.abs(safePaidCredit - balanceBeforeUnlogged) < 0.01 && balanceBeforeUnlogged > 0.005;
+        const isPreviousBalanceWithNoLogs = prevBal > 0.005; // In fallback, assume no logs
+        const descriptionSuggestsCarryForward = String(inv.description || '').toLowerCase().includes('carry') || 
+                                               String(inv.description || '').toLowerCase().includes('forward');
+        const isZeroBalanceWithPrevious = Math.abs(canonicalBalance) < 0.005 && prevBal > 0.005;
+        
+        const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
+                                   isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || isZeroBalanceWithPrevious;
         
         const finalCarryForward = isCarryForwardCase ? safePaidCredit : carryForwardPortion;
         const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
