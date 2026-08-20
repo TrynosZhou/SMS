@@ -21,8 +21,10 @@ function escapeHtml(value: unknown): string {
 
 function money(sym: string, amount: number): string {
   const n = Number(amount) || 0;
-  const prefix = n < 0 ? '-' : '';
-  return `${prefix}${sym}${Math.abs(n).toFixed(2)}`;
+  if (n < 0) {
+    return `(${sym}${Math.abs(n).toFixed(2)})`;
+  }
+  return `${sym}${n.toFixed(2)}`;
 }
 
 function formatDisplayDate(value: string): string {
@@ -71,8 +73,10 @@ function statusCopy(report: StudentLedgerReport, sym: string): { tone: 'owed' | 
 function typeLabel(type: string): string {
   const t = String(type || '').toLowerCase();
   if (t === 'payment') return 'Payment';
+  if (t === 'late_payment') return 'Late Payment';
   if (t === 'invoice') return 'Invoice';
-  if (t === 'opening') return 'Opening';
+  if (t === 'opening') return 'Opening Balance';
+  if (t === 'brought_forward') return 'Balance brought forward';
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -86,14 +90,18 @@ function buildTransactionRows(report: StudentLedgerReport, sym: string): string 
       const tone = balanceTone(line.balance);
       const debitCell = line.debit > 0 ? money(sym, line.debit) : '—';
       const creditCell = line.credit > 0 ? money(sym, line.credit) : '—';
+      // Brought forward entries show as debits, not credits
+      const isBroughtForward = line.type === 'brought_forward';
+      const finalDebitCell = isBroughtForward ? money(sym, line.debit) : debitCell;
+      const finalCreditCell = isBroughtForward ? '—' : creditCell;
       return `
         <tr>
           <td class="mono date">${escapeHtml(formatIsoDate(line.date))}</td>
           <td><span class="type-pill type-pill--${escapeHtml(line.type)}">${escapeHtml(typeLabel(line.type))}</span></td>
           <td class="mono ref">${escapeHtml(line.reference || '—')}</td>
           <td class="desc">${escapeHtml(line.description || '—')}</td>
-          <td class="mono num debit">${escapeHtml(debitCell)}</td>
-          <td class="mono num credit">${escapeHtml(creditCell)}</td>
+          <td class="mono num debit">${escapeHtml(finalDebitCell)}</td>
+          <td class="mono num credit">${escapeHtml(finalCreditCell)}</td>
           <td class="mono num balance balance--${tone}">${escapeHtml(money(sym, line.balance))}</td>
         </tr>`;
     })
@@ -434,15 +442,17 @@ export function createStudentLedgerHTML(data: StudentLedgerHTMLData): string {
     }
 
     .ledger thead th {
-      background: #f6f8fb;
+      background: linear-gradient(135deg, #213a5e 0%, #1a2d4a 50%, #152a45 100%);
       padding: 11px 14px;
       text-align: left;
       font-size: 0.68rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #4a5568;
-      border-bottom: 1px solid var(--line);
+      color: #ffffff;
+      border-bottom: 1px solid #152a45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     .ledger tbody td {
@@ -482,8 +492,10 @@ export function createStudentLedgerHTML(data: StudentLedgerHTMLData): string {
     }
 
     .type-pill--payment { background: #d8f0e6; color: #145a42; }
+    .type-pill--late_payment { background: #f7ecea; color: #9b4438; }
     .type-pill--invoice { background: var(--gold-soft); color: #7a5c12; }
     .type-pill--opening { background: #e8edf4; color: #334155; }
+    .type-pill--brought_forward { background: #fff4e6; color: #7a5c12; }
 
     .empty-row {
       text-align: center;

@@ -2135,16 +2135,16 @@
   background: rgba(15, 23, 42, 0.55);
   z-index: 1300;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
 }
 
 .fb-pdf-modal {
-  width: min(960px, 100%);
-  height: min(88vh, 900px);
+  width: 100vw;
+  height: 100vh;
   background: #fff;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;

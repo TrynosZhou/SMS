@@ -6,7 +6,7 @@ import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { activatePageLoad } from '../../../utils/route-activation';
 
-type LedgerLineType = 'opening' | 'invoice' | 'payment' | 'carry_forward' | 'all';
+type LedgerLineType = 'opening' | 'invoice' | 'payment' | 'advance_payment' | 'late_payment' | 'brought_forward' | 'all';
 type BalanceStatus = 'owed' | 'credit' | 'settled';
 
 interface TermOption {
@@ -87,7 +87,9 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     { key: 'opening', label: 'Opening' },
     { key: 'invoice', label: 'Invoices' },
     { key: 'payment', label: 'Payments' },
-    { key: 'carry_forward', label: 'Balance carried forward' },
+    { key: 'advance_payment', label: 'Advance Payments' },
+    { key: 'late_payment', label: 'Late Payments' },
+    { key: 'brought_forward', label: 'Balance brought forward' },
   ];
 
   constructor(
@@ -178,10 +180,8 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
 
   loadTerms(): void {
     this.loadingTerms = true;
-    forkJoin({
-      api: this.financeService.getSchoolTermsForReports().pipe(catchError(() => of(null))),
-      settings: this.settingsService.getSettings().pipe(catchError(() => of(null))),
-    })
+    // Only fetch from settings to ensure we use the same active term as academic-settings
+    this.settingsService.getSettings()
       .pipe(
         finalize(() => {
           this.loadingTerms = false;
@@ -190,35 +190,26 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe({
-        next: ({ api, settings }) => {
-          const rawTerms =
-            Array.isArray(api?.terms) && api.terms.length
-              ? api.terms
-              : this.termsFromSettings(settings);
-          this.terms = rawTerms.map((t: any, index: number) => {
+        next: (settings: any) => {
+          const rawTerms = this.termsFromSettings(settings);
+          
+          // Determine the active term using the same logic as academic-settings
+          const activeTerm = this.determineActiveTerm(rawTerms, settings);
+
+          if (activeTerm) {
             const name =
-              t.name || t.label || `${t.term || ''} ${t.year || ''}`.trim() || `Term ${index + 1}`;
-            return {
-              id: t.id || this.slugTermId(name, index),
+              activeTerm.label || activeTerm.name || `${activeTerm.term || ''} ${activeTerm.year || ''}`.trim() || 'Active Term';
+            this.terms = [{
+              id: activeTerm.id || this.slugTermId(name, 0),
               name,
-              startDate: t.startDate || '',
-              endDate: t.endDate || '',
-            };
-          });
-
-          const activeTermId =
-            api?.activeTermId ||
-            this.matchActiveTermId(this.terms, settings?.activeTerm || settings?.currentTerm);
-
-          if (!this.selectedTermId && activeTermId) {
-            this.selectedTermId = activeTermId;
-          } else if (!this.selectedTermId && this.terms.length) {
+              startDate: activeTerm.startDate || '',
+              endDate: activeTerm.endDate || '',
+            }];
             this.selectedTermId = this.terms[0].id;
-          }
-
-          if (!this.terms.length) {
-            this.error =
-              'No school terms found. Add terms under Academic Settings or create invoices for a term.';
+          } else {
+            this.terms = [];
+            this.selectedTermId = '';
+            this.error = 'No active school term found. Configure terms under Academic Settings.';
           }
 
           this.tryAutoLoadFromRoute();
@@ -227,6 +218,57 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
           this.error = 'Could not load school terms. Configure terms under Academic Settings.';
         },
       });
+  }
+
+  private determineActiveTerm(terms: any[], settings: any): any {
+    if (!terms || terms.length === 0) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // First, try to find a term that is currently active based on dates
+    for (const term of terms) {
+      if (!term.startDate || !term.endDate) continue;
+      
+      const start = new Date(term.startDate);
+      const end = new Date(term.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      if (today >= start && today <= end) {
+        return term;
+      }
+    }
+
+    // If no term is currently active based on dates, use the settings activeTerm
+    const activeTermName = settings?.activeTerm || settings?.currentTerm;
+    if (activeTermName) {
+      const activeTerm = terms.find((t: any) => {
+        const termName = t.term || t.label || t.name || '';
+        return termName.toLowerCase() === activeTermName.toLowerCase();
+      });
+      if (activeTerm) return activeTerm;
+    }
+
+    // Fallback to the most recent term that has started
+    const startedTerms = terms.filter((t: any) => {
+      if (!t.startDate) return false;
+      const start = new Date(t.startDate);
+      start.setHours(0, 0, 0, 0);
+      return start <= today;
+    });
+
+    if (startedTerms.length > 0) {
+      // Sort by start date descending and return the most recent
+      return startedTerms.sort((a: any, b: any) => {
+        const dateA = new Date(a.startDate).getTime();
+        const dateB = new Date(b.startDate).getTime();
+        return dateB - dateA;
+      })[0];
+    }
+
+    // Final fallback to the first term
+    return terms[0];
   }
 
   private termsFromSettings(settings: any): any[] {
@@ -289,8 +331,9 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
   }
 
   selectTerm(termId: string): void {
-    this.selectedTermId = termId;
-    if (this.resolvedStudentId) {
+    // Only allow selecting the active term (which is already selected)
+    // This method is kept for compatibility but effectively does nothing
+    if (termId === this.selectedTermId && this.resolvedStudentId) {
       this.loadReport({ studentId: this.resolvedStudentId });
     }
   }
@@ -441,20 +484,14 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
 
   typeLabel(type: string): string {
     switch (String(type || '').toLowerCase()) {
-      case 'opening': return 'Opening';
+      case 'opening': return 'Opening Balance';
       case 'invoice': return 'Invoice';
       case 'payment': return 'Payment';
-      case 'carry_forward': return 'Balance carried forward';
+      case 'advance_payment': return 'Advance Payment';
+      case 'late_payment': return 'Late Payment';
+      case 'brought_forward': return 'Balance brought forward';
       default: return String(type || '').trim() || '—';
     }
-  }
-
-  // Helper method to check if a line should be displayed as carry-forward based on reference pattern
-  isCarryForwardByReference(line: LedgerLine): boolean {
-    const ref = String(line.reference || '').trim();
-    const desc = String(line.description || '').trim().toLowerCase();
-    // Check if reference is an invoice number and description suggests carry-forward
-    return ref.startsWith('INV-') && desc.includes('payment applied');
   }
 
   clearAll(): void {
@@ -530,6 +567,14 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
 
   formatAmount(n: number): string {
     return (Number(n) || 0).toFixed(2);
+  }
+
+  formatBalance(n: number): string {
+    const num = Number(n) || 0;
+    if (num < 0) {
+      return `(${this.currencySymbol}${Math.abs(num).toFixed(2)})`;
+    }
+    return `${this.currencySymbol}${num.toFixed(2)}`;
   }
 
   absAmount(n: number): number {

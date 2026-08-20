@@ -55,6 +55,7 @@ import {
   invoiceTermExistsMessage,
 } from '../utils/invoiceTermGuard';
 import { resolvePortalFinanceStudentScope, assertUserCanAccessStudentFinance } from '../utils/portalFinanceAccess';
+import { loadAcademicTerms } from '../utils/studentLedgerReport';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -164,6 +165,11 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
+    // Get term start date to use as invoice date
+    const allTerms = await loadAcademicTerms();
+    const termRecord = allTerms.find(t => t.name === invoiceTerm || t.label === invoiceTerm);
+    const termStartDate = termRecord?.startDate ? new Date(termRecord.startDate) : new Date(dueDate);
+
     const existingForTerm = await findActiveInvoiceForStudentTerm(
       invoiceRepository,
       student.id,
@@ -208,6 +214,11 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       console.log(`[createInvoice] Fixed invoice reference for ${lastInvoice.invoiceNumber}`);
     }
 
+    // For new students (no previous invoice), use enrollment date as invoice date
+    // For existing students, use term start date as invoice date
+    const isNewStudent = !lastInvoice;
+    const invoiceDate = isNewStudent && student.enrollmentDate ? new Date(student.enrollmentDate) : termStartDate;
+
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
       take: 1
@@ -216,8 +227,10 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const deskFeeForCreate = getConfiguredDeskFee(settings);
     const previousBalance = computeCarryForwardBalance(lastInvoice, student, deskFeeForCreate);
     const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
+    
     // Base amount for this invoice comes from explicit tuition/dining/other
     // components; we don't trust a combined "amount" from the client.
+    // Note: prepaidAmount will be applied later to reduce the final balance
     let baseAmount = 0;
     let transportIncrement = 0;
     let registrationIncrement = 0;
@@ -346,7 +359,8 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       transportAmount: transportVal,
       diningHallAmount: diningVal,
       registrationAmount: registrationVal,
-      deskFeeAmount: deskVal
+      deskFeeAmount: deskVal,
+      createdAt: invoiceDate // Use enrollment date for new students, term start date for existing students
     });
 
     if (settings?.feesSettings && studentHasActiveFeeExemption(student)) {

@@ -681,7 +681,7 @@ export async function applyStudentPaymentFromCashbook(input: {
     invoiceId = await findLatestInvoiceIdForStudent(input.studentId);
   }
   if (!invoiceId) {
-    throw new Error('No invoice found for this student');
+    throw new Error('No invoice found for this student. An invoice must be created before payment can be processed.');
   }
 
   const invoice = await invoiceRepository.findOne({
@@ -709,6 +709,14 @@ export async function applyStudentPaymentFromCashbook(input: {
     invoice.prepaidAmount = round2(oldPrepaidAmount + excess);
     invoice.balance = 0;
     invoice.status = InvoiceStatus.PAID;
+  } else {
+    // Normal payment - update balance normally
+    invoice.balance = round2(totalOwed - totalPaid);
+    if (invoice.balance <= 0.005) {
+      invoice.status = InvoiceStatus.PAID;
+    } else if (totalPaid > 0.005) {
+      invoice.status = InvoiceStatus.PARTIAL;
+    }
   }
 
   await invoiceRepository.save(invoice);

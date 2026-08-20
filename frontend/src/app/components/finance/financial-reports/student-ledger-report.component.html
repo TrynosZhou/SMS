@@ -55,11 +55,11 @@
         <span class="sl-stat__label">Transactions</span>
       </article>
       <article class="sl-stat">
-        <span class="sl-stat__value">{{ hasReport ? currencySymbol + formatAmount(totalCredits) : '—' }}</span>
+        <span class="sl-stat__value">{{ hasReport ? formatBalance(totalCredits) : '—' }}</span>
         <span class="sl-stat__label">Total credits</span>
       </article>
       <article class="sl-stat">
-        <span class="sl-stat__value">{{ hasReport ? currencySymbol + formatAmount(absAmount(closingBalance)) : '—' }}</span>
+        <span class="sl-stat__value">{{ hasReport ? formatBalance(closingBalance) : '—' }}</span>
         <span class="sl-stat__label">{{ hasReport ? balanceStatusLabel : 'Closing balance' }}</span>
       </article>
     </div>
@@ -84,44 +84,29 @@
     <div class="sl-term-block">
       <div class="sl-term-block__label">
         <span class="sl-label">School term</span>
-        <span class="sl-term-hint" *ngIf="loadingTerms">Loading terms…</span>
+        <span class="sl-term-hint" *ngIf="loadingTerms">Loading active term…</span>
       </div>
 
       <div class="sl-term-skeleton" *ngIf="loadingTerms" aria-hidden="true">
-        <span class="sl-skeleton sl-skeleton--chip"></span>
-        <span class="sl-skeleton sl-skeleton--chip"></span>
         <span class="sl-skeleton sl-skeleton--chip"></span>
       </div>
 
       <div class="sl-chips" *ngIf="!loadingTerms && terms.length">
         <button
           type="button"
-          class="sl-chip"
-          *ngFor="let t of terms"
-          [class.sl-chip--active]="selectedTermId === t.id"
-          (click)="selectTerm(t.id)"
-          [disabled]="loading">
-          {{ t.name }}
+          class="sl-chip sl-chip--active"
+          [disabled]="true">
+          {{ terms[0].name }} (Active)
         </button>
       </div>
 
-      <div class="sl-field sl-field--term" *ngIf="!loadingTerms">
-        <label for="sl-term">Or choose from list</label>
-        <select
-          id="sl-term"
-          class="sl-select"
-          [(ngModel)]="selectedTermId"
-          [ngModelOptions]="{standalone:true}"
-          (ngModelChange)="selectTerm($event)"
-          [disabled]="loadingTerms || loading || !terms.length">
-          <option *ngIf="!terms.length" value="">No terms available</option>
-          <option *ngFor="let t of terms" [value]="t.id">{{ t.name }}</option>
-        </select>
+      <div class="sl-term-info" *ngIf="!loadingTerms && terms.length">
+        <span class="sl-term-date-range">{{ terms[0].startDate | date : 'mediumDate' }} – {{ terms[0].endDate | date : 'mediumDate' }}</span>
       </div>
     </div>
 
     <div class="sl-empty sl-empty--inline sl-empty--terms" *ngIf="!loadingTerms && !terms.length">
-      <p>No school terms are configured. Add terms under <a routerLink="/academic-settings/terms">Academic Settings</a>, or create invoices so terms can be detected automatically.</p>
+      <p>No active school term is configured. Set the active term under <a routerLink="/academic-settings/terms">Academic Settings</a>.</p>
     </div>
 
     <div class="sl-search-row">
@@ -194,7 +179,7 @@
           [class.sl-balance-badge--owed]="balanceStatus === 'owed'"
           [class.sl-balance-badge--credit]="balanceStatus === 'credit'"
           [class.sl-balance-badge--settled]="balanceStatus === 'settled'">
-          {{ balanceStatusLabel }}: {{ currencySymbol }}{{ formatAmount(absAmount(totalOutstanding)) }}
+          {{ balanceStatusLabel }}: {{ formatBalance(totalOutstanding) }}
         </span>
         <a class="sl-btn sl-btn--primary" [routerLink]="recordPaymentLink()" [queryParams]="recordPaymentQuery()">
           Record payment
@@ -205,26 +190,30 @@
     <div class="sl-summary-cards">
       <article class="sl-summary-card">
         <span class="sl-summary-label">Opening balance</span>
-        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.openingBalance) }}</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.openingBalance) }}</span>
       </article>
       <article class="sl-summary-card">
         <span class="sl-summary-label">Total debits</span>
-        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalDebits) }}</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.totalDebits) }}</span>
       </article>
       <article class="sl-summary-card">
         <span class="sl-summary-label">Total credits</span>
-        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalCredits) }}</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.totalCredits) }}</span>
       </article>
       <article class="sl-summary-card sl-summary-card--closing">
         <span class="sl-summary-label">Term closing balance</span>
-        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.closingBalance) }}</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.closingBalance) }}</span>
       </article>
       <article class="sl-summary-card sl-summary-card--outstanding">
         <span class="sl-summary-label">Total outstanding</span>
-        <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalOutstanding || 0) }}</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.totalOutstanding || 0) }}</span>
         <span class="sl-summary-hint" *ngIf="(r.summary.totalOutstanding || 0) > 0.005 && r.outstandingInvoices?.length">
           {{ r.outstandingInvoices!.length }} invoice(s) — same as Outstanding fees report
         </span>
+      </article>
+      <article class="sl-summary-card">
+        <span class="sl-summary-label">Total paid</span>
+        <span class="sl-summary-value">{{ formatBalance(r.summary.totalCredits) }}</span>
       </article>
     </div>
 
@@ -289,20 +278,20 @@
           <tbody>
             <tr *ngFor="let line of filteredLines" [class.sl-row--opening]="line.type === 'opening'">
               <td class="sl-date">{{ line.date | date : 'mediumDate' }}</td>
-              <td><span class="sl-type-pill sl-type-pill--{{ line.type }}">{{ isCarryForwardByReference(line) ? 'Balance carried forward' : typeLabel(line.type) }}</span></td>
+              <td><span class="sl-type-pill sl-type-pill--{{ line.type }}">{{ typeLabel(line.type) }}</span></td>
               <td class="sl-ref">{{ line.reference || '—' }}</td>
-              <td class="sl-desc" [title]="line.description">{{ isCarryForwardByReference(line) ? 'Balance carried forward to next term' : line.description }}</td>
-              <td class="sl-num sl-num--debit">{{ line.debit ? currencySymbol + formatAmount(line.debit) : '—' }}</td>
-              <td class="sl-num sl-num--credit">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward') || isCarryForwardByReference(line)) ? '—' : (line.credit ? currencySymbol + formatAmount(line.credit) : '—') }}</td>
-              <td class="sl-num sl-balance-cell">{{ (line.type === 'carry_forward' || line.description?.includes('Balance carried forward') || isCarryForwardByReference(line)) && line.credit ? currencySymbol + formatAmount(line.credit) : currencySymbol + formatAmount(line.balance) }}</td>
+              <td class="sl-desc" [title]="line.description">{{ line.description }}</td>
+              <td class="sl-num sl-num--debit">{{ line.debit ? formatBalance(line.debit) : '—' }}</td>
+              <td class="sl-num sl-num--credit">{{ line.credit ? formatBalance(line.credit) : '—' }}</td>
+              <td class="sl-num sl-balance-cell">{{ formatBalance(line.balance) }}</td>
             </tr>
           </tbody>
           <tfoot *ngIf="!filterActive && r.lines.length">
             <tr class="sl-table-foot">
               <td colspan="4"><strong>Term totals</strong></td>
-              <td class="sl-num"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.totalDebits) }}</strong></td>
-              <td class="sl-num"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.totalCredits) }}</strong></td>
-              <td class="sl-num sl-balance-cell"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.closingBalance) }}</strong></td>
+              <td class="sl-num"><strong>{{ formatBalance(r.summary.totalDebits) }}</strong></td>
+              <td class="sl-num"><strong>{{ formatBalance(r.summary.totalCredits) }}</strong></td>
+              <td class="sl-num sl-balance-cell"><strong>{{ formatBalance(r.summary.closingBalance) }}</strong></td>
             </tr>
           </tfoot>
         </table>

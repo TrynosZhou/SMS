@@ -488,6 +488,23 @@
   cursor: not-allowed;
 }
 
+.sl-term-info {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--sl-muted);
+  font-weight: 500;
+}
+
+.sl-term-date-range {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  background: #fff;
+  border: 1px solid var(--sl-border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
 .sl-field label {
   display: block;
   font-size: 0.78rem;
@@ -872,8 +889,8 @@
 .sl-table thead tr,
 .sl-table thead th,
 .sl-table th {
-  background: #1e3a5f !important;
-  background-color: #1e3a5f !important;
+  background: linear-gradient(135deg, #213a5e 0%, #1a2d4a 50%, #152a45 100%) !important;
+  background-color: #213a5e !important;
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.68rem;
@@ -882,6 +899,7 @@
   border: 1.5px solid #152a45;
   border-top: none;
   z-index: 1;
+  box-shadow: 0 2px 4px rgba(33, 58, 94, 0.15);
 }
 
 .sl-table thead th:first-child {
@@ -894,8 +912,8 @@
 
 .sl-table thead tr:hover,
 .sl-table thead tr:hover th {
-  background: #1e3a5f !important;
-  background-color: #1e3a5f !important;
+  background: linear-gradient(135deg, #1a2d4a 0%, #152a45 50%, #0f1e35 100%) !important;
+  background-color: #1a2d4a !important;
   color: #ffffff !important;
 }
 
@@ -1006,6 +1024,22 @@
 .sl-type-pill--payment {
   background: #e8eef5;
   color: var(--sl-navy-deep);
+}
+
+.sl-type-pill--advance_payment {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.sl-type-pill--late_payment {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sl-type-pill--brought_forward {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
 }
 
 @media (max-width: 1100px) {

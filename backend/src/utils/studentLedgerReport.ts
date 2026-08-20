@@ -24,7 +24,7 @@ export type AcademicTermRecord = {
   name: string;
 };
 
-export type StudentLedgerLineType = 'opening' | 'invoice' | 'payment' | 'carry_forward';
+export type StudentLedgerLineType = 'opening' | 'invoice' | 'payment' | 'late_payment' | 'brought_forward';
 
 export type StudentLedgerLine = {
   date: string;
@@ -91,7 +91,7 @@ function shortLedgerText(text: string, max = 32): string {
   return `${s.slice(0, max - 1).trim()}…`;
 }
 
-function shortPaymentMethod(method: string): string {
+function shortPaymentMethod(method: string | undefined | null): string {
   const m = String(method || '').trim();
   if (!m) return '';
   const upper = m.toUpperCase();
@@ -158,6 +158,47 @@ export async function loadAcademicTerms(): Promise<AcademicTermRecord[]> {
   }
 
   return terms;
+}
+
+/**
+ * Compute the previous-term display name for brought-forward descriptions.
+ * Prefers the real previous term from the ordered academic terms list (by
+ * startDate then name). Falls back to an ordinal-based label:
+ *   "Term 2" → "Term 1", "T2 2024" → "T1 2024", or finally "Previous term".
+ */
+function derivePreviousTermName(
+  currentTerm: AcademicTermRecord,
+  allTerms: AcademicTermRecord[] | null | undefined
+): string {
+  // Strategy 1: find the immediately-preceding term in the sorted list
+  const sortedTerms = (allTerms ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aStart = new Date(a.startDate || 0).getTime();
+      const bStart = new Date(b.startDate || 0).getTime();
+      if (aStart && bStart && aStart !== bStart) return aStart - bStart;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  const idx = sortedTerms.findIndex((t) => t.id === currentTerm.id);
+  if (idx > 0) {
+    const prev = sortedTerms[idx - 1];
+    const name = termDisplayName(prev);
+    if (name) return name;
+  }
+
+  // Strategy 2: ordinal decrement on the current term name (most robust fallback)
+  const currentName = termDisplayName(currentTerm) || '';
+  const ordinal = extractTermOrdinal(currentName) || extractTermOrdinal(currentTerm.term) || extractTermOrdinal(currentTerm.label);
+  if (ordinal !== null && ordinal > 1) {
+    const yearPart = extractYearPart(currentName) || extractYearPart(currentTerm.year) || extractYearPart(currentTerm.label) || '';
+    const prevOrd = ordinal - 1;
+    if (currentName && /^[Tt]\s*\d/.test(currentName.trim())) {
+      return yearPart ? `T${prevOrd} ${yearPart}`.trim() : `T${prevOrd}`;
+    }
+    return yearPart ? `Term ${prevOrd} ${yearPart}`.trim() : `Term ${prevOrd}`;
+  }
+
+  return 'Previous term';
 }
 
 /**
@@ -545,6 +586,15 @@ export async function buildStudentLedgerReport(
   const totalOutstanding = computeStudentTotalOutstanding(allInvoices, student, configuredDeskFee);
   const outstandingTerms = outstandingInvoiceRows.map((r) => r.term);
   let termInvoices = resolveTermInvoices(allInvoices, termMeta, outstandingTerms);
+  
+  // Check if this is a new student (no previous invoices before the current term)
+  const isNewStudent = allInvoices.length === 0 || (termInvoices.length > 0 && termInvoices[0].id === allInvoices[0].id);
+  const studentEnrollmentDate = student.enrollmentDate ? parseDateOnly(student.enrollmentDate) : null;
+  
+  // For new students, the opening balance date should be the enrollment date
+  const openingBalanceDate = (isNewStudent && studentEnrollmentDate) 
+    ? studentEnrollmentDate 
+    : (parseDateOnly(termMeta.startDate) || new Date());
 
   if (termInvoices.length === 0 && outstandingInvoiceRows.length > 0) {
     const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
@@ -601,6 +651,20 @@ export async function buildStudentLedgerReport(
 
   let openingBalanceTotal = 0;
 
+  // Add opening balance row at the start for new student accounts
+  // Use term start date for opening balance to ensure it appears first chronologically
+  const adjustedOpeningDate = parseDateOnly(termMeta.startDate) || openingBalanceDate;
+  
+  events.push({
+    date: openingBalanceDate,
+    type: 'opening',
+    reference: '',
+    description: 'New student account',
+    debit: 0,
+    credit: 0,
+    sortKey: 0, // Opening balance appears first
+  });
+
   for (const inv of termInvoices) {
     const prevBal = round2(parseFloat(String(inv.previousBalance ?? 0)));
     const termFees = invoiceTermFeesForLedger(inv);
@@ -608,10 +672,11 @@ export async function buildStudentLedgerReport(
     openingBalanceTotal = round2(openingBalanceTotal + prevBal);
 
     const openDate =
-      parseDateOnly(termMeta.startDate) ||
-      parseDateOnly(inv.dueDate) ||
+      (isNewStudent && studentEnrollmentDate) ? studentEnrollmentDate :
+      (parseDateOnly(inv.dueDate) ||
       parseDateOnly(inv.createdAt) ||
-      new Date();
+      parseDateOnly(termMeta.startDate) ||
+      new Date());
 
     if (Math.abs(prevBal) > 0.005) {
       const isCredit = prevBal < 0;
@@ -622,13 +687,15 @@ export async function buildStudentLedgerReport(
         description: isCredit ? 'Opening — prepaid credit' : 'Opening — prior balance',
         debit: prevBal > 0 ? prevBal : 0,
         credit: prevBal < 0 ? Math.abs(prevBal) : 0,
-        sortKey: 0,
+        sortKey: 0, // Opening balance entries appear first
       });
     }
 
     if (termFees > 0.005) {
+      // Use the actual invoice date (dueDate or createdAt) to maintain chronological order
+      const invoiceDisplayDate = parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate;
       events.push({
-        date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+        date: invoiceDisplayDate,
         type: 'invoice',
         reference: inv.invoiceNumber,
         description: (() => {
@@ -638,210 +705,91 @@ export async function buildStudentLedgerReport(
         })(),
         debit: termFees,
         credit: 0,
-        sortKey: 1,
+        sortKey: 1, // Invoices appear after opening balance but before payments
       });
     }
 
     const invoiceLogs = paymentLogsByInvoice.get(inv.id) || [];
     let loggedPayments = 0;
+    let runningTotal = 0;
+    
     for (const log of invoiceLogs) {
       const amt = round2(parseFloat(String(log.amountPaid ?? 0)));
       if (amt <= 0.005) continue;
       if (String(log.paymentMethod || '').toUpperCase() === 'ADJUSTMENT') continue;
       
-      // Check if this specific payment log should be classified as carry-forward
-      // If the amount matches previousBalance and there are no other payments, treat as carry-forward
-      const isCarryForwardPayment = Math.abs(amt - prevBal) < 0.01 && prevBal > 0.005 && 
-                                    invoiceLogs.length === 1 && 
-                                    !String(log.paymentMethod || '').toLowerCase().includes('cash') &&
-                                    !String(log.paymentMethod || '').toLowerCase().includes('transfer');
+      const paymentDate = parseDateOnly(log.paymentDate) || new Date();
       
-      // Additional check: if reference is invoice number and amount equals remaining balance, treat as carry-forward
-      const referenceIsInvoice = String(log.receiptNumber || '').startsWith('INV-');
-      // Use 0 for prepaidApplied here since it's calculated later
-      const remainingBalanceBeforeLog = round2(termFees + prevBal - loggedPayments - 0);
-      const isInvoiceReferenceCarryForward = referenceIsInvoice && 
-                                             Math.abs(amt - remainingBalanceBeforeLog) < 0.01 && 
-                                             remainingBalanceBeforeLog > 0.005;
+      // Check if payment is after term end date (late payment)
+      const termEndDate = parseDateOnly(termMeta.endDate);
+      const isLatePayment = termEndDate && paymentDate.getTime() > termEndDate.getTime();
       
-      if (isCarryForwardPayment || isInvoiceReferenceCarryForward) {
-        events.push({
-          date: parseDateOnly(log.paymentDate) || new Date(),
-          type: 'carry_forward',
-          reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
-          description: `Balance carried forward to ${nextTermName}`,
-          debit: 0,
-          credit: amt,
-          sortKey: 3,
-        });
-        // Don't add to loggedPayments since this is carry-forward, not actual payment
-      } else {
-        loggedPayments = round2(loggedPayments + amt);
-        events.push({
-          date: parseDateOnly(log.paymentDate) || new Date(),
-          type: 'payment',
-          reference: log.receiptNumber || log.id,
-          description: (() => {
-            const method = shortPaymentMethod(log.paymentMethod || '');
-            return method ? `Payment — ${method}` : 'Payment';
-          })(),
-          debit: 0,
-          credit: amt,
-          sortKey: 2,
-        });
-      }
+      // Check if this specific payment creates a prepaid amount
+      runningTotal = round2(runningTotal + amt);
+      const paymentCreatesPrepaid = runningTotal > totalOwed + 0.005;
+      const prepaidAmount = paymentCreatesPrepaid ? round2(runningTotal - totalOwed) : 0;
+      
+      // All actual payments are logged as payments - invoices must exist first
+      loggedPayments = round2(loggedPayments + amt);
+      events.push({
+        date: paymentDate,
+        type: isLatePayment ? 'late_payment' : 'payment',
+        reference: log.receiptNumber || log.id,
+        description: (() => {
+          const method = shortPaymentMethod(log.paymentMethod);
+          if (isLatePayment) {
+            return method ? `Late Payment - ${method}` : `Late Payment`;
+          }
+          if (paymentCreatesPrepaid && prepaidAmount > 0.005) {
+            return method ? `Payment - ${method} (Prepaid invoice: ${prepaidAmount.toFixed(2)})` : `Payment (Prepaid invoice: ${prepaidAmount.toFixed(2)})`;
+          }
+          return method ? `Payment - ${method}` : 'Payment';
+        })(),
+        debit: 0,
+        credit: amt,
+        sortKey: 2, // Ensure payments come after invoices
+      });
     }
-
+    
     const prepaidApplied = appliedPrepaidOnInvoice(inv, totalOwed);
     if (prepaidApplied > 0.005) {
+      // For new students, use enrollment date; for existing students, use term start date
+      const invoiceDisplayDate = (isNewStudent && studentEnrollmentDate) 
+        ? studentEnrollmentDate 
+        : (parseDateOnly(termMeta.startDate) || openDate);
       events.push({
-        date: openDate,
+        date: invoiceDisplayDate,
         type: 'payment',
         reference: inv.invoiceNumber,
-        description: 'Prepaid applied',
+        description: 'Prepaid applied from previous term',
         debit: 0,
         credit: prepaidApplied,
-        sortKey: 2,
+        sortKey: 2, // Prepaid applied appears after invoices
       });
     }
 
     const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
-    const canonicalPaidViaIdentity = round2(
-      Math.max(0, round2(prevBal + termFees) - prepaidApplied - canonicalBalance)
-    );
-    const rawPaidAmount = round2(parseFloat(String(inv.paidAmount ?? 0)));
-    const paidOnInvoice = canonicalPaidViaIdentity > 0.005 ? canonicalPaidViaIdentity : rawPaidAmount;
-
-    const unloggedPaidRaw = round2(Math.max(0, paidOnInvoice - loggedPayments));
-    const maxCreditableFromPaid = round2(Math.max(0, round2(termFees + prevBal) - canonicalBalance - prepaidApplied));
-    const unloggedPaid = round2(Math.max(0, Math.min(unloggedPaidRaw, Math.max(0, maxCreditableFromPaid - loggedPayments - prepaidApplied))));
-
-    // Check if this invoice has a previousBalance that should be treated as carry-forward
-    const hasPreviousBalance = prevBal > 0.005;
-    // If the invoice has previousBalance but the total payments don't account for it separately,
-    // treat the previousBalance portion as carry-forward
-    const previousBalanceNeedsCarryForward = hasPreviousBalance && loggedPayments <= 0.005;
-    
-    // Calculate what the remaining balance should be before this unlogged payment
-    const balanceBeforeUnlogged = round2(termFees + prevBal - loggedPayments - prepaidApplied);
-    // Check if this unlogged payment zeroes out the remaining balance exactly
-    const zeroesOutRemainingBalance = Math.abs(unloggedPaid - balanceBeforeUnlogged) < 0.01 && balanceBeforeUnlogged > 0.005;
-    
-    // Additional check: if the invoice balance is 0 but there's still a previousBalance, it suggests carry-forward
-    const balanceIsZeroButHasPrevious = Math.abs(canonicalBalance) < 0.005 && hasPreviousBalance;
-
-    if (unloggedPaid > 0.005) {
-      // Carry-forward split: the portion equal to previousBalance is
-      // the unpaid closing balance being forwarded to the next term —
-      // NOT a cash payment. Any remainder is a true unlogged cash payment.
-      const carryForwardPortion = round2(Math.max(0, Math.min(unloggedPaid, Math.max(0, prevBal))));
-      const trueCashRemainder = round2(Math.max(0, unloggedPaid - carryForwardPortion));
-
-      // ENHANCED LOGIC: Multiple conditions to detect carry-forward
-      // 1. If unloggedPaid equals previousBalance (within rounding)
-      const isExactPreviousBalanceMatch = Math.abs(unloggedPaid - prevBal) < 0.01 && prevBal > 0.005;
-      
-      // 2. If unloggedPaid zeroes out the remaining balance exactly
-      const isZeroingRemainingBalance = zeroesOutRemainingBalance;
-      
-      // 3. If there's a previous balance but no payment logs, and the unlogged amount is significant
-      const isPreviousBalanceWithNoLogs = previousBalanceNeedsCarryForward && unloggedPaid > 0.005;
-      
-      // 4. If the description or reference suggests this is a carry-forward (check invoice description)
-      const descriptionSuggestsCarryForward = String(inv.description || '').toLowerCase().includes('carry') || 
-                                             String(inv.description || '').toLowerCase().includes('forward');
-      
-      // 5. If balance is zero but there's still a previous balance (suggests it was carried forward)
-      const isZeroBalanceWithPrevious = balanceIsZeroButHasPrevious && unloggedPaid > 0.005;
-      
-      // 6. SPECIAL CASE: If the payment exactly matches the amount needed to zero out the balance
-      // and there's no clear payment log evidence, treat as carry-forward
-      const isSpecialCarryForwardCase = Math.abs(unloggedPaid - balanceBeforeUnlogged) < 0.01 && 
-                                        balanceBeforeUnlogged > 0.005 && 
-                                        loggedPayments <= 0.005 &&
-                                        !String(inv.description || '').toLowerCase().includes('payment');
-      
-      const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
-                                 isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || 
-                                 isZeroBalanceWithPrevious || isSpecialCarryForwardCase;
-      
-      const finalCarryForward = isCarryForwardCase ? unloggedPaid : carryForwardPortion;
-      const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
-
-      if (finalCarryForward > 0.005) {
-        events.push({
-          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
-          type: 'carry_forward',
-          reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
-          description: `Balance carried forward to ${nextTermName}`,
-          debit: 0,
-          credit: finalCarryForward,
-          sortKey: 3,
-        });
-      }
-
-      if (finalCashRemainder > 0.005) {
-        events.push({
-          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
-          type: 'payment',
-          reference: inv.invoiceNumber,
-          description: 'Payment applied',
-          debit: 0,
-          credit: finalCashRemainder,
-          sortKey: 2,
-        });
-      }
-    }
 
     const invoiceDebits = round2((prevBal > 0 ? prevBal : 0) + termFees);
     const invoiceCredits = round2(
       loggedPayments +
-      prepaidApplied +
-      (events.filter((e) => e.type === 'carry_forward' || (e.type === 'payment' && e.sortKey === 2 && e.reference === inv.invoiceNumber)).reduce((s, e) => s + e.credit, 0))
+      prepaidApplied
     );
 
     if (canonicalBalance > 0.005 && invoiceDebits <= 0.005) {
+      // For new students, use enrollment date; for existing students, use term start date
+      const invoiceDisplayDate = (isNewStudent && studentEnrollmentDate) 
+        ? studentEnrollmentDate 
+        : (parseDateOnly(termMeta.startDate) || parseDateOnly(inv.createdAt) || openDate);
       events.push({
-        date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+        date: invoiceDisplayDate,
         type: 'invoice',
         reference: inv.invoiceNumber,
         description: 'Outstanding balance',
         debit: canonicalBalance,
         credit: 0,
-        sortKey: 1,
+        sortKey: 1, // Outstanding balance entries appear with other invoice entries
       });
-    } else if (Math.abs(round2(invoiceDebits - invoiceCredits) - canonicalBalance) > 0.02) {
-      const delta = round2(canonicalBalance - (invoiceDebits - invoiceCredits));
-      if (delta > 0.02) {
-        events.push({
-          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
-          type: 'invoice',
-          reference: inv.invoiceNumber,
-          description: 'Balance adjustment',
-          debit: delta,
-          credit: 0,
-          sortKey: 1,
-        });
-      } else if (delta < -0.02) {
-        // Only emit credit adjustment for actual cash overpayments — never
-        // convert previousBalance (a prior-term DEBIT shown as Opening line)
-        // into a fake "credit payment" here.
-        const openingDebitShown = prevBal > 0.005 ? prevBal : 0;
-        const nonOpeningCredits = round2(invoiceCredits - (openingDebitShown > 0.005 ? 0 : 0));
-        const openingPlusDebits = round2(openingDebitShown + termFees);
-        const expectedNetOfOpening = round2(openingPlusDebits - nonOpeningCredits);
-        if (expectedNetOfOpening < -0.02 && nonOpeningCredits > 0.005) {
-          events.push({
-            date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
-            type: 'payment',
-            reference: inv.invoiceNumber,
-            description: 'Credit adjustment',
-            debit: 0,
-            credit: Math.abs(delta),
-            sortKey: 2,
-          });
-        }
-      }
     }
   }
 
@@ -873,14 +821,19 @@ export async function buildStudentLedgerReport(
           description: isCredit ? 'Opening — prepaid credit' : 'Opening — prior balance',
           debit: prevBal > 0 ? prevBal : 0,
           credit: prevBal < 0 ? Math.abs(prevBal) : 0,
-          sortKey: 0,
+          sortKey: 0, // Opening balance entries appear first
         });
       }
 
       const invoiceDebits = round2((prevBal > 0 ? prevBal : 0) + termFees);
+      // For new students, use enrollment date; for existing students, use term start date
+      const invoiceDisplayDate = (isNewStudent && studentEnrollmentDate) 
+        ? studentEnrollmentDate 
+        : (parseDateOnly(termMeta.startDate) || openDate);
+      
       if (termFees > 0.005) {
         events.push({
-          date: openDate,
+          date: invoiceDisplayDate,
           type: 'invoice',
           reference: inv.invoiceNumber,
           description: (() => {
@@ -890,101 +843,50 @@ export async function buildStudentLedgerReport(
           })(),
           debit: termFees,
           credit: 0,
-          sortKey: 1,
+          sortKey: 1, // Invoices appear after opening balance but before payments
         });
       }
 
       const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
       if (canonicalBalance > 0.005 && invoiceDebits <= 0.005) {
         events.push({
-          date: openDate,
+          date: invoiceDisplayDate,
           type: 'invoice',
           reference: inv.invoiceNumber,
           description: 'Outstanding balance',
           debit: canonicalBalance,
           credit: 0,
-          sortKey: 1,
+          sortKey: 1, // Outstanding balance entries appear with other invoice entries
         });
-      }
-
-      if (appliedPrepaid > 0.005) {
-        events.push({
-          date: openDate,
-          type: 'payment',
-          reference: inv.invoiceNumber,
-          description: 'Prepaid applied',
-          debit: 0,
-          credit: appliedPrepaid,
-          sortKey: 2,
-        });
-      }
-
-      // Derive canonical cash paid via identity (consistent with receipt PDF)
-      // so previousBalance artifacts are never converted to payment credits.
-      const canonicalPaidViaIdentity = round2(
-        Math.max(0, round2(prevBal + termFees) - appliedPrepaid - canonicalBalance)
-      );
-      const actualPaidToCredit = canonicalPaidViaIdentity > 0.005 ? canonicalPaidViaIdentity : rawPaidAmount;
-      const maxCreditFromPaid = round2(Math.max(0, round2(prevBal + termFees) - canonicalBalance - appliedPrepaid));
-      const safePaidCredit = round2(Math.min(actualPaidToCredit, maxCreditFromPaid));
-
-      if (safePaidCredit > 0.005) {
-        const carryForwardPortion = round2(Math.max(0, Math.min(safePaidCredit, Math.max(0, prevBal))));
-        const trueCashRemainder = round2(Math.max(0, safePaidCredit - carryForwardPortion));
-
-        // ENHANCED LOGIC: Multiple conditions to detect carry-forward (same as main logic)
-        const isExactPreviousBalanceMatch = Math.abs(safePaidCredit - prevBal) < 0.01 && prevBal > 0.005;
-        const balanceBeforeUnlogged = round2(termFees + prevBal - appliedPrepaid);
-        const isZeroingRemainingBalance = Math.abs(safePaidCredit - balanceBeforeUnlogged) < 0.01 && balanceBeforeUnlogged > 0.005;
-        const isPreviousBalanceWithNoLogs = prevBal > 0.005; // In fallback, assume no logs
-        const descriptionSuggestsCarryForward = String(inv.description || '').toLowerCase().includes('carry') || 
-                                               String(inv.description || '').toLowerCase().includes('forward');
-        const isZeroBalanceWithPrevious = Math.abs(canonicalBalance) < 0.005 && prevBal > 0.005;
-        const isSpecialCarryForwardCase = Math.abs(safePaidCredit - balanceBeforeUnlogged) < 0.01 && 
-                                          balanceBeforeUnlogged > 0.005 && 
-                                          !String(inv.description || '').toLowerCase().includes('payment');
-        
-        const isCarryForwardCase = isExactPreviousBalanceMatch || isZeroingRemainingBalance || 
-                                   isPreviousBalanceWithNoLogs || descriptionSuggestsCarryForward || 
-                                   isZeroBalanceWithPrevious || isSpecialCarryForwardCase;
-        
-        const finalCarryForward = isCarryForwardCase ? safePaidCredit : carryForwardPortion;
-        const finalCashRemainder = isCarryForwardCase ? 0 : trueCashRemainder;
-
-        if (finalCarryForward > 0.005) {
-          events.push({
-            date: openDate,
-            type: 'carry_forward',
-            reference: `BAL-CF-${nextTermName.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()}`,
-            description: `Balance carried forward to ${nextTermName}`,
-            debit: 0,
-            credit: finalCarryForward,
-            sortKey: 3,
-          });
-        }
-
-        if (finalCashRemainder > 0.005) {
-          events.push({
-            date: openDate,
-            type: 'payment',
-            reference: inv.invoiceNumber,
-            description: 'Payment applied',
-            debit: 0,
-            credit: finalCashRemainder,
-            sortKey: 2,
-          });
-        }
       }
     }
   }
 
+  // Custom sort to ensure proper order: Opening Balance → Invoice → Payment
+  // First by sortKey (which encodes type priority), then by date, then by reference
   events.sort(
-    (a, b) => a.date.getTime() - b.date.getTime() || a.sortKey - b.sortKey || a.reference.localeCompare(b.reference)
+    (a, b) => {
+      // Primary sort by sortKey (Opening Balance=0, Invoice=1, Payment=2)
+      const sortKeyDiff = a.sortKey - b.sortKey;
+      if (sortKeyDiff !== 0) return sortKeyDiff;
+      
+      // Secondary sort by date (ascending)
+      const dateDiff = a.date.getTime() - b.date.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      
+      // Tertiary sort by reference for consistency
+      return a.reference.localeCompare(b.reference);
+    }
   );
 
   let running = 0;
   const lines: StudentLedgerLine[] = events.map((ev) => {
-    running = round2(running + ev.debit - ev.credit);
+    // For opening balance entries, always reset to 0 for new students
+    if (ev.type === 'opening' && ev.reference === '') {
+      running = 0;
+    } else {
+      running = round2(running + ev.debit - ev.credit);
+    }
     return {
       date: ev.date.toISOString().split('T')[0],
       type: ev.type,
@@ -998,60 +900,30 @@ export async function buildStudentLedgerReport(
 
   let totalDebits = round2(lines.reduce((s, l) => s + l.debit, 0));
   let totalCredits = round2(lines.reduce((s, l) => s + l.credit, 0));
-  // Calculate actual payments (excluding carry-forward) for correct term closing balance
-  let actualPaymentsOnly = round2(
-    lines.reduce((s, l) => s + (l.type === 'carry_forward' ? 0 : l.credit), 0)
-  );
   let openingBalance = openingBalanceTotal;
-  const termInvoicesForClosing = termInvoices.length > 0
-    ? termInvoices
-    : outstandingInvoiceRows.length > 0
-      ? (() => {
-          const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
-          return allInvoices.filter((inv) => outstandingIds.has(inv.id) && !inv.isVoided);
-        })()
-      : [];
-  const canonicalClosing = round2(
-    termInvoicesForClosing.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
-  );
-  // Calculate closing balance using actual payments only (excluding carry-forward)
-  let closingBalanceFromPayments = round2(totalDebits - actualPaymentsOnly);
-  let closingBalance =
-    Math.abs(closingBalanceFromPayments - canonicalClosing) > 0.02
-      ? canonicalClosing
-      : closingBalanceFromPayments;
   
-  // Fix: If closing balance is still incorrect due to carry-forward logic, recalculate
-  // Carry-forward amounts should not reduce the term closing balance
-  const carryForwardTotal = round2(
-    lines.reduce((s, l) => s + (l.type === 'carry_forward' ? l.credit : 0), 0)
-  );
-  if (carryForwardTotal > 0.005 && Math.abs(closingBalance - (totalDebits - totalCredits)) < 0.02) {
-    // If the current calculation includes carry-forward, recalculate without it
-    closingBalance = round2(totalDebits - actualPaymentsOnly);
+  // Calculate closing balance from actual running balance of last line
+  let closingBalance = lines.length > 0 ? lines[lines.length - 1].balance : 0;
+  
+  // Ensure closing balance matches canonical outstanding if no transactions
+  if (lines.length === 0) {
+    const termInvoicesForClosing = termInvoices.length > 0
+      ? termInvoices
+      : outstandingInvoiceRows.length > 0
+        ? (() => {
+            const outstandingIds = new Set(outstandingInvoiceRows.map((r) => r.invoiceId));
+            return allInvoices.filter((inv) => outstandingIds.has(inv.id) && !inv.isVoided);
+          })()
+        : [];
+    const canonicalClosing = round2(
+      termInvoicesForClosing.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
+    );
+    closingBalance = canonicalClosing;
   }
 
-  if (
-    lines.length === 0 &&
-    totalOutstanding > 0.005 &&
-    totalDebits <= 0.005 &&
-    totalCredits <= 0.005 &&
-    closingBalance <= 0.005
-  ) {
-    totalDebits = round2(totalOutstanding);
-    closingBalance = round2(totalOutstanding);
-  }
-
-  if (
-    totalOutstanding > 0.005 &&
-    Math.abs(closingBalance - totalOutstanding) > 0.02 &&
-    closingBalance <= 0.005
-  ) {
-    closingBalance = round2(totalOutstanding);
-    if (totalDebits <= 0.005 && totalCredits <= 0.005) {
-      totalDebits = round2(totalOutstanding);
-    }
-  }
+  // For term-specific ledger, calculate totalOutstanding using canonical balance from invoices
+  // This ensures the total outstanding reflects the actual payment status, not just the running balance
+  const termTotalOutstanding = computeStudentTotalOutstanding(allInvoices, student, configuredDeskFee);
 
   return {
     student: mapStudentRow(student),
@@ -1065,9 +937,9 @@ export async function buildStudentLedgerReport(
     summary: {
       openingBalance,
       totalDebits,
-      totalCredits, // Keep total credits including carry-forward for display
-      closingBalance, // Closing balance calculated using actual payments only
-      totalOutstanding,
+      totalCredits,
+      closingBalance,
+      totalOutstanding: termTotalOutstanding,
     },
     outstandingInvoices: outstandingInvoiceRows.map((row) => ({
       invoiceId: row.invoiceId,
