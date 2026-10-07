@@ -22,6 +22,7 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { parseBoolean } from '../utils/booleanUtils';
 import { findActiveInvoiceForStudentTerm } from '../utils/invoiceTermGuard';
+import { applyExistingStatusIfEnrolled } from '../utils/studentEnrollmentStatus';
 import {
   computeLogisticsFees,
   logisticsProfileChanged,
@@ -466,6 +467,17 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       // Continue without failing the student registration
     }
 
+    // Admission stays New until a class is assigned. Initial invoice (desk/registration)
+    // is created first while still New, then enrolled students become Existing.
+    if (classEntity) {
+      const enrolled = savedStudent || student;
+      enrolled.classId = classEntity.id;
+      if (applyExistingStatusIfEnrolled(enrolled)) {
+        await studentRepository.save(enrolled);
+        if (savedStudent) savedStudent.studentStatus = enrolled.studentStatus;
+      }
+    }
+
     res.status(201).json({ 
       message: classEntity ? 'Student registered and enrolled successfully' : 'Student registered successfully', 
       student: savedStudent 
@@ -877,6 +889,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
           for (const student of studentsByClassName) {
             if (student.classId !== trimmedClassId) {
               student.classId = trimmedClassId;
+              applyExistingStatusIfEnrolled(student);
               await studentRepository.save(student);
               console.log(`Updated student ${student.firstName} ${student.lastName} classId to ${trimmedClassId}`);
             }
@@ -1058,6 +1071,7 @@ export const enrollStudent = async (req: AuthRequest, res: Response) => {
     }
 
     student.classId = classId;
+    applyExistingStatusIfEnrolled(student);
     await studentRepository.save(student);
 
     res.json({ message: 'Student enrolled successfully', student });
@@ -1300,6 +1314,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           
           student.classId = trimmedClassId;
           student.classEntity = classEntity;
+          applyExistingStatusIfEnrolled(student);
           
           console.log('Updating student class from', oldClassName, '(ID: ' + oldClassId + ') to:', classEntity.name, '(ID: ' + trimmedClassId + ')');
           console.log('Setting student.classEntity relation to:', classEntity.name);
@@ -1599,6 +1614,7 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
     let promotedCount = 0;
     for (const student of students) {
       student.classId = toClassId;
+      applyExistingStatusIfEnrolled(student);
        await studentRepository.save(student);
       promotedCount++;
     }
@@ -1831,6 +1847,7 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
     } else {
       // Update student's class for internal transfer
       student.classId = finalToClassId;
+      applyExistingStatusIfEnrolled(student);
       await studentRepository.save(student);
     }
 

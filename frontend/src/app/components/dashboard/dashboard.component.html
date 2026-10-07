@@ -7,10 +7,11 @@
       <header class="sd-hero">
         <div class="sd-hero__main">
           <div class="sd-hero__left">
-            <span class="sd-hero__icon" aria-hidden="true">🎓</span>
+            <span class="sd-hero__mark" aria-hidden="true"></span>
             <div>
-              <span class="sd-hero__eyebrow">Student Portal</span>
+              <span class="sd-hero__eyebrow">Student portal</span>
               <h1 class="sd-hero__title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
+              <p class="sd-hero__school" *ngIf="schoolName">{{ schoolName }}</p>
               <p class="sd-hero__meta" *ngIf="getStudentNumber() || getStudentClassName()">
                 <span *ngIf="getStudentNumber()">{{ getStudentNumber() }}</span>
                 <span *ngIf="getStudentClassName()"> · {{ getStudentClassName() }}</span>
@@ -95,28 +96,28 @@
 
       <section class="sd-panel">
         <div class="sd-panel__head">
-          <h2>Quick actions</h2>
-          <p>Jump to your report card, fees, and account tools.</p>
+          <h2>Academic &amp; account</h2>
+          <p>Open your records, fees, and login tools.</p>
         </div>
         <div class="sd-qa-grid">
           <a routerLink="/student/report-card" class="sd-qa-tile">
-            <span class="sd-qa-icon" aria-hidden="true">📄</span>
+            <span class="sd-qa-index" aria-hidden="true">01</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Report card</span>
-              <span class="sd-qa-hint">Grades, remarks & PDF</span>
+              <span class="sd-qa-hint">Grades, remarks &amp; PDF</span>
             </span>
             <span class="sd-qa-arrow" aria-hidden="true">→</span>
           </a>
           <a routerLink="/student/invoice-statement" class="sd-qa-tile">
-            <span class="sd-qa-icon" aria-hidden="true">🧾</span>
+            <span class="sd-qa-index" aria-hidden="true">02</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Invoice statement</span>
-              <span class="sd-qa-hint">Fees, balance & PDF preview</span>
+              <span class="sd-qa-hint">Fees, balance &amp; PDF preview</span>
             </span>
             <span class="sd-qa-arrow" aria-hidden="true">→</span>
           </a>
           <a routerLink="/student/parent-portal" class="sd-qa-tile">
-            <span class="sd-qa-icon" aria-hidden="true">👨‍👩‍👧</span>
+            <span class="sd-qa-index" aria-hidden="true">03</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Parent portal</span>
               <span class="sd-qa-hint">Share access with guardians</span>
@@ -127,7 +128,7 @@
             *ngIf="canChangeOwnPassword()"
             [routerLink]="changePasswordRoute"
             class="sd-qa-tile">
-            <span class="sd-qa-icon" aria-hidden="true">🔐</span>
+            <span class="sd-qa-index" aria-hidden="true">04</span>
             <span class="sd-qa-body">
               <span class="sd-qa-label">Change password</span>
               <span class="sd-qa-hint">Keep your login secure</span>
@@ -138,7 +139,7 @@
       </section>
 
       <section class="sd-tip">
-        <span class="sd-tip__icon" aria-hidden="true">💡</span>
+        <span class="sd-tip__rule" aria-hidden="true"></span>
         <div>
           <strong>Need help?</strong>
           <p>Use <strong>Invoice statement</strong> to preview or download your fee invoice PDF. Your <strong>Report card</strong> shows grades for the current term once results are published.</p>
@@ -151,11 +152,14 @@
     <header class="dash-page-header">
       <div class="dash-page-header__intro">
         <div class="dash-page-header__brand">
-          <span class="dash-page-header__icon" aria-hidden="true">📊</span>
+          <span class="dash-page-header__crest" aria-hidden="true">
+            <span class="dash-page-header__crest-inner"></span>
+          </span>
           <div>
-            <span class="dash-page-eyebrow">{{ getRoleLabel() }} · Dashboard</span>
+            <span class="dash-page-eyebrow">{{ getRoleLabel() }} · School office</span>
             <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
-            <p class="dash-page-subtitle">Overview of enrolment, staff, academics, and school operations.</p>
+            <p class="dash-page-school" *ngIf="schoolName">{{ schoolName }}</p>
+            <p class="dash-page-subtitle">Enrolment, staff, academics, and operations at a glance.</p>
             <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
           </div>
         </div>
@@ -191,11 +195,13 @@
     <div class="dash-status-strip" *ngIf="canViewDashboardStats()">
       <span class="dash-status-strip__dot" [class.dash-status-strip__dot--loading]="loadingStats"></span>
       <span *ngIf="!loadingStats">
-        Live snapshot
-        <strong *ngIf="statsLastUpdated">· updated {{ formatStatsUpdatedAt() }}</strong>
+        Live register
+        <strong *ngIf="statsLastUpdated">· as of {{ formatStatsUpdatedAt() }}</strong>
       </span>
-      <span *ngIf="loadingStats">Refreshing dashboard data…</span>
+      <span *ngIf="loadingStats">Refreshing the school register…</span>
     </div>
+
+    <p class="dash-section-kicker" *ngIf="canViewDashboardStats()">Institutional snapshot</p>
     <div class="stats-skeleton-grid" *ngIf="canViewDashboardStats() && loadingStats" aria-busy="true">
       <div class="stats-skeleton-card" *ngFor="let _ of statSkeletonSlots">
         <div class="stats-skeleton-shimmer"></div>
@@ -274,10 +280,6 @@
         </div>
       </article>
     </div>
-    <div class="loading-stats" *ngIf="canViewDashboardStats() && loadingStats">
-      <div class="spinner"></div>
-      <p>Loading statistics...</p>
-    </div>
 
     <section
       class="dash-finance-strip"
@@ -285,12 +287,11 @@
       aria-label="Finance snapshot"
     >
       <div class="dash-finance-strip__col dash-finance-strip__balance">
-        <span class="dash-finance-strip__icon" aria-hidden="true">💰</span>
         <div class="dash-finance-strip__text">
+          <p class="dash-finance-strip__label">Fees outstanding</p>
           <p class="dash-finance-strip__value">
             {{ currencySymbol }} {{ stats.totalBalance | number:'1.2-2' }}
           </p>
-          <p class="dash-finance-strip__label">Outstanding</p>
         </div>
       </div>
       <div class="dash-finance-strip__col dash-finance-strip__collection">
@@ -302,25 +303,24 @@
           <div class="dash-finance-strip__progress-fill" [style.width.%]="getCollectionRatePercent()"></div>
         </div>
         <p class="dash-finance-strip__sub">
-          {{ currencySymbol }} {{ stats.totalPaidAmount | number:'1.2-2' }} paid of
-          {{ currencySymbol }} {{ stats.totalInvoicedAmount | number:'1.2-2' }} invoiced
+          {{ currencySymbol }} {{ stats.totalPaidAmount | number:'1.2-2' }} received of
+          {{ currencySymbol }} {{ stats.totalInvoicedAmount | number:'1.2-2' }} billed
         </p>
       </div>
       <div class="dash-finance-strip__col dash-finance-strip__invoices">
-        <span class="dash-finance-strip__icon" aria-hidden="true">📄</span>
         <div class="dash-finance-strip__text">
+          <p class="dash-finance-strip__label">Invoices on file</p>
           <p class="dash-finance-strip__value">{{ stats.totalInvoices }}</p>
-          <p class="dash-finance-strip__label">Total invoices</p>
         </div>
       </div>
     </section>
     
-    <div class="dashboard-cards dash-body-grid">
+    <div class="dashboard-cards dash-body-grid dash-main-grid">
       <div class="dash-shortcuts-row" *ngIf="isAdmin() || isAccountant()">
         <div class="card modern-card dash-modules-card">
           <div class="card-header-modern">
-            <h2>Quick modules</h2>
-            <p class="dash-card-subtitle">{{ isAccountant() ? 'Finance and related areas you use most.' : 'Jump to the most-used areas of the system.' }}</p>
+            <h2>Office directories</h2>
+            <p class="dash-card-subtitle">{{ isAccountant() ? 'Finance and related areas you use most.' : 'The registers and ledgers used most often.' }}</p>
           </div>
           <div class="dash-module-grid">
             <a
@@ -346,8 +346,8 @@
 
       <div class="card modern-card" *ngIf="isTeacher()">
         <div class="card-header-modern">
-          <h2>Teaching hub</h2>
-          <p class="dash-card-subtitle">Shortcuts for marks, attendance, and class work.</p>
+          <h2>Teaching desk</h2>
+          <p class="dash-card-subtitle">Marks, attendance, and class work.</p>
         </div>
         <div class="dash-tile-grid">
             <a routerLink="/exams" class="dash-tile" *ngIf="canAccessModule('exams')">
@@ -420,26 +420,23 @@
       <!-- Recent Activity Section -->
       <div class="card recent-activity modern-card" *ngIf="canViewDashboardStats() && !loadingStats">
         <div class="card-header-flex">
-          <h2>Recent activity</h2>
+          <h2>Recent register</h2>
           <a routerLink="/students" class="view-all-link modern-link" *ngIf="recentStudents.length > 0">
-            View all
+            View directory
             <span class="link-arrow">→</span>
           </a>
         </div>
         
         <div class="activity-tabs">
           <div class="tab-content">
-            <h3 class="tab-title">Recent Students</h3>
+            <h3 class="tab-title">Latest students</h3>
             <div class="activity-list" *ngIf="recentStudents.length > 0; else noRecentStudents">
               <div class="activity-item modern-activity-item" *ngFor="let student of recentStudents">
-                <div class="activity-icon-wrapper">
-                  <div class="activity-icon modern-activity-icon">👤</div>
-                </div>
                 <div class="activity-details">
                   <div class="activity-name">{{ student.firstName }} {{ student.lastName }}</div>
                   <div class="activity-meta">
-                    <span class="meta-badge">🆔 {{ student.studentNumber }}</span>
-                    <span class="meta-badge" *ngIf="student.class">🏫 {{ student.class.name }}</span>
+                    <span class="meta-badge">{{ student.studentNumber }}</span>
+                    <span class="meta-badge" *ngIf="student.class">{{ student.class.name }}</span>
                     <span class="meta-badge">{{ student.studentType || 'Day Scholar' }}</span>
                   </div>
                 </div>
@@ -458,26 +455,23 @@
           </div>
           
           <div class="tab-content" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
-            <h3 class="tab-title">Recent Invoices</h3>
+            <h3 class="tab-title">Latest invoices</h3>
             <div class="activity-list" *ngIf="recentInvoices.length > 0; else noRecentInvoices">
               <div class="activity-item modern-activity-item" *ngFor="let invoice of recentInvoices">
-                <div class="activity-icon-wrapper">
-                  <div class="activity-icon modern-activity-icon invoice-icon">💰</div>
-                </div>
                 <div class="activity-details">
-                  <div class="activity-name">Invoice #{{ invoice.invoiceNumber }}</div>
+                  <div class="activity-name">{{ invoice.invoiceNumber }}</div>
                   <div class="activity-meta">
                     <span class="meta-badge" [class.balance-warning]="invoice.balance > 0">
-                      💵 Balance: {{ invoice.balance | number:'1.2-2' }}
+                      Balance {{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}
                     </span>
                     <span class="meta-badge" *ngIf="invoice.student">
-                      👤 {{ invoice.student.firstName }} {{ invoice.student.lastName }}
+                      {{ invoice.student.firstName }} {{ invoice.student.lastName }}
                     </span>
                   </div>
                 </div>
                 <div class="activity-action">
                   <a [routerLink]="['/invoices']" class="dash-action-btn">
-                    View
+                    Open
                   </a>
                 </div>
               </div>

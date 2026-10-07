@@ -490,6 +490,7 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
       case 'advance_payment': return 'Advance Payment';
       case 'late_payment': return 'Late Payment';
       case 'brought_forward': return 'Balance brought forward';
+      case 'carry_forward': return 'Carry forward';
       default: return String(type || '').trim() || '—';
     }
   }

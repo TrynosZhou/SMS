@@ -258,6 +258,67 @@ export function applyCarryForwardToPriorInvoice(
   priorInvoice.description = existing ? `${existing} | ${note}` : note;
 }
 
+function escapeRegExp(value: string): string {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function stripCarryForwardNote(description: string, targetInvoiceNumber: string): string {
+  const no = String(targetInvoiceNumber || '').trim();
+  if (!no) return String(description || '').trim();
+  const escaped = escapeRegExp(no);
+  return String(description || '')
+    .replace(new RegExp(`\\s*\\|\\s*Balance\\s+[\\d.]+\\s+carried forward to\\s+${escaped}`, 'gi'), '')
+    .replace(new RegExp(`Balance\\s+[\\d.]+\\s+carried forward to\\s+${escaped}`, 'gi'), '')
+    .replace(/\s+\|\s+/g, ' | ')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+}
+
+export function invoiceHasCarryForwardTo(invoice: Invoice, targetInvoiceNumber: string): boolean {
+  const no = String(targetInvoiceNumber || '').trim().toLowerCase();
+  if (!no) return false;
+  return String(invoice.description || '').toLowerCase().includes(`carried forward to ${no}`);
+}
+
+/** Undo a bulk-create carry-forward so reversing a term restores the prior invoice's owed amount. */
+export function undoCarryForwardOnPriorInvoice(
+  priorInvoice: Invoice,
+  amountCarried: number,
+  targetInvoiceNumber: string
+): void {
+  const carried = parseFloat(parseAmount(amountCarried).toFixed(2));
+  if (carried > 0.005) {
+    priorInvoice.paidAmount = Math.max(
+      0,
+      parseFloat((parseAmount(priorInvoice.paidAmount) - carried).toFixed(2))
+    );
+  }
+
+  priorInvoice.description = stripCarryForwardNote(
+    String(priorInvoice.description || ''),
+    targetInvoiceNumber
+  );
+  recomputeInvoiceTotalsFromLineItems(priorInvoice);
+}
+
+/**
+ * Restore the previous term invoice after deleting a bulk-created invoice:
+ * undo the carry-forward paid bump and put the prepaid pool back.
+ */
+export function restorePriorInvoiceAfterBulkReverse(priorInvoice: Invoice, bulkInvoice: Invoice): void {
+  const carried = parseAmount(bulkInvoice.previousBalance);
+  const invoiceNo = String(bulkInvoice.invoiceNumber || '');
+  undoCarryForwardOnPriorInvoice(priorInvoice, carried, invoiceNo);
+
+  const priorPrepaidAtBulk = parseFloat(
+    (parseAmount(bulkInvoice.paidAmount) + parseAmount(bulkInvoice.prepaidAmount)).toFixed(2)
+  );
+  if (priorPrepaidAtBulk > parseAmount(priorInvoice.prepaidAmount) + 0.005) {
+    priorInvoice.prepaidAmount = priorPrepaidAtBulk;
+    recomputeInvoiceTotalsFromLineItems(priorInvoice);
+  }
+}
+
 /**
  * After a credit/debit note changes line items, outstanding must change by exactly `delta`
  * from `balanceBefore`. Adjusts the prepaid pool so canonical balance matches (prepaid must

@@ -105,7 +105,7 @@
           <span class="btn-icon">📋</span>
           <span>Bulk Create</span>
         </button>
-        <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canBulkInvoices() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
+        <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canBulkInvoices() || canCorrectTransaction()" [disabled]="reversingBulk" title="Undo the last bulk invoice run and restore prior balances">
           <span class="btn-icon">↩️</span>
           <span>Reverse Bulk</span>
         </button>
@@ -113,7 +113,7 @@
       <div class="actions-row actions-row-secondary" *ngIf="canManageFinance() || canCorrectTransaction()">
         <div class="reverse-filters" *ngIf="authService.isAdmin()">
           <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Term to reverse">
-            <option value="">Auto (next term after settings)</option>
+            <option value="">Auto (current term)</option>
             <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
           </select>
           <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Start date" />

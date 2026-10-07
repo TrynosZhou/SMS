@@ -1036,7 +1036,8 @@
   color: #991b1b;
 }
 
-.sl-type-pill--brought_forward {
+.sl-type-pill--brought_forward,
+.sl-type-pill--carry_forward {
   background: #dbeafe;
   color: #1e40af;
   border: 1px solid #93c5fd;

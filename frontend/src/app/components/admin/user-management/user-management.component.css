@@ -1,9 +1,7 @@
 /* User Management — classical professional layout */
 :host {
   display: block;
-}
-
-.um-page {
+  /* Overlays sit outside .um-page; tokens must live on the host so they inherit. */
   --um-navy: #1e3a5f;
   --um-navy-deep: #152a45;
   --um-gold: #f59e0b;
@@ -12,6 +10,9 @@
   --um-muted: #64748b;
   --um-text: #0f172a;
   --um-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.um-page {
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
@@ -45,14 +46,18 @@
 }
 
 .um-btn--primary {
-  background: var(--um-navy);
-  border-color: var(--um-navy);
+  background: #1e3a5f;
+  background: var(--um-navy, #1e3a5f);
+  border-color: #1e3a5f;
+  border-color: var(--um-navy, #1e3a5f);
   color: #fff;
 }
 
 .um-btn--primary:hover:not(:disabled) {
-  background: var(--um-navy-deep);
-  border-color: var(--um-navy-deep);
+  background: #152a45;
+  background: var(--um-navy-deep, #152a45);
+  border-color: #152a45;
+  border-color: var(--um-navy-deep, #152a45);
   color: #fff;
 }
 
@@ -1153,6 +1158,12 @@
   padding: 0.75rem 1.15rem;
   border-top: 1px solid #e2e8f0;
   background: #fafbfc;
+}
+
+.um-modal-overlay .um-btn--primary {
+  background: #1e3a5f !important;
+  border-color: #1e3a5f !important;
+  color: #fff !important;
 }
 
 @media (max-width: 900px) {

@@ -5,6 +5,7 @@ import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 import { parseAmount } from './numberUtils';
 import { computeLogisticsFees, recomputeInvoiceTotalsFromLineItems, snapshotFromStudent } from './studentLogisticsInvoice';
+import { isNewStudentStatus, studentHasClassAssignment } from './studentEnrollmentStatus';
 
 export function isStaffSiblingExemption(student: Student): boolean {
   return student.isStaffChild === true || student.exemptionType === 'staff_sibling';
@@ -88,8 +89,9 @@ function computeStandardPayableLineItems(
   const boarderTuition = parseAmount((fees as any).boarderTuitionFee);
   const registrationFee = parseAmount((fees as any).registrationFee);
   const deskFee = parseAmount((fees as any).deskFee);
-  const studentStatus = String((student as any).studentStatus || 'New').trim();
-  const isNew = studentStatus.toLowerCase() === 'new';
+  const isNew =
+    isNewStudentStatus((student as any).studentStatus) &&
+    !studentHasClassAssignment(student);
 
   const snap = {
     studentType: student.studentType,
@@ -267,15 +269,18 @@ function applyBalanceExemption(student: Student, inv: Invoice): string | null {
 export function applyExemptionToInvoice(
   student: Student,
   inv: Invoice,
-  fees: Record<string, unknown>
+  fees: Record<string, unknown>,
+  options?: { includeDeskFee?: boolean }
 ): void {
   const lines = computeBaseTermLineItems(student, fees, inv);
+  const includeDeskFee = options?.includeDeskFee !== false;
 
   inv.tuitionAmount = lines.tuition;
   inv.transportAmount = lines.transport;
   inv.diningHallAmount = lines.dining;
   inv.registrationAmount = lines.registration;
-  inv.deskFeeAmount = lines.desk;
+  // Desk fee is charged once on admission — bulk term invoices must not add it.
+  inv.deskFeeAmount = includeDeskFee ? lines.desk : 0;
 
   recomputeInvoiceTotalsFromLineItems(inv);
 

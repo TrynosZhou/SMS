@@ -77,6 +77,7 @@ function typeLabel(type: string): string {
   if (t === 'invoice') return 'Invoice';
   if (t === 'opening') return 'Opening Balance';
   if (t === 'brought_forward') return 'Balance brought forward';
+  if (t === 'carry_forward') return 'Carry forward';
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -496,6 +497,7 @@ export function createStudentLedgerHTML(data: StudentLedgerHTMLData): string {
     .type-pill--invoice { background: var(--gold-soft); color: #7a5c12; }
     .type-pill--opening { background: #e8edf4; color: #334155; }
     .type-pill--brought_forward { background: #fff4e6; color: #7a5c12; }
+    .type-pill--carry_forward { background: #dbeafe; color: #1e40af; }
 
     .empty-row {
       text-align: center;

@@ -2135,17 +2135,26 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     }
   }
 
+  getLatestInvoiceTerm(): string {
+    const list = [...this.invoices]
+      .filter((inv) => inv?.term && !inv.isVoided)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+    return String(list[0]?.term || '').trim();
+  }
+
   reverseLastBulkCreation() {
-    // Restrict to admin/superadmin only
-    if (!this.authService.isAdmin()) {
-      this.error = 'Only authorized administrators can reverse bulk invoices';
+    if (!this.canBulkInvoices() && !this.authService.isAdmin()) {
+      this.error = 'You do not have permission to reverse bulk invoices';
       setTimeout(() => (this.error = ''), 5000);
       return;
     }
 
     const reverseTerm =
       this.reverseFilter.term?.trim() ||
-      this.getFollowingTerm(this.currentTermFromSettings) ||
+      this.getLatestInvoiceTerm() ||
       this.currentTermFromSettings;
     const windowText = (this.reverseFilter.startDate || this.reverseFilter.endDate)
       ? `\nDate window: ${this.reverseFilter.startDate || '—'} to ${this.reverseFilter.endDate || '—'}`

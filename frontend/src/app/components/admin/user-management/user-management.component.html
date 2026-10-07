@@ -479,12 +479,12 @@
           </div>
         </div>
       </ng-container>
-      <div class="um-modal-actions">
-        <button type="button" class="um-btn um-btn--ghost" (click)="closeResetModal()" [disabled]="resettingPassword">Cancel</button>
-        <button type="button" class="um-btn um-btn--primary" (click)="confirmResetPassword()" [disabled]="resettingPassword">
-          {{ resettingPassword ? 'Resetting…' : 'Reset Password' }}
-        </button>
-      </div>
+    </div>
+    <div class="um-modal-actions">
+      <button type="button" class="um-btn um-btn--ghost" (click)="closeResetModal()" [disabled]="resettingPassword">Cancel</button>
+      <button type="button" class="um-btn um-btn--primary" (click)="confirmResetPassword()" [disabled]="resettingPassword">
+        {{ resettingPassword ? 'Resetting…' : 'Reset Password' }}
+      </button>
     </div>
   </div>
 </div>

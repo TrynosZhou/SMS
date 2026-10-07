@@ -15,6 +15,8 @@ import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
 import {
   applyCarryForwardToPriorInvoice,
+  invoiceHasCarryForwardTo,
+  restorePriorInvoiceAfterBulkReverse,
   computeCanonicalInvoiceBalance,
   computeCarryForwardBalance,
   computeInvoiceOwedAmount,
@@ -29,6 +31,7 @@ import {
   repairInvoiceFinancialsIfStale
 } from '../utils/invoiceFeesBalance';
 import { lookupStudentByQuery } from '../utils/studentLookup';
+import { markEnrolledStudentsExisting, applyExistingStatusIfEnrolled } from '../utils/studentEnrollmentStatus';
 import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
 import { syncExemptionInvoicesForStudent, applyExemptionToInvoice, isFullPercentageExemption, shouldSkipTermFeeInvoiceCreation, studentHasActiveFeeExemption } from '../utils/exemptionInvoice';
@@ -53,6 +56,7 @@ import {
   findActiveInvoiceForStudentTerm,
   findInvoiceForStudentTermInList,
   invoiceTermExistsMessage,
+  normalizeInvoiceTermKey,
 } from '../utils/invoiceTermGuard';
 import { resolvePortalFinanceStudentScope, assertUserCanAccessStudentFinance } from '../utils/portalFinanceAccess';
 import { loadAcademicTerms } from '../utils/studentLedgerReport';
@@ -1186,12 +1190,6 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     }
 
     const feesConfig = settings.feesSettings;
-    const dayScholarTuitionFee = parseAmount(feesConfig.dayScholarTuitionFee);
-    const boarderTuitionFee = parseAmount(feesConfig.boarderTuitionFee);
-    const registrationFee = parseAmount(feesConfig.registrationFee);
-    const transportCost = parseAmount(feesConfig.transportCost);
-    const diningHallCost = parseAmount(feesConfig.diningHallCost);
-    const deskFee = parseAmount(feesConfig.deskFee);
 
     // Get all active students (stable order so batch offsets are repeatable)
     const students = await studentRepository.find({
@@ -1202,6 +1200,12 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
     if (students.length === 0) {
       return res.status(404).json({ message: 'No active students found' });
+    }
+
+    // Enrolled students must be Existing so bulk billing never applies admission desk/registration.
+    await markEnrolledStudentsExisting(studentRepository);
+    for (const s of students) {
+      applyExistingStatusIfEnrolled(s);
     }
 
     const studentsToProcess = batchMode
@@ -1389,7 +1393,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
             voidByAdminId: null
           });
 
-          applyExemptionToInvoice(txStudent, invoice, feesConfig as Record<string, unknown>);
+          applyExemptionToInvoice(txStudent, invoice, feesConfig as Record<string, unknown>, {
+            includeDeskFee: false,
+          });
 
           const termFees = parseAmount(invoice.amount);
           const finalBalance = parseAmount(invoice.balance);
@@ -1482,6 +1488,7 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
     const { currentTerm, term, startDate, endDate } = req.body || {};
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
 
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
@@ -1489,57 +1496,119 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    const sourceTerm = currentTerm || settings?.currentTerm || settings?.activeTerm || `Term 1 ${new Date().getFullYear()}`;
-    const defaultTarget = getNextTerm(sourceTerm);
-    const targetTerm = term || defaultTarget;
-
-    const allForTargetTerm = await invoiceRepository.find({
-      where: { term: targetTerm },
+    const allInvoices = await invoiceRepository.find({
+      where: { isVoided: false },
       order: { createdAt: 'DESC' }
     });
 
-    if (!allForTargetTerm.length) {
+    let targetTerm = String(term || '').trim();
+    if (!targetTerm) {
+      targetTerm = String(
+        allInvoices[0]?.term ||
+          currentTerm ||
+          settings?.currentTerm ||
+          settings?.activeTerm ||
+          `Term 1 ${new Date().getFullYear()}`
+      ).trim();
+    }
+
+    const targetKey = normalizeInvoiceTermKey(targetTerm);
+    let pool = allInvoices.filter((inv) => normalizeInvoiceTermKey(inv.term) === targetKey);
+
+    if (!pool.length) {
       return res.status(404).json({ message: `No invoices found for ${targetTerm}` });
     }
 
     const explicitDateWindow = !!(startDate || endDate);
-    let windowStart: Date;
-    let windowEnd: Date;
     if (explicitDateWindow) {
-      windowStart = startDate ? new Date(startDate) : new Date(0);
-      windowEnd = endDate ? new Date(endDate) : new Date();
+      const windowStart = startDate ? new Date(startDate) : new Date(0);
+      const windowEnd = endDate ? new Date(endDate) : new Date();
       if (endDate && !String(endDate).includes('T')) {
         windowEnd.setHours(23, 59, 59, 999);
       }
+      pool = pool.filter((inv) => {
+        const created = inv.createdAt ? new Date(inv.createdAt) : new Date();
+        return created >= windowStart && created <= windowEnd;
+      });
     } else {
-      const latestCreatedAt = allForTargetTerm[0].createdAt ? new Date(allForTargetTerm[0].createdAt).getTime() : Date.now();
-      // Bulk create runs in batches — allow a wider window than 5 minutes.
-      windowStart = new Date(latestCreatedAt - 60 * 60 * 1000);
-      windowEnd = new Date(latestCreatedAt + 5 * 60 * 1000);
+      const newestMs = Math.max(
+        ...pool.map((inv) => (inv.createdAt ? new Date(inv.createdAt).getTime() : 0))
+      );
+      const clusterMs = 24 * 60 * 60 * 1000;
+      pool = pool.filter((inv) => {
+        const createdMs = inv.createdAt ? new Date(inv.createdAt).getTime() : 0;
+        return newestMs - createdMs <= clusterMs;
+      });
     }
 
-    const candidates = allForTargetTerm.filter(inv => {
-      const created = inv.createdAt ? new Date(inv.createdAt) : new Date();
-      const withinWindow = created >= windowStart && created <= windowEnd;
-      if (!withinWindow) return false;
-      if (explicitDateWindow) return true;
-      const updated = inv.updatedAt ? new Date(inv.updatedAt) : created;
-      const notManuallyModified = Math.abs(updated.getTime() - created.getTime()) < 2 * 60 * 1000;
-      return notManuallyModified;
-    });
+    const candidateIds = pool.map((inv) => inv.id);
+    const paymentLogs =
+      candidateIds.length > 0
+        ? await paymentLogRepository.find({ where: { invoiceId: In(candidateIds) } })
+        : [];
+    const cashPaidInvoiceIds = new Set(
+      paymentLogs
+        .filter((log) => String(log.paymentMethod || '').toUpperCase() !== 'ADJUSTMENT')
+        .map((log) => log.invoiceId)
+    );
+
+    // Prepaid applied at bulk create is stored as paidAmount; only skip real cash receipts.
+    const candidates = pool.filter((inv) => !cashPaidInvoiceIds.has(inv.id));
 
     if (candidates.length === 0) {
       const hint = explicitDateWindow
-        ? 'No invoices matched the selected term and date range.'
-        : 'No recent bulk-created invoices detected. Try setting a date range, or reverse only works on invoices created in the last hour that have not been edited.';
+        ? 'No unpaid bulk invoices matched the selected term and date range.'
+        : `No reversible bulk invoices found for ${targetTerm}. Paid invoices are left unchanged.`;
       return res.status(400).json({ message: hint });
     }
 
-    await invoiceRepository.remove(candidates);
+    let restoredPriors = 0;
+    await AppDataSource.manager.transaction(async (trx) => {
+      const trxInvoiceRepo = trx.getRepository(Invoice);
+      const trxLogRepo = trx.getRepository(PaymentLog);
+      const trxItemRepo = trx.getRepository(InvoiceUniformItem);
+
+      for (const inv of candidates) {
+        const priors = await trxInvoiceRepo.find({
+          where: { studentId: inv.studentId, isVoided: false }
+        });
+        let toRestore = priors.filter(
+          (other) => other.id !== inv.id && invoiceHasCarryForwardTo(other, inv.invoiceNumber)
+        );
+        if (!toRestore.length && parseAmount(inv.previousBalance) > 0.005) {
+          const earlier = priors
+            .filter(
+              (other) =>
+                other.id !== inv.id &&
+                other.createdAt &&
+                inv.createdAt &&
+                new Date(other.createdAt).getTime() < new Date(inv.createdAt).getTime()
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          if (earlier[0]) {
+            toRestore = [earlier[0]];
+          }
+        }
+        for (const prior of toRestore) {
+          restorePriorInvoiceAfterBulkReverse(prior, inv);
+          await trxInvoiceRepo.save(prior);
+          restoredPriors += 1;
+        }
+      }
+
+      const ids = candidates.map((inv) => inv.id);
+      await trxLogRepo.delete({ invoiceId: In(ids) });
+      await trxItemRepo.delete({ invoiceId: In(ids) });
+      await trxInvoiceRepo.delete(ids);
+    });
 
     return res.json({
-      message: `Reversed bulk creation for ${targetTerm}`,
+      message: `Reversed ${candidates.length} bulk invoice(s) for ${targetTerm} and restored prior balances.`,
       reversedCount: candidates.length,
+      restoredPriors,
       term: targetTerm
     });
   } catch (error: any) {

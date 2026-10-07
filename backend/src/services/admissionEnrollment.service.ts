@@ -12,6 +12,7 @@ import { Parent } from '../entities/Parent';
 import { ParentStudent } from '../entities/ParentStudent';
 import { Class } from '../entities/Class';
 import { generateStudentId } from '../utils/studentIdGenerator';
+import { applyExistingStatusIfEnrolled } from '../utils/studentEnrollmentStatus';
 import { notifyApplicantEnrolled } from '../utils/admissionNotifications';
 
 function copyAdmissionPhotoToStudent(app: AdmissionApplication): string | null {
@@ -109,6 +110,7 @@ export async function enrollApplicationAsStudent(
     isActive: true,
   });
 
+  applyExistingStatusIfEnrolled(student);
   await studentRepo.save(student);
 
   if (app.parentUserId) {
