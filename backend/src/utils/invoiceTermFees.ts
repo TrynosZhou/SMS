@@ -48,6 +48,12 @@ export function effectiveTermFeesForBalance(invoice: Invoice | null | undefined)
     return amountCol;
   }
 
-  if (fromLines < amountCol - 0.02) return amountCol;
+  if (fromLines < amountCol - 0.02) {
+    // Fixed/percentage exemptions reduce line items below the original billed amount.
+    if (String(invoice.description || '').toLowerCase().includes('exemption:')) {
+      return fromLines;
+    }
+    return amountCol;
+  }
   return fromLines;
 }

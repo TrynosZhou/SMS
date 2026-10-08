@@ -271,12 +271,12 @@ function applyBalanceExemption(student: Student, inv: Invoice): string | null {
     }
     if (pct >= 100) {
       zeroTermFeeLineItems(inv);
-      recomputeInvoiceTotalsFromLineItems(inv);
+      recomputeInvoiceTotalsFromLineItems(inv, { trustCanonicalLines: true });
       return 'Exemption: 100% — all term fees waived';
     }
     const discount = parseFloat((tuition * (pct / 100)).toFixed(2));
     inv.tuitionAmount = parseFloat(Math.max(0, tuition - discount).toFixed(2));
-    recomputeInvoiceTotalsFromLineItems(inv);
+    recomputeInvoiceTotalsFromLineItems(inv, { trustCanonicalLines: true });
     return `Exemption: ${pct}% of tuition (${discount.toFixed(2)}) deducted from invoice total`;
   }
 
@@ -292,8 +292,8 @@ function applyBalanceExemption(student: Student, inv: Invoice): string | null {
       parseFloat((parseAmount(inv.previousBalance) - leftover).toFixed(2))
     );
   }
-  recomputeInvoiceTotalsFromLineItems(inv);
-  return `Exemption: fixed ${amount.toFixed(2)} deducted from invoice balance`;
+  recomputeInvoiceTotalsFromLineItems(inv, { trustCanonicalLines: true });
+  return `Exemption: fixed ${amount.toFixed(2)} deducted from invoice amount`;
 }
 
 export function applyExemptionToInvoice(
@@ -359,8 +359,10 @@ export async function syncExemptionInvoicesForStudent(
   const termInvoices = await invoiceRepository
     .createQueryBuilder('invoice')
     .where('invoice.studentId = :studentId', { studentId })
-    .andWhere('invoice.isVoided = false')
-    .andWhere('COALESCE(invoice.uniformTotal, 0) = 0')
+    .andWhere('COALESCE(invoice.isVoided, false) = false')
+    .andWhere(
+      '(COALESCE(invoice.uniformTotal, 0) = 0 OR COALESCE(invoice.amount, 0) > 0.005 OR COALESCE(invoice.tuitionAmount, 0) > 0.005)'
+    )
     .orderBy('invoice.createdAt', 'ASC')
     .getMany();
 
