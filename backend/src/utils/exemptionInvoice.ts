@@ -24,24 +24,34 @@ export function shouldSkipTermFeeInvoiceCreation(student: Student | null | undef
   return isFullPercentageExemption(student);
 }
 
+function exemptionTypeKey(student: Student | null | undefined): string {
+  return String(student?.exemptionType || '').trim().toLowerCase();
+}
+
+function studentFixedExemptionAmount(student: Student): number {
+  return parseAmount(student.exemptionAmount);
+}
+
+function studentPercentageExemption(student: Student): number {
+  return parseAmount(student.exemptionPercent);
+}
+
 /**
  * True when fee logic should treat the student as exempt (matches sync-exemption-invoices).
  * Does not treat orphan `exemptionType` alone as exempt — requires staff flag/type or isExempted + fixed/percentage.
  */
 export function studentHasActiveFeeExemption(student: Student): boolean {
-  return (
-    isStaffSiblingExemption(student) ||
-    (student.isExempted === true &&
-      (student.exemptionType === 'fixed' || student.exemptionType === 'percentage'))
-  );
+  return isStaffSiblingExemption(student) || isBalanceOnlyExemption(student);
 }
 
-/** Fixed/percentage: full fees on the invoice; only the balance is reduced. */
+/** Fixed amount or percentage of tuition: keep standard fee lines, then deduct from invoice total/balance. */
 export function isBalanceOnlyExemption(student: Student): boolean {
-  return (
-    student.isExempted === true &&
-    (student.exemptionType === 'fixed' || student.exemptionType === 'percentage')
-  );
+  if (!student || student.isExempted !== true || isStaffSiblingExemption(student)) {
+    return false;
+  }
+  const type = exemptionTypeKey(student);
+  if (type === 'fixed' || type === 'percentage') return true;
+  return studentFixedExemptionAmount(student) > 0.005 || studentPercentageExemption(student) > 0.005;
 }
 
 function appendDescription(inv: Invoice, note: string): void {
@@ -185,6 +195,7 @@ export function restoreFullFeesToInvoice(
   inv: Invoice,
   fees: Record<string, unknown>
 ): void {
+  inv.description = stripExemptionNotes(String(inv.description || ''));
   const lines = computeFullTermLineItems(student, fees, inv);
   inv.tuitionAmount = lines.tuition;
   inv.transportAmount = lines.transport;
@@ -195,10 +206,10 @@ export function restoreFullFeesToInvoice(
   appendDescription(inv, 'Exemption removed — invoice recalculated at standard rates');
 }
 
-/** Deduct an exemption discount from term fee line items — tuition first, then other fees. */
-function applyDiscountToTermLineItems(inv: Invoice, discount: number): void {
+/** Deduct an exemption discount from term fee line items — tuition first, then other fees. Returns leftover. */
+function applyDiscountToTermLineItems(inv: Invoice, discount: number): number {
   let remaining = Math.max(0, parseFloat(parseAmount(discount).toFixed(2)));
-  if (remaining <= 0.005) return;
+  if (remaining <= 0.005) return 0;
 
   const buckets: Array<{ key: keyof Invoice; value: number }> = [
     { key: 'tuitionAmount', value: parseAmount(inv.tuitionAmount) },
@@ -214,6 +225,16 @@ function applyDiscountToTermLineItems(inv: Invoice, discount: number): void {
     (inv as any)[bucket.key] = parseFloat((bucket.value - cut).toFixed(2));
     remaining = parseFloat((remaining - cut).toFixed(2));
   }
+  return remaining;
+}
+
+function stripExemptionNotes(description: string): string {
+  return String(description || '')
+    .replace(/\s*\|\s*Exemption:[^|]*/gi, '')
+    .replace(/Exemption:[^|]*/gi, '')
+    .replace(/\s+\|\s+/g, ' | ')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
 }
 
 function zeroTermFeeLineItems(inv: Invoice): void {
@@ -224,31 +245,27 @@ function zeroTermFeeLineItems(inv: Invoice): void {
   inv.deskFeeAmount = 0;
 }
 
-/** Apply fixed or percentage exemption to term fee line items (tuition first), then recompute balance. */
+/**
+ * Apply fixed / percentage / other numeric exemptions.
+ * Fixed amount: reduce invoice total and balance by that amount.
+ * Percentage: deduct (percent × tuition) from the invoice total (other fees unchanged).
+ */
 function applyBalanceExemption(student: Student, inv: Invoice): string | null {
-  if (!student.isExempted || isStaffSiblingExemption(student)) {
+  if (isStaffSiblingExemption(student)) {
+    return null;
+  }
+  if (!isBalanceOnlyExemption(student)) {
     return null;
   }
 
+  const type = exemptionTypeKey(student);
   const tuition = parseAmount(inv.tuitionAmount);
-  const transport = parseAmount(inv.transportAmount);
-  const dining = parseAmount(inv.diningHallAmount);
-  const registration = parseAmount(inv.registrationAmount);
-  const desk = parseAmount(inv.deskFeeAmount);
-  const termFeesTotal = parseFloat((tuition + transport + dining + registration + desk).toFixed(2));
+  const pct = studentPercentageExemption(student);
+  const fixed = studentFixedExemptionAmount(student);
+  const usePercentage =
+    type === 'percentage' || (type !== 'fixed' && pct > 0.005 && fixed <= 0.005);
 
-  if (student.exemptionType === 'fixed') {
-    const fixed = parseAmount(student.exemptionAmount);
-    if (fixed <= 0) {
-      return null;
-    }
-    applyDiscountToTermLineItems(inv, fixed);
-    recomputeInvoiceTotalsFromLineItems(inv);
-    return `Exemption: fixed ${fixed.toFixed(2)} deducted from tuition/fees`;
-  }
-
-  if (student.exemptionType === 'percentage') {
-    const pct = parseAmount(student.exemptionPercent);
+  if (usePercentage) {
     if (pct <= 0 || pct > 100) {
       return null;
     }
@@ -257,13 +274,26 @@ function applyBalanceExemption(student: Student, inv: Invoice): string | null {
       recomputeInvoiceTotalsFromLineItems(inv);
       return 'Exemption: 100% — all term fees waived';
     }
-    const discount = parseFloat((termFeesTotal * (pct / 100)).toFixed(2));
-    applyDiscountToTermLineItems(inv, discount);
+    const discount = parseFloat((tuition * (pct / 100)).toFixed(2));
+    inv.tuitionAmount = parseFloat(Math.max(0, tuition - discount).toFixed(2));
     recomputeInvoiceTotalsFromLineItems(inv);
-    return `Exemption: ${pct}% off term fees (${discount.toFixed(2)} waived)`;
+    return `Exemption: ${pct}% of tuition (${discount.toFixed(2)}) deducted from invoice total`;
   }
 
-  return null;
+  const amount = type === 'fixed' || fixed > 0.005 ? fixed : 0;
+  if (amount <= 0.005) {
+    return null;
+  }
+
+  const leftover = applyDiscountToTermLineItems(inv, amount);
+  if (leftover > 0.005) {
+    inv.previousBalance = Math.max(
+      0,
+      parseFloat((parseAmount(inv.previousBalance) - leftover).toFixed(2))
+    );
+  }
+  recomputeInvoiceTotalsFromLineItems(inv);
+  return `Exemption: fixed ${amount.toFixed(2)} deducted from invoice balance`;
 }
 
 export function applyExemptionToInvoice(
@@ -272,6 +302,8 @@ export function applyExemptionToInvoice(
   fees: Record<string, unknown>,
   options?: { includeDeskFee?: boolean }
 ): void {
+  inv.description = stripExemptionNotes(String(inv.description || ''));
+
   const lines = computeBaseTermLineItems(student, fees, inv);
   const includeDeskFee = options?.includeDeskFee !== false;
 

@@ -70,8 +70,8 @@ export function computeExemptedAmountForInvoice(
       exempted = parseAmount(student.exemptionAmount);
     } else if (student.exemptionType === 'percentage') {
       const pct = parseAmount(student.exemptionPercent);
-      const base = parseAmount(inv.balance) / Math.max(0.01, (100 - pct) / 100);
-      exempted = parseFloat((base * (pct / 100)).toFixed(2));
+      const tuition = parseAmount(fullClone.tuitionAmount);
+      exempted = parseFloat((tuition * (pct / 100)).toFixed(2));
     }
   }
 
