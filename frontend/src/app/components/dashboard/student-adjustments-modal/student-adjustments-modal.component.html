@@ -31,7 +31,6 @@
             class="form-control search-input"
             [(ngModel)]="searchQuery"
             (keyup.enter)="searchStudents()"
-            (input)="searchStudents()"
             placeholder="Enter First Name, Last Name, or Student ID"
             [disabled]="searching">
           <button
@@ -168,6 +167,30 @@
           </div>
         </div>
 
+        <div class="adjustment-notes-section" *ngIf="canIssueNote()">
+          <h4>Credit &amp; Debit Notes</h4>
+          <p class="toggles-hint">
+            Issue a <strong>Credit Note</strong> to reduce the invoice amount, or a
+            <strong>Debit Note</strong> to increase the invoice amount.
+          </p>
+          <div class="note-buttons">
+            <button
+              type="button"
+              class="btn btn-credit-note"
+              (click)="openAdjustmentNote('credit')"
+              [disabled]="editing || saving">
+              Credit Note
+            </button>
+            <button
+              type="button"
+              class="btn btn-debit-note"
+              (click)="openAdjustmentNote('debit')"
+              [disabled]="editing || saving">
+              Debit Note
+            </button>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button
             *ngIf="!editing"
@@ -199,6 +222,71 @@
         <p class="permission-note" *ngIf="!canAdjust()">
           Only administrators and accountants can make adjustments.
         </p>
+      </div>
+
+      <!-- Credit / Debit Note Popup -->
+      <div class="note-popup-overlay" *ngIf="showAdjustmentNote" (click)="closeAdjustmentNote()">
+        <div class="note-popup" (click)="$event.stopPropagation()">
+          <div class="note-popup-header">
+            <h3>{{ noteType === 'credit' ? 'Credit Note' : 'Debit Note' }}</h3>
+            <button type="button" class="note-popup-close" (click)="closeAdjustmentNote()" title="Close">
+              &times;
+            </button>
+          </div>
+          <div class="note-popup-body">
+            <p class="note-popup-desc">
+              <ng-container *ngIf="noteType === 'credit'">
+                A Credit Note will <strong>reduce</strong> the student's invoice amount owed.
+              </ng-container>
+              <ng-container *ngIf="noteType === 'debit'">
+                A Debit Note will <strong>increase</strong> the student's invoice amount owed.
+              </ng-container>
+            </p>
+
+            <div class="alert alert-error" *ngIf="noteError">{{ noteError }}</div>
+
+            <div class="note-field">
+              <label class="field-label">Amount</label>
+              <input
+                type="number"
+                class="form-control"
+                [(ngModel)]="noteAmount"
+                min="0.01"
+                step="0.01"
+                placeholder="Enter amount"
+                [disabled]="noteSaving">
+            </div>
+
+            <div class="note-field">
+              <label class="field-label">Reason</label>
+              <textarea
+                class="form-control"
+                [(ngModel)]="noteReason"
+                rows="3"
+                placeholder="Enter the reason for this adjustment"
+                [disabled]="noteSaving"></textarea>
+            </div>
+          </div>
+          <div class="note-popup-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="closeAdjustmentNote()"
+              [disabled]="noteSaving">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn"
+              [class.btn-credit-note]="noteType === 'credit'"
+              [class.btn-debit-note]="noteType === 'debit'"
+              (click)="submitAdjustmentNote()"
+              [disabled]="noteSaving">
+              <span *ngIf="!noteSaving">Apply {{ noteType === 'credit' ? 'Credit' : 'Debit' }} Note</span>
+              <span *ngIf="noteSaving">Applying…</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

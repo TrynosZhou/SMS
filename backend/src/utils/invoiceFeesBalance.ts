@@ -46,7 +46,7 @@ export function hydrateInvoiceLineItemsFromAmount(invoice: Invoice | null | unde
 /**
  * Canonical outstanding balance — same formula as recomputeInvoiceTotalsFromLineItems,
  * receipts, and the credit/debit note invoice summary:
- *   (previousBalance + termFees) − appliedPrepaid − paidAmount
+ *   (previousBalance + termFees + debitNoteAmount − creditNoteAmount) − appliedPrepaid − paidAmount
  */
 export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefined): number {
   if (!invoice || invoice.isVoided) return 0;
@@ -55,17 +55,18 @@ export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefin
   const previousBalance = tryNum(invoice.previousBalance);
   const paidAmount = tryNum(invoice.paidAmount);
   const prepaidRemaining = tryNum(invoice.prepaidAmount);
+  const creditNote = tryNum(invoice.creditNoteAmount);
+  const debitNote = tryNum(invoice.debitNoteAmount);
 
-  const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
-
-  // Same formula as recomputeInvoiceTotalsFromLineItems (prepaid pool applied up to totalOwed)
-  const appliedPrepaid = Math.min(prepaidRemaining, totalOwed);
-  const canonical = Math.max(
-    0,
-    parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2))
+  const totalOwed = parseFloat(
+    (previousBalance + termFees + debitNote - creditNote).toFixed(2)
   );
 
-  if (termFees <= 0.005 && previousBalance <= 0.005) {
+  // Same formula as recomputeInvoiceTotalsFromLineItems (prepaid pool applied up to totalOwed)
+  const appliedPrepaid = Math.min(prepaidRemaining, Math.max(0, totalOwed));
+  const canonical = parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2));
+
+  if (termFees <= 0.005 && previousBalance <= 0.005 && debitNote <= 0.005) {
     return Math.max(0, tryNum(invoice.balance));
   }
 

@@ -63,6 +63,15 @@ export class Invoice {
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   deskFeeAmount: number;
 
+  // Manual fee adjustments:
+  // - creditNoteAmount reduces the amount owed (e.g., discount, refund, waiver)
+  // - debitNoteAmount increases the amount owed (e.g., additional charges)
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  creditNoteAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  debitNoteAmount: number;
+
   @Column({
     type: 'enum',
     enum: InvoiceStatus,

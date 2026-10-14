@@ -98,15 +98,20 @@ export function recomputeInvoiceTotalsFromLineItems(
   const previousBalance = parseAmount(inv.previousBalance);
   const paidAmount = parseAmount(inv.paidAmount);
   const prepaid = parseAmount(inv.prepaidAmount);
+  const creditNote = parseAmount(inv.creditNoteAmount);
+  const debitNote = parseAmount(inv.debitNoteAmount);
   const termFees = options?.trustCanonicalLines
     ? canonicalInvoiceTermFees(inv)
     : effectiveTermFeesForBalance(inv);
   inv.amount = termFees;
 
-  const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
-  const appliedPrepaid = Math.min(prepaid, totalOwed);
+  const totalOwed = parseFloat(
+    (previousBalance + termFees + debitNote - creditNote).toFixed(2)
+  );
+  const appliedPrepaid = Math.min(prepaid, Math.max(0, totalOwed));
   const remainingPrepaid = Math.max(0, parseFloat((prepaid - appliedPrepaid).toFixed(2)));
-  const newBalance = Math.max(0, parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2)));
+  // Balance may be negative when credit notes exceed the amount owed (student has a credit).
+  const newBalance = parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2));
 
   inv.balance = newBalance;
   inv.prepaidAmount = remainingPrepaid;

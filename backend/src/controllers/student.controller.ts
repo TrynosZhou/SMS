@@ -2231,3 +2231,117 @@ export const generateDiningHallStudentsReport = async (req: AuthRequest, res: Re
     }
   }
 };
+
+/**
+ * Apply a Credit Note (reduce amount owed) or Debit Note (increase amount owed)
+ * to the student's most recent active (non-voided) invoice.
+ */
+export const applyStudentAdjustmentNote = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user as User | undefined;
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Only administrators and super-administrators may issue credit/debit notes.
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({
+        message: 'Insufficient permissions. Only Administrators or Super Administrators can issue credit/debit notes.',
+        userRole: user.role,
+        allowedRoles: [UserRole.ADMIN, UserRole.SUPERADMIN]
+      });
+    }
+
+    const { id } = req.params;
+    const { type, amount, reason } = req.body as {
+      type?: 'credit' | 'debit';
+      amount?: number;
+      reason?: string;
+    };
+
+    if (!id) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+
+    if (type !== 'credit' && type !== 'debit') {
+      return res.status(400).json({ message: "Invalid note type. Must be 'credit' or 'debit'." });
+    }
+
+    const numericAmount = parseAmount(amount);
+    if (!isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ message: 'A positive amount is required.' });
+    }
+
+    const noteReason = String(reason || '').trim();
+    if (!noteReason) {
+      return res.status(400).json({ message: 'A reason is required for this adjustment.' });
+    }
+
+    const studentRepository = AppDataSource.getRepository(Student);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+
+    const student = await studentRepository.findOne({ where: { id } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Find the student's most recent non-voided invoice to adjust.
+    const invoice = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .where('invoice.studentId = :studentId', { studentId: id })
+      .andWhere('invoice.isVoided = false')
+      .orderBy('invoice.createdAt', 'DESC')
+      .getOne();
+
+    if (!invoice) {
+      return res.status(404).json({
+        message: 'No active invoice found for this student. Create an invoice before applying a credit or debit note.'
+      });
+    }
+
+    const noteLabel = type === 'credit' ? 'Credit Note' : 'Debit Note';
+    const currentCredit = parseAmount(invoice.creditNoteAmount);
+    const currentDebit = parseAmount(invoice.debitNoteAmount);
+
+    if (type === 'credit') {
+      invoice.creditNoteAmount = parseFloat((currentCredit + numericAmount).toFixed(2));
+    } else {
+      invoice.debitNoteAmount = parseFloat((currentDebit + numericAmount).toFixed(2));
+    }
+
+    // Append a note to the invoice description for audit trail.
+    const noteText = `${noteLabel} of ${numericAmount.toFixed(2)} (${noteReason})`;
+    const existing = String(invoice.description || '').trim();
+    invoice.description = existing ? `${existing} | ${noteText}` : noteText;
+
+    // Recompute amount, balance, and status to reflect the adjustment.
+    recomputeInvoiceTotalsFromLineItems(invoice, { trustCanonicalLines: true });
+
+    await invoiceRepository.save(invoice);
+
+    return res.status(200).json({
+      message: `${noteLabel} applied successfully.`,
+      invoice: {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: parseAmount(invoice.amount),
+        balance: parseAmount(invoice.balance),
+        status: invoice.status,
+        creditNoteAmount: parseAmount(invoice.creditNoteAmount),
+        debitNoteAmount: parseAmount(invoice.debitNoteAmount)
+      },
+      adjustment: {
+        type,
+        amount: numericAmount,
+        reason: noteReason
+      }
+    });
+  } catch (error) {
+    console.error('Error applying student adjustment note:', error);
+    return res.status(500).json({ message: 'Failed to apply adjustment note. Please try again.' });
+  }
+};

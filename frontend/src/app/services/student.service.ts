@@ -186,6 +186,17 @@ return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params
     return this.http.put(`${this.apiUrl}/students/${id}`, student);
   }
 
+  /**
+   * Apply a Credit Note (reduce amount owed) or Debit Note (increase amount owed)
+   * to the student's most recent active invoice.
+   */
+  applyAdjustmentNote(
+    studentId: string,
+    payload: { type: 'credit' | 'debit'; amount: number; reason: string }
+  ): Observable<any> {
+    return this.http.post(`${this.apiUrl}/students/${studentId}/adjustment-note`, payload);
+  }
+
   correctStudentStatus(id: string, studentStatus: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/students/${id}/status`, { studentStatus });
   }

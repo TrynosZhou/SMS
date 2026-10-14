@@ -19,7 +19,8 @@ import {
   getStudentTransfers,
   generateTransportBusIdCards,
   generateTransportStudentsReport,
-  generateDiningHallStudentsReport
+  generateDiningHallStudentsReport,
+  applyStudentAdjustmentNote
 } from '../controllers/student.controller';
 import { upload, optionalUploadSingle } from '../utils/upload';
 
@@ -41,6 +42,7 @@ router.get('/:id/id-card', generateStudentIdCard);
 router.get('/:id/bus-id-card', generateStudentTransportIdCard);
 router.get('/:id/transfers', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
 router.get('/linked-parents', authorize(UserRole.STUDENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN), getLinkedParentsForStudent);
+router.post('/:id/adjustment-note', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), applyStudentAdjustmentNote);
 router.get('/:id', getStudentById);
 router.put(
   '/:id',

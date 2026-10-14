@@ -1,8 +1,6 @@
-import { Component, EventEmitter, Output, OnDestroy, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, EventEmitter, Output, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { StudentService } from '../../../services/student.service';
 import { AuthService } from '../../../services/auth.service';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
 interface AdjustmentStudent {
   id: string;
@@ -25,7 +23,7 @@ interface AdjustmentStudent {
   templateUrl: './student-adjustments-modal.component.html',
   styleUrls: ['./student-adjustments-modal.component.css']
 })
-export class StudentAdjustmentsModalComponent implements OnInit, OnChanges, OnDestroy {
+export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
   @Output() close = new EventEmitter<void>();
   @Input() studentId: string | null = null;
 
@@ -44,8 +42,13 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges, OnDe
   formUsesTransport = false;
   formUsesDiningHall = false;
 
-  private searchSubject = new Subject<string>();
-  private destroy$ = new Subject<void>();
+  // Credit / Debit Note popup state
+  showAdjustmentNote = false;
+  noteType: 'credit' | 'debit' = 'credit';
+  noteAmount = '';
+  noteReason = '';
+  noteSaving = false;
+  noteError = '';
 
   @ViewChild('modalBody') modalBody!: ElementRef<HTMLDivElement>;
 
@@ -53,16 +56,7 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges, OnDe
     private studentService: StudentService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
-  ) {
-    // Set up debounced search
-    this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      takeUntil(this.destroy$)
-    ).subscribe(query => {
-      this.performSearch(query);
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     if (this.studentId) {
@@ -84,13 +78,74 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges, OnDe
     }
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
   canAdjust(): boolean {
     return this.authService.isAdmin() || this.authService.isAccountant();
+  }
+
+  /** Only administrators and super-administrators may issue credit/debit notes. */
+  canIssueNote(): boolean {
+    return this.authService.isAdmin() || this.authService.isSuperAdmin();
+  }
+
+  openAdjustmentNote(type: 'credit' | 'debit'): void {
+    if (!this.selectedStudent || !this.canIssueNote()) {
+      return;
+    }
+    this.noteType = type;
+    this.noteAmount = '';
+    this.noteReason = '';
+    this.noteError = '';
+    this.showAdjustmentNote = true;
+    this.cdr.detectChanges();
+  }
+
+  closeAdjustmentNote(): void {
+    this.showAdjustmentNote = false;
+    this.noteSaving = false;
+    this.noteError = '';
+    this.cdr.detectChanges();
+  }
+
+  submitAdjustmentNote(): void {
+    if (!this.selectedStudent) {
+      return;
+    }
+    const amount = parseFloat(this.noteAmount);
+    if (!isFinite(amount) || amount <= 0) {
+      this.noteError = 'Please enter a valid positive amount.';
+      return;
+    }
+    const reason = this.noteReason.trim();
+    if (!reason) {
+      this.noteError = 'Please provide a reason for this adjustment.';
+      return;
+    }
+
+    this.noteSaving = true;
+    this.noteError = '';
+
+    this.studentService.applyAdjustmentNote(this.selectedStudent.id, {
+      type: this.noteType,
+      amount,
+      reason
+    }).subscribe({
+      next: (response: any) => {
+        this.noteSaving = false;
+        this.showAdjustmentNote = false;
+        const label = this.noteType === 'credit' ? 'Credit Note' : 'Debit Note';
+        const inv = response?.invoice;
+        const balanceStr = inv != null && inv.balance != null ? ` New balance: ${Number(inv.balance).toFixed(2)}.` : '';
+        this.saveSuccess = `${label} of ${amount.toFixed(2)} applied successfully.${balanceStr}`;
+        this.saveError = '';
+        this.cdr.detectChanges();
+        this.scrollToTop();
+      },
+      error: (err: any) => {
+        this.noteSaving = false;
+        this.noteError = err?.error?.message || 'Failed to apply adjustment note. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   closeModal(): void {
@@ -134,7 +189,7 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges, OnDe
       this.scrollToTop();
       return;
     }
-    this.searchSubject.next(q);
+    this.performSearch(q);
   }
 
   private performSearch(query: string): void {
