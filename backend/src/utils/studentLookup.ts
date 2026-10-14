@@ -104,11 +104,7 @@ export async function lookupStudentByQuery(rawQuery: string): Promise<StudentLoo
     .leftJoinAndSelect('student.classEntity', 'classEntity')
     .where(activeStudentClause('student'), { active: true })
     .andWhere(
-      `(LOWER(student.studentNumber) LIKE LOWER(:term)
-        OR LOWER(student.lastName) LIKE LOWER(:term)
-        OR LOWER(student.firstName) LIKE LOWER(:term)
-        OR LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE LOWER(:term)
-        OR LOWER(CONCAT(COALESCE(student.lastName, ''), ' ', COALESCE(student.firstName, ''))) LIKE LOWER(:term))`,
+      `(COALESCE(student.firstName, '') || ' ' || COALESCE(student.lastName, '') || ' ' || COALESCE(student.studentNumber, '') || ' ' || COALESCE(student.contactNumber, student.phoneNumber, '')) ILIKE :term`,
       { term: likeTerm }
     )
     .orderBy('student.lastName', 'ASC')

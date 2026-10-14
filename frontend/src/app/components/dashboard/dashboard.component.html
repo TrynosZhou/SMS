@@ -188,6 +188,13 @@
         <a routerLink="/invoices" *ngIf="canAccessModule('finance')">Invoices</a>
         <a routerLink="/teachers" *ngIf="canAccessModule('teachers')">Teachers</a>
         <a routerLink="/messages/incoming">Messages</a>
+        <button
+          type="button"
+          class="dash-cross-links-btn"
+          *ngIf="isAdmin() || isAccountant()"
+          (click)="openStudentAdjustments()">
+          ⚙️ Student Adjustments
+        </button>
         <a routerLink="/system-settings" *ngIf="canAccessModule('settings')">Settings</a>
       </nav>
     </header>
@@ -435,12 +442,15 @@
                 <div class="activity-details">
                   <div class="activity-name">{{ student.firstName }} {{ student.lastName }}</div>
                   <div class="activity-meta">
-                    <span class="meta-badge">{{ student.studentNumber }}</span>
-                    <span class="meta-badge" *ngIf="student.class">{{ student.class.name }}</span>
-                    <span class="meta-badge">{{ student.studentType || 'Day Scholar' }}</span>
+                    <span class="meta-badge clickable-badge" (click)="viewStudentRecord(student.id)" title="View student record">{{ student.studentNumber }}</span>
+                    <span class="meta-badge clickable-badge" *ngIf="student.class" (click)="viewStudentRecord(student.id)" title="View student record">{{ student.class.name }}</span>
+                    <span class="meta-badge clickable-badge" (click)="viewStudentRecord(student.id)" title="View student record">{{ student.studentType || 'Day Scholar' }}</span>
                   </div>
                 </div>
                 <div class="activity-action">
+                  <button type="button" class="dash-action-btn dash-action-btn--view" (click)="openStudentAdjustments(student.id)" title="Adjust student settings">
+                    View
+                  </button>
                   <a [routerLink]="['/students', student.id, 'edit']" class="dash-action-btn">
                     Edit
                   </a>
@@ -490,6 +500,13 @@
 
   <!-- Bulk Message Modal -->
   <app-bulk-message *ngIf="showBulkMessage" (close)="closeBulkMessage()"></app-bulk-message>
+
+  <!-- Student Adjustments Modal -->
+  <app-student-adjustments-modal
+    *ngIf="showStudentAdjustments"
+    [studentId]="selectedStudentForAdjustments"
+    (close)="closeStudentAdjustments()">
+  </app-student-adjustments-modal>
 
   <!-- Student invoice PDF preview (maximized) -->
   <div

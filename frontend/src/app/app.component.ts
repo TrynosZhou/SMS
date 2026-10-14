@@ -508,6 +508,10 @@ export class AppComponent implements OnInit, OnDestroy {
     }, 150);
   }
 
+  navigateToDashboard(): void {
+    this.router.navigate(['/dashboard']);
+  }
+
   getMessagesNavLink(): string {
     if (this.isParent() && !this.isActingAsStudent()) {
       return '/parent/inbox';

@@ -344,6 +344,12 @@ async function startServer(): Promise<void> {
       } catch (schemaPatchErr: any) {
         console.warn('[Server] ⚠️ settings.classLevels schema check:', schemaPatchErr?.message || schemaPatchErr);
       }
+      try {
+        const { ensureStudentSearchIndexes } = await import('./utils/ensureStudentSearchIndexes');
+        await ensureStudentSearchIndexes();
+      } catch (searchIdxErr: any) {
+        console.warn('[Server] ⚠️ student search index setup:', searchIdxErr?.message || searchIdxErr);
+      }
     }
 
     // Final verification

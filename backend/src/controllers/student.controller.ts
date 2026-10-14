@@ -26,7 +26,6 @@ import { applyExistingStatusIfEnrolled } from '../utils/studentEnrollmentStatus'
 import {
   computeLogisticsFees,
   logisticsProfileChanged,
-  repairStaleLogisticsInvoiceBalances,
   recomputeInvoiceTotalsFromLineItems,
   snapshotFromStudent,
   syncStudentLogisticsInvoices
@@ -845,7 +844,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     if (normalizedSearch) {
       const like = `%${normalizedSearch}%`;
       queryBuilder = queryBuilder.andWhere(
-        '(LOWER(student.firstName) LIKE :like OR LOWER(student.lastName) LIKE :like OR LOWER(student.studentNumber) LIKE :like OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :like OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :like)',
+        `(COALESCE(student.firstName, '') || ' ' || COALESCE(student.lastName, '') || ' ' || COALESCE(student.studentNumber, '') || ' ' || COALESCE(student.contactNumber, student.phoneNumber, '')) ILIKE :like`,
         { like }
       );
     }
@@ -876,7 +875,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         if (normalizedSearch) {
           const like = `%${normalizedSearch}%`;
           fallbackQuery = fallbackQuery.andWhere(
-            '(LOWER(student.firstName) LIKE :like OR LOWER(student.lastName) LIKE :like OR LOWER(student.studentNumber) LIKE :like OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :like OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :like)',
+            `(COALESCE(student.firstName, '') || ' ' || COALESCE(student.lastName, '') || ' ' || COALESCE(student.studentNumber, '') || ' ' || COALESCE(student.contactNumber, student.phoneNumber, '')) ILIKE :like`,
             { like }
           );
         }
@@ -929,46 +928,48 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       return studentObj;
     });
 
-    const statsQuery = studentRepository
-      .createQueryBuilder('student')
-      .leftJoin('student.classEntity', 'statsClass')
-      .select("SUM(CASE WHEN student.studentType = 'Boarder' THEN 1 ELSE 0 END)", 'boarders')
-      .addSelect("SUM(CASE WHEN student.studentType = 'Day Scholar' THEN 1 ELSE 0 END)", 'dayScholars')
-      .addSelect("SUM(CASE WHEN student.isStaffChild = true THEN 1 ELSE 0 END)", 'staffChildren')
-      .addSelect('COUNT(DISTINCT COALESCE(student.classId, statsClass.id))', 'classCount')
-      .addSelect('COUNT(student.id)', 'totalStudents')
-      .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
-
-    if (trimmedClassId) {
-      statsQuery.andWhere(
-        '(student.classId = :classId OR statsClass.id = :classId)',
-        { classId: trimmedClassId }
-      );
-    }
-
-    if (trimmedGrade) {
-      statsQuery.andWhere(
-        '(student.grade = :grade OR student.classLevel = :grade)',
-        { grade: trimmedGrade }
-      );
-    }
-
-    if (normalizedSearch) {
-      const like = `%${normalizedSearch}%`;
-      statsQuery.andWhere(
-        '(LOWER(student.firstName) LIKE :statsLike OR LOWER(student.lastName) LIKE :statsLike OR LOWER(student.studentNumber) LIKE :statsLike OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :statsLike OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :statsLike)',
-        { statsLike: like }
-      );
-    }
-
-    const statsRaw = await statsQuery.getRawOne();
-    const stats = {
-      totalBoarders: Number(statsRaw?.boarders ?? 0),
-      totalDayScholars: Number(statsRaw?.dayScholars ?? 0),
-      staffChildren: Number(statsRaw?.staffChildren ?? 0),
-      classCount: Number(statsRaw?.classCount ?? 0),
-      totalStudents: Number(statsRaw?.totalStudents ?? 0)
+    let stats = {
+      totalBoarders: 0,
+      totalDayScholars: 0,
+      staffChildren: 0,
+      classCount: 0,
+      totalStudents: Number(total ?? 0)
     };
+
+    if (!normalizedSearch) {
+      const statsQuery = studentRepository
+        .createQueryBuilder('student')
+        .leftJoin('student.classEntity', 'statsClass')
+        .select("SUM(CASE WHEN student.studentType = 'Boarder' THEN 1 ELSE 0 END)", 'boarders')
+        .addSelect("SUM(CASE WHEN student.studentType = 'Day Scholar' THEN 1 ELSE 0 END)", 'dayScholars')
+        .addSelect("SUM(CASE WHEN student.isStaffChild = true THEN 1 ELSE 0 END)", 'staffChildren')
+        .addSelect('COUNT(DISTINCT COALESCE(student.classId, statsClass.id))', 'classCount')
+        .addSelect('COUNT(student.id)', 'totalStudents')
+        .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
+
+      if (trimmedClassId) {
+        statsQuery.andWhere(
+          '(student.classId = :classId OR statsClass.id = :classId)',
+          { classId: trimmedClassId }
+        );
+      }
+
+      if (trimmedGrade) {
+        statsQuery.andWhere(
+          '(student.grade = :grade OR student.classLevel = :grade)',
+          { grade: trimmedGrade }
+        );
+      }
+
+      const statsRaw = await statsQuery.getRawOne();
+      stats = {
+        totalBoarders: Number(statsRaw?.boarders ?? 0),
+        totalDayScholars: Number(statsRaw?.dayScholars ?? 0),
+        staffChildren: Number(statsRaw?.staffChildren ?? 0),
+        classCount: Number(statsRaw?.classCount ?? 0),
+        totalStudents: Number(statsRaw?.totalStudents ?? 0)
+      };
+    }
 
     res.json(
       buildPaginationResponse(transformedStudents, total, page, limit, {
@@ -1112,8 +1113,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     console.log('Updating student with ID:', id);
-    console.log('Received update data:', req.body);
-    console.log('Editor role:', userRole || 'unknown');
 
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
@@ -1125,11 +1124,10 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     });
 
     if (!student) {
-      console.log('Student not found with ID:', id);
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    console.log('Found student:', student.firstName, student.lastName);
+    const logisticsBefore = snapshotFromStudent(student);
 
     // Basic information - always editable by allowed roles (including teachers)
     if (firstName !== undefined && firstName !== null) {
@@ -1222,7 +1220,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.studentStatus = normalizedStatus.includes('existing') ? 'Existing' : 'New';
     }
 
-    const logisticsBefore = snapshotFromStudent(student);
     const exemptionBefore = {
       isStaffChild: student.isStaffChild === true,
       isExempted: student.isExempted === true,
@@ -1343,13 +1340,15 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    console.log('Saving updated student...');
-    console.log('Student classId before save:', student.classId);
-    console.log('Student classEntity relation before save:', student.classEntity?.name || 'null');
-
     const logisticsAfterPreview = snapshotFromStudent(student);
+    const studentTypeChanged =
+      String(logisticsBefore.studentType || '').trim().toLowerCase() !==
+      String(logisticsAfterPreview.studentType || '').trim().toLowerCase();
+    const transportChanged = logisticsBefore.usesTransport !== logisticsAfterPreview.usesTransport;
+    const diningHallChanged = logisticsBefore.usesDiningHall !== logisticsAfterPreview.usesDiningHall;
     const shouldSyncLogistics =
-      !isTeacherEditor && logisticsProfileChanged(logisticsBefore, logisticsAfterPreview);
+      (transportChanged || diningHallChanged || studentTypeChanged) &&
+      (!isTeacherEditor || studentTypeChanged);
 
     let updatedStudent: Student | null = null;
     let logisticsInvoiceSync: any = null;
@@ -1359,55 +1358,18 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       await AppDataSource.transaction(async (manager) => {
         const txStudentRepo = manager.getRepository(Student);
         const savedStudent = await txStudentRepo.save(student);
-        console.log('Student classId after save:', savedStudent.classId);
 
         if (classId !== undefined) {
           if (classId === null || classId === '') {
             await txStudentRepo.update({ id }, { classId: null });
-            console.log('Explicitly cleared classId via update query');
           } else {
             const trimmedClassId = String(classId).trim();
             await txStudentRepo.update({ id }, { classId: trimmedClassId });
-            console.log('Explicitly updated classId via update query:', trimmedClassId);
           }
         }
 
-        updatedStudent = await txStudentRepo.findOne({
-          where: { id },
-          relations: ['classEntity', 'parent']
-        });
-
-        if (!updatedStudent) {
-          throw new Error('Failed to reload student after update');
-        }
-
-        const settingsRepository = manager.getRepository(Settings);
-        const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
-        const fees = settings?.feesSettings;
-
-        if (fees && shouldSyncLogistics) {
-          logisticsInvoiceSync = await syncStudentLogisticsInvoices({
-            studentId: updatedStudent.id,
-            before: logisticsBefore,
-            after: snapshotFromStudent(updatedStudent),
-            fees: fees as Record<string, unknown>,
-            activeTerm: settings?.activeTerm || settings?.currentTerm,
-            manager
-          });
-        }
-
-        if (fees && !isTeacherEditor) {
-          const repaired = await repairStaleLogisticsInvoiceBalances(updatedStudent.id, manager);
-          if (repaired > 0) {
-            logisticsInvoiceSync = logisticsInvoiceSync ?? {
-              updatedInvoices: 0,
-              adjustments: [],
-              deltaTransport: 0,
-              deltaDiningHall: 0
-            };
-            logisticsInvoiceSync.repairedInvoices = repaired;
-          }
-        }
+        // Use the saved student directly instead of reloading from database
+        updatedStudent = savedStudent;
 
         const exemptionAfter = {
           isStaffChild: updatedStudent.isStaffChild === true,
@@ -1432,8 +1394,32 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         const exemptionIsActive =
           isStaffSiblingExemption(updatedStudent) || isBalanceOnlyExemption(updatedStudent);
 
-        if (fees && !isTeacherEditor && (exemptionFieldsChanged || exemptionWasActive || exemptionIsActive)) {
-          exemptionInvoiceSync = await syncExemptionInvoicesForStudent(updatedStudent.id, { manager });
+        // Only load settings if needed for sync
+        if (shouldSyncLogistics || exemptionFieldsChanged) {
+          const settingsRepository = manager.getRepository(Settings);
+          const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+          const fees = settings?.feesSettings;
+
+          if (fees && shouldSyncLogistics) {
+            logisticsInvoiceSync = await syncStudentLogisticsInvoices({
+              studentId: updatedStudent.id,
+              before: logisticsBefore,
+              after: snapshotFromStudent(updatedStudent),
+              fees: fees as Record<string, unknown>,
+              activeTerm: settings?.activeTerm || settings?.currentTerm,
+              manager
+            });
+          }
+
+          // Only sync exemption invoices if exemption fields actually changed
+          // Skip if only logistics (transport/dining hall) fields changed
+          if (
+            fees &&
+            exemptionFieldsChanged &&
+            (!isTeacherEditor || studentTypeChanged)
+          ) {
+            exemptionInvoiceSync = await syncExemptionInvoicesForStudent(updatedStudent.id, { manager });
+          }
         }
       });
     } catch (txError: any) {
@@ -1452,105 +1438,70 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     console.log('Updated student classId:', updatedStudent.classId);
     console.log('Updated student classEntity name:', updatedStudent.classEntity?.name || 'N/A');
     console.log('Updated student classEntity id:', updatedStudent.classEntity?.id || 'N/A');
-    
-    try {
-      const invoiceRepository = AppDataSource.getRepository(Invoice);
-      const settingsRepository = AppDataSource.getRepository(Settings);
-
-      const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: updatedStudent.id },
-        order: { createdAt: 'DESC' }
-      });
-
-      if (latestInvoice) {
-        const previousBalanceValue = parseAmount(latestInvoice.previousBalance);
-        const prepaidAmountValue = parseAmount(latestInvoice.prepaidAmount);
-        const isInitialDescription = String(latestInvoice.description || '').includes('Initial fees upon registration');
-        const isInitialInvoice = previousBalanceValue === 0 && prepaidAmountValue === 0 && isInitialDescription;
-
-        if (isInitialInvoice) {
-          const settings = await settingsRepository.findOne({
-            where: {},
-            order: { createdAt: 'DESC' }
-          });
-
-          if (settings && settings.feesSettings) {
-            const fees = settings.feesSettings;
-
-            applyExemptionToInvoice(
-              updatedStudent,
-              latestInvoice,
-              fees as Record<string, unknown>
-            );
-            await invoiceRepository.save(latestInvoice);
-            console.log('✅ Recalculated initial invoice after student update');
-          }
-        }
-      }
-    } catch (autoInvoiceError) {
-      console.error('⚠️ Auto-invoice recalculation failed:', autoInvoiceError);
-    }
 
     // If the student has no invoice yet, create initial invoice depending on status
-    try {
-      const invoiceRepository = AppDataSource.getRepository(Invoice);
-      const settingsRepository = AppDataSource.getRepository(Settings);
-      const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
-      const termText = settings?.activeTerm || settings?.currentTerm || `Term 1 ${new Date().getFullYear()}`;
-      const existingForTerm = await findActiveInvoiceForStudentTerm(
-        invoiceRepository,
-        updatedStudent.id,
-        termText
-      );
-      if (!existingForTerm) {
-        const fees = settings?.feesSettings || {};
-        const feesRecord = fees as Record<string, unknown>;
-        const draftInvoice = invoiceRepository.create({
-          invoiceNumber: 'TEMP',
-          studentId: updatedStudent.id,
-          amount: 0,
-          previousBalance: 0,
-          paidAmount: 0,
-          balance: 0,
-          prepaidAmount: 0,
-          uniformTotal: 0,
-          dueDate: new Date(),
-          term: termText,
-          description: 'Initial fees upon registration',
-          status: InvoiceStatus.PENDING,
-          uniformItems: []
-        });
-        applyExemptionToInvoice(updatedStudent, draftInvoice, feesRecord);
-        const totalAmount = parseAmount(draftInvoice.amount);
+    // Skip invoice creation if only logistics fields changed (for faster logistics adjustments)
+    if (!shouldSyncLogistics) {
+      try {
+        const invoiceRepository = AppDataSource.getRepository(Invoice);
+        const settingsRepository = AppDataSource.getRepository(Settings);
+        const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+        const termText = settings?.activeTerm || settings?.currentTerm || `Term 1 ${new Date().getFullYear()}`;
+        const existingForTerm = await findActiveInvoiceForStudentTerm(
+          invoiceRepository,
+          updatedStudent.id,
+          termText
+        );
+        if (!existingForTerm) {
+          const fees = settings?.feesSettings || {};
+          const feesRecord = fees as Record<string, unknown>;
+          const draftInvoice = invoiceRepository.create({
+            invoiceNumber: 'TEMP',
+            studentId: updatedStudent.id,
+            amount: 0,
+            previousBalance: 0,
+            paidAmount: 0,
+            balance: 0,
+            prepaidAmount: 0,
+            uniformTotal: 0,
+            dueDate: new Date(),
+            term: termText,
+            description: 'Initial fees upon registration',
+            status: InvoiceStatus.PENDING,
+            uniformItems: []
+          });
+          applyExemptionToInvoice(updatedStudent, draftInvoice, feesRecord);
+          const totalAmount = parseAmount(draftInvoice.amount);
 
-        if (totalAmount > 0) {
-          const currentYear = new Date().getFullYear();
-          const invoicePrefix = `INV-${currentYear}-`;
-          const lastInvoiceForYear = await invoiceRepository
-            .createQueryBuilder('invoice')
-            .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
-            .orderBy('invoice.invoiceNumber', 'DESC')
-            .getOne();
-          let nextSeq = 1;
-          if (lastInvoiceForYear?.invoiceNumber) {
-            const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
-            const seq = parseInt(parts[2] || '1', 10);
-            if (!isNaN(seq) && seq >= 1) nextSeq = seq + 1;
+          if (totalAmount > 0) {
+            const currentYear = new Date().getFullYear();
+            const invoicePrefix = `INV-${currentYear}-`;
+            const lastInvoiceForYear = await invoiceRepository
+              .createQueryBuilder('invoice')
+              .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+              .orderBy('invoice.invoiceNumber', 'DESC')
+              .getOne();
+            let nextSeq = 1;
+            if (lastInvoiceForYear?.invoiceNumber) {
+              const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+              const seq = parseInt(parts[2] || '1', 10);
+              if (!isNaN(seq) && seq >= 1) nextSeq = seq + 1;
+            }
+            const invoiceNumber = `${invoicePrefix}${String(nextSeq).padStart(6, '0')}`;
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+            draftInvoice.invoiceNumber = invoiceNumber;
+            draftInvoice.dueDate = dueDate;
+            draftInvoice.term = termText;
+            await invoiceRepository.save(draftInvoice);
+            console.log('✅ Created initial invoice for existing student without invoice:', invoiceNumber);
+          } else {
+            console.log('ℹ️ No initial invoice created (total amount 0)');
           }
-          const invoiceNumber = `${invoicePrefix}${String(nextSeq).padStart(6, '0')}`;
-          const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 30);
-          draftInvoice.invoiceNumber = invoiceNumber;
-          draftInvoice.dueDate = dueDate;
-          draftInvoice.term = termText;
-          await invoiceRepository.save(draftInvoice);
-          console.log('✅ Created initial invoice for existing student without invoice:', invoiceNumber);
-        } else {
-          console.log('ℹ️ No initial invoice created (total amount 0)');
         }
+      } catch (initInvoiceError) {
+        console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
       }
-    } catch (initInvoiceError) {
-      console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
     }
 
     res.json({

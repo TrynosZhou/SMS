@@ -1,4 +1,4 @@
-﻿.dashboard-container {
+.dashboard-container {
   --dash-navy: #1e3a5f;
   --dash-navy-deep: #152a45;
   --dash-gold: #c9a227;
@@ -1127,6 +1127,17 @@
   border: 1px solid #cbd5e1;
 }
 
+.clickable-badge {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.clickable-badge:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
 .balance-warning {
   background: #fef2f2;
   color: #dc2626;
@@ -1135,6 +1146,20 @@
 
 .activity-action {
   flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.dash-action-btn--view {
+  background: #1e3a5f;
+  color: white;
+  border-color: #1e3a5f;
+}
+
+.dash-action-btn--view:hover {
+  background: #152a45;
+  border-color: #152a45;
+  color: white;
 }
 
 .btn-link,
@@ -3250,6 +3275,25 @@
 
 .dash-cross-links a:hover {
   background: rgba(255, 255, 255, 0.22);
+}
+
+.dash-cross-links-btn {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #f0a500 0%, #c98800 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.dash-cross-links-btn:hover {
+  background: linear-gradient(135deg, #ffb81c 0%, #d99500 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(240, 165, 0, 0.35);
 }
 
 .modern-card {

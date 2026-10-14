@@ -340,6 +340,7 @@
             <span *ngIf="!canMoveStudent()">{{ student.class?.name || 'N/A' }}</span>
           </p>
           <div class="cll-card__actions hide-print">
+            <button type="button" class="cll-btn cll-btn--primary cll-btn--sm" (click)="openStudentAdjustments(student.id)" title="Adjust student settings">View</button>
             <button type="button" class="cll-btn cll-btn--outline cll-btn--sm" (click)="openEditModal(student, 'lastName')">Edit</button>
             <button type="button" class="cll-btn cll-btn--outline cll-btn--sm" (click)="viewStudentIdCard(student.id)">ID card</button>
             <button type="button" class="cll-btn cll-btn--ghost cll-btn--sm" *ngIf="canDeleteStudent()" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">Delete</button>
@@ -572,4 +573,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Student Adjustments Modal -->
+  <app-student-adjustments-modal
+    *ngIf="showStudentAdjustments"
+    [studentId]="selectedStudentForAdjustments"
+    (close)="closeStudentAdjustments()">
+  </app-student-adjustments-modal>
 </div>

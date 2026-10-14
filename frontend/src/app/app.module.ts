@@ -46,6 +46,7 @@ import { ManageAccountsComponent } from './components/admin/manage-accounts/mana
 import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { BulkMessageComponent } from './components/dashboard/bulk-message/bulk-message.component';
+import { StudentAdjustmentsModalComponent } from './components/dashboard/student-adjustments-modal/student-adjustments-modal.component';
 import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
@@ -162,6 +163,7 @@ import { SmsSuccessConfirmDirective } from './directives/sms-success-confirm.dir
     ParentManagementComponent,
     ClassPromotionComponent,
     BulkMessageComponent,
+    StudentAdjustmentsModalComponent,
     ParentInboxComponent,
     MarkAttendanceComponent,
     AttendanceReportsComponent,

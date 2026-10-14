@@ -741,6 +741,24 @@ try {
   }
 
   viewStudentDetails(student: any) {
+    // Set selectedStudent immediately with partial data to show modal on first click
+    const initialStudent = { ...student };
+    if (!initialStudent.class && initialStudent.classEntity) {
+      initialStudent.class = initialStudent.classEntity;
+    }
+    if (!initialStudent.class && initialStudent.classId) {
+      const foundClass = this.classes.find(c => c.id === initialStudent.classId);
+      if (foundClass) {
+        initialStudent.class = foundClass;
+      }
+    }
+    this.selectedStudent = initialStudent;
+
+    // Use setTimeout to ensure change detection runs in the next tick
+    setTimeout(() => {
+      this.cdr.detectChanges();
+    }, 0);
+
     // Fetch full student data with class relation to ensure class is loaded
     this.studentService.getStudentById(student.id).subscribe({
       next: (fullStudent: any) => {

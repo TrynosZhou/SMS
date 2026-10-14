@@ -36,9 +36,18 @@ function parseFeePairsFromText(text: string): Array<{ label: string; amount: num
   return pairs;
 }
 
+const CANONICAL_FEE_LABEL_PATTERNS = [
+  /tuition/i,
+  /dining|dh\b/i,
+  /transport/i,
+  /registration/i,
+  /desk/i
+];
+
 /** Line-item rows only — summary and status are rendered separately (same data sources). */
 function collectLineItemRows(
-  descriptionText: string,
+  invoice: Invoice,
+  student: Student,
   previousBalance: number,
   baseAmount: number,
   uniformTotal: number,
@@ -47,8 +56,15 @@ function collectLineItemRows(
   remainingBalance: number
 ): TableRowSpec[] {
   const rows: TableRowSpec[] = [];
-  const hasTuitionInBreakdown = (items: Array<{ label: string }>) =>
-    items.some((item) => /tuition/i.test(item.label));
+  const descriptionText = String(invoice.description || '');
+  const tryNum = (v: unknown): number => (isFinite(Number(v)) ? Number(v) : 0);
+
+  const tuition = tryNum(invoice.tuitionAmount);
+  const transport = tryNum(invoice.transportAmount);
+  const diningHall = tryNum(invoice.diningHallAmount);
+  const registration = tryNum(invoice.registrationAmount);
+  const deskFee = tryNum(invoice.deskFeeAmount);
+  const canonicalFees = tuition + transport + diningHall + registration + deskFee;
 
   let breakdownItems: Array<{ label: string; amount: number }> = [];
   const breakdownLine = descriptionText.split('\n').find((l) => l.startsWith('Breakdown'));
@@ -89,6 +105,64 @@ function collectLineItemRows(
   }
 
   let stripe = 0;
+
+  if (canonicalFees > 0) {
+    breakdownItems = breakdownItems.filter(
+      (item) => !CANONICAL_FEE_LABEL_PATTERNS.some((p) => p.test(item.label))
+    );
+
+    if (tuition > 0) {
+      const tuitionLabel =
+        student.studentType === 'Boarder' ? 'Tuition fee (boarder)' : 'Tuition fee (day scholar)';
+      rows.push({
+        label: tuitionLabel,
+        amount: tuition,
+        fill: stripe % 2 === 0 ? T.ivory : T.navyTint
+      });
+      stripe += 1;
+    }
+
+    if (diningHall > 0) {
+      const dhLabel =
+        student.isStaffChild || student.isExempted
+          ? 'Dining hall (DH) fee (50%)'
+          : 'Dining hall (DH) fee';
+      rows.push({
+        label: dhLabel,
+        amount: diningHall,
+        fill: stripe % 2 === 0 ? T.ivory : T.navyTint
+      });
+      stripe += 1;
+    }
+
+    if (transport > 0) {
+      rows.push({
+        label: 'Transport fee',
+        amount: transport,
+        fill: stripe % 2 === 0 ? T.ivory : T.navyTint
+      });
+      stripe += 1;
+    }
+
+    if (registration > 0) {
+      rows.push({
+        label: 'Registration Fee',
+        amount: registration,
+        fill: stripe % 2 === 0 ? T.ivory : T.navyTint
+      });
+      stripe += 1;
+    }
+
+    if (deskFee > 0) {
+      rows.push({
+        label: 'Desk Fee',
+        amount: deskFee,
+        fill: stripe % 2 === 0 ? T.ivory : T.navyTint
+      });
+      stripe += 1;
+    }
+  }
+
   breakdownItems.forEach((item) => {
     rows.push({
       label: item.label,
@@ -115,7 +189,7 @@ function collectLineItemRows(
   });
   stripe += 1;
 
-  if (baseAmount > 0 && !hasTuitionInBreakdown(breakdownItems)) {
+  if (canonicalFees <= 0 && baseAmount > 0) {
     rows.push({
       label: `Tuition ${invoiceTerm || ''}`.trim(),
       amount: baseAmount,
@@ -284,7 +358,8 @@ export function createInvoicePDF(data: InvoicePDFData): Promise<Buffer> {
       const statusText = String(statusRaw).charAt(0).toUpperCase() + String(statusRaw).slice(1);
 
       const lineItems = collectLineItemRows(
-        String(invoice.description || ''),
+        invoice,
+        student,
         previousBalance,
         baseAmount,
         uniformTotal,

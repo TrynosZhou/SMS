@@ -1,9 +1,11 @@
 /**
- * Script to create an administrator account
- * Usage: 
- *   ts-node scripts/create-admin.ts <username> <password> <email>
+ * Script to create an administrator or superadmin account
+ * Usage:
+ *   ts-node scripts/create-admin.ts <username> <password> <email> [role]
  *   or
- *   npm run create-admin <username> <password> <email>
+ *   npm run create-admin <username> <password> <email> [role]
+ *
+ * Role is optional and defaults to 'admin'. Valid values: 'admin', 'superadmin'
  */
 
 import 'reflect-metadata';
@@ -16,14 +18,26 @@ dotenv.config();
 
 async function createAdmin() {
   const args = process.argv.slice(2);
-  
+
   if (args.length < 3) {
-    console.log('Usage: ts-node scripts/create-admin.ts <username> <password> <email>');
-    console.log('Example: ts-node scripts/create-admin.ts admin admin123 admin@school.com');
+    console.log('Usage: ts-node scripts/create-admin.ts <username> <password> <email> [role]');
+    console.log('Example: ts-node scripts/create-admin.ts admin admin123 admin@school.com admin');
+    console.log('Example: ts-node scripts/create-admin.ts superadmin super123 superadmin@school.com superadmin');
+    console.log('\nRole is optional and defaults to "admin". Valid values: admin, superadmin');
     process.exit(1);
   }
 
-  const [username, password, email] = args;
+  const [username, password, email, roleArg] = args;
+  const roleLower = (roleArg || 'admin').toLowerCase();
+
+  // Validate role
+  const validRoles = ['admin', 'superadmin'];
+  if (!validRoles.includes(roleLower)) {
+    console.error(`❌ Invalid role "${roleArg}". Valid values: ${validRoles.join(', ')}`);
+    process.exit(1);
+  }
+
+  const userRole = roleLower === 'superadmin' ? UserRole.SUPERADMIN : UserRole.ADMIN;
 
   try {
     // Initialize database connection
@@ -32,7 +46,7 @@ async function createAdmin() {
 
     const userRepository = AppDataSource.getRepository(User);
 
-    // Check if admin already exists
+    // Check if user already exists
     const existingUser = await userRepository.findOne({
       where: [
         { username },
@@ -53,23 +67,24 @@ async function createAdmin() {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create admin user
-    const admin = userRepository.create({
+    // Create user
+    const user = userRepository.create({
       username,
       email,
       password: hashedPassword,
-      role: UserRole.ADMIN,
+      role: userRole,
       isActive: true
     });
 
-    await userRepository.save(admin);
+    await userRepository.save(user);
 
-    console.log('\n✅ Admin account created successfully!');
+    const roleDisplay = roleLower === 'superadmin' ? 'Super Administrator' : 'Administrator';
+    console.log(`\n✅ ${roleDisplay} account created successfully!`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Username:', username);
     console.log('Email:', email);
     console.log('Password:', password);
-    console.log('Role: Admin');
+    console.log('Role:', roleDisplay);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('\nYou can now login with:');
     console.log(`  Username: ${username}`);
@@ -80,7 +95,7 @@ async function createAdmin() {
     await AppDataSource.destroy();
     process.exit(0);
   } catch (error: any) {
-    console.error('❌ Error creating admin account:', error.message);
+    console.error('❌ Error creating account:', error.message);
     if (error.code === '23505') {
       console.error('   Duplicate username or email');
     }

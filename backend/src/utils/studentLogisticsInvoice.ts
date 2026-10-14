@@ -23,12 +23,16 @@ export function snapshotFromStudent(student: Partial<Student> | StudentLogistics
   };
 }
 
+function normalizeStudentType(value: string | null | undefined): string {
+  return String(value || '').trim().toLowerCase() === 'boarder' ? 'boarder' : 'day scholar';
+}
+
 export function logisticsProfileChanged(
   before: StudentLogisticsSnapshot,
   after: StudentLogisticsSnapshot
 ): boolean {
   return (
-    before.studentType !== after.studentType ||
+    normalizeStudentType(before.studentType) !== normalizeStudentType(after.studentType) ||
     before.usesTransport !== after.usesTransport ||
     before.usesDiningHall !== after.usesDiningHall ||
     before.isStaffChild !== after.isStaffChild
@@ -190,7 +194,8 @@ export function applyLogisticsFeesToInvoice(
   const typeChanged =
     options?.beforeSnap &&
     options?.afterSnap &&
-    options.beforeSnap.studentType !== options.afterSnap.studentType;
+    normalizeStudentType(options.beforeSnap.studentType) !==
+      normalizeStudentType(options.afterSnap.studentType);
 
   if (typeChanged && options.afterSnap && options.fees) {
     inv.tuitionAmount = computeTuitionFee(options.afterSnap, options.fees);
@@ -223,17 +228,24 @@ export function applyLogisticsFeesToInvoice(
 
 function pickLogisticsInvoiceTargets(
   invoices: Invoice[],
-  activeTerm?: string | null
+  activeTerm?: string | null,
+  preferActiveTerm = false
 ): Invoice[] {
   const nonVoid = invoices.filter((inv) => !inv.isVoided);
   const termFeeInvoices = nonVoid.filter((inv) => parseAmount(inv.uniformTotal) <= 0.005);
 
   const pool = termFeeInvoices.length > 0 ? termFeeInvoices : nonVoid;
   const open = pool.filter((inv) => OPEN_STATUSES.includes(inv.status));
+  const sameTerm = (inv: Invoice) =>
+    String(inv.term || '').trim() === String(activeTerm || '').trim();
 
   if (activeTerm) {
-    const termOpen = open.filter((inv) => String(inv.term || '').trim() === String(activeTerm).trim());
+    const termOpen = open.filter(sameTerm);
     if (termOpen.length > 0) return termOpen;
+    if (preferActiveTerm) {
+      const termAny = pool.filter(sameTerm);
+      if (termAny.length > 0) return termAny;
+    }
   }
 
   if (open.length > 0) return open;
@@ -266,7 +278,9 @@ export async function syncStudentLogisticsInvoices(options: {
   const deltaTransport = parseFloat((afterFees.transport - beforeFees.transport).toFixed(2));
   const deltaDiningHall = parseFloat((afterFees.diningHall - beforeFees.diningHall).toFixed(2));
   const deltaTuition = parseFloat((afterTuition - beforeTuition).toFixed(2));
-  const typeChanged = options.before.studentType !== options.after.studentType;
+  const typeChanged =
+    normalizeStudentType(options.before.studentType) !==
+    normalizeStudentType(options.after.studentType);
 
   if (
     Math.abs(deltaTransport) < 0.005 &&
@@ -282,9 +296,10 @@ export async function syncStudentLogisticsInvoices(options: {
     .where('invoice.studentId = :studentId', { studentId: options.studentId })
     .andWhere('invoice.isVoided = false')
     .orderBy('invoice.createdAt', 'DESC')
+    .take(3) // Limit to most recent 3 invoices for performance
     .getMany();
 
-  const targets = pickLogisticsInvoiceTargets(invoices, options.activeTerm);
+  const targets = pickLogisticsInvoiceTargets(invoices, options.activeTerm, typeChanged);
   if (targets.length === 0) {
     throw new Error(
       'No invoice found for this student. Create a term invoice before changing transport, dining hall, or student type.'
@@ -292,7 +307,7 @@ export async function syncStudentLogisticsInvoices(options: {
   }
 
   const adjustments: string[] = [];
-  let updatedInvoices = 0;
+  const invoicesToUpdate: Invoice[] = [];
 
   for (const inv of targets) {
     const parts = applyLogisticsFeesToInvoice(inv, beforeFees, afterFees, {
@@ -305,11 +320,15 @@ export async function syncStudentLogisticsInvoices(options: {
       adjustments.push(...parts);
     }
 
-    await invoiceRepo.save(inv);
-    updatedInvoices += 1;
+    invoicesToUpdate.push(inv);
   }
 
-  return { updatedInvoices, adjustments, deltaTransport, deltaDiningHall, deltaTuition };
+  // Batch save all invoices at once for better performance
+  if (invoicesToUpdate.length > 0) {
+    await invoiceRepo.save(invoicesToUpdate);
+  }
+
+  return { updatedInvoices: invoicesToUpdate.length, adjustments, deltaTransport, deltaDiningHall, deltaTuition };
 }
 
 /**
@@ -324,10 +343,11 @@ export async function repairStaleLogisticsInvoiceBalances(
   const invoiceRepo = em.getRepository(Invoice);
   const invoices = await invoiceRepo.find({
     where: { studentId, isVoided: false },
-    order: { createdAt: 'DESC' }
+    order: { createdAt: 'DESC' },
+    take: 3 // Limit to most recent invoices for performance
   });
 
-  let repaired = 0;
+  const invoicesToRepair: Invoice[] = [];
   for (const inv of invoices) {
     const canonical = canonicalInvoiceTermFees(inv);
     const amountCol = parseAmount(inv.amount);
@@ -343,9 +363,14 @@ export async function repairStaleLogisticsInvoiceBalances(
       Math.abs(parseAmount(inv.amount) - amountCol) > 0.005 ||
       Math.abs(parseAmount(inv.balance) - balanceCol) > 0.005
     ) {
-      await invoiceRepo.save(inv);
-      repaired += 1;
+      invoicesToRepair.push(inv);
     }
   }
-  return repaired;
+
+  // Batch save all repaired invoices at once for better performance
+  if (invoicesToRepair.length > 0) {
+    await invoiceRepo.save(invoicesToRepair);
+  }
+
+  return invoicesToRepair.length;
 }

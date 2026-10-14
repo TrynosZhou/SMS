@@ -59,6 +59,8 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   pageConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   loadingPdf = false;
   downloadingPdf = false;
+  showStudentAdjustments = false;
+  selectedStudentForAdjustments: string | null = null;
   
   // User role checks
   isAdmin = false;
@@ -1271,6 +1273,16 @@ next: (settings: any) => {
         }, 7000);
       }
     });
+  }
+
+  openStudentAdjustments(studentId: string) {
+    this.selectedStudentForAdjustments = studentId;
+    this.showStudentAdjustments = true;
+  }
+
+  closeStudentAdjustments() {
+    this.showStudentAdjustments = false;
+    this.selectedStudentForAdjustments = null;
   }
 
   private resolveTeacherFullName(teacher: any): string {

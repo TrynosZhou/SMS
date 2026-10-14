@@ -74,6 +74,18 @@ export class SuccessConfirmService {
     const message = (opts.message || '').trim();
     const okLabel = (opts.okLabel || 'Ok').trim() || 'Ok';
 
+    // If already visible with the same message, just return the existing promise
+    if (this.visible && this.message === message && this.title === title) {
+      return new Promise<void>((resolve) => {
+        const prev = this.resolveFn;
+        this.resolveFn = () => {
+          prev?.();
+          resolve();
+        };
+      });
+    }
+
+    // If visible with different message, update it
     if (this.visible) {
       this.emitState({ title, message, okLabel });
       return new Promise<void>((resolve) => {

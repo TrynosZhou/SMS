@@ -11,7 +11,7 @@ import { SuccessConfirmService } from '../services/success-confirm.service';
 /**
  * When bound to a success message string, opens the system-wide
  * success confirmation dialog (green check + "Success!" + Ok) and
- * clears the local message afterward so no duplicate toast appears.
+ * clears the local message after the dialog is closed so no duplicate appears.
  *
  * Usage:
  *   <span *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''"></span>
@@ -31,6 +31,7 @@ export class SmsSuccessConfirmDirective implements OnChanges {
   @Output() smsSuccessConfirmClear = new EventEmitter<void>();
 
   private opening = false;
+  private currentMessage = '';
 
   constructor(private successConfirm: SuccessConfirmService) {}
 
@@ -39,16 +40,22 @@ export class SmsSuccessConfirmDirective implements OnChanges {
     const msg = String(this.message || '').trim();
     if (!msg || this.opening) return;
 
+    // Prevent duplicate dialogs for the same message
+    if (msg === this.currentMessage) return;
+    this.currentMessage = msg;
+
     this.opening = true;
     const title = (this.smsSuccessTitle || 'Success!').trim() || 'Success!';
 
     this.successConfirm
       .show({ title, message: msg })
+      .then(() => {
+        // Only clear the message after the dialog is closed (user clicks Ok)
+        this.smsSuccessConfirmClear.emit();
+        this.currentMessage = '';
+      })
       .finally(() => {
         this.opening = false;
       });
-
-    // Defer clear to the next tick — synchronous emit causes NG0100 on the host component.
-    queueMicrotask(() => this.smsSuccessConfirmClear.emit());
   }
 }

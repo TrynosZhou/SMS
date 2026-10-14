@@ -692,6 +692,34 @@
   pointer-events: none;
 }
 
+.top-nav-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.top-nav-home-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.top-nav-home-label {
+  display: inline;
+}
+
+.top-nav-hide-mobile {
+  display: inline-flex;
+}
+
 .top-nav-exit-btn {
   border: 1px solid rgba(201, 162, 39, 0.55);
   background: rgba(255, 255, 255, 0.08);
@@ -1658,6 +1686,14 @@
     display: none !important;
   }
 
+  .top-nav-home-label {
+    display: none;
+  }
+
+  .top-nav-home-btn {
+    padding: 0.4rem 0.6rem;
+  }
+
   .top-navbar-actions {
     gap: 0.35rem;
     flex: 0 0 auto;
@@ -1884,6 +1920,14 @@
 
   .top-navbar-school-name {
     max-width: 100px;
+  }
+
+  .top-nav-home-label {
+    display: none;
+  }
+
+  .top-nav-home-btn {
+    padding: 0.4rem 0.5rem;
   }
 
   .top-nav-view-as-label {

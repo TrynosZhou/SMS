@@ -364,13 +364,14 @@ export async function syncExemptionInvoicesForStudent(
       '(COALESCE(invoice.uniformTotal, 0) = 0 OR COALESCE(invoice.amount, 0) > 0.005 OR COALESCE(invoice.tuitionAmount, 0) > 0.005)'
     )
     .orderBy('invoice.createdAt', 'ASC')
+    .take(3) // Limit to most recent 3 invoices for performance
     .getMany();
 
   if (termInvoices.length === 0) {
     return { updated: 0, message: 'No term-fee invoices to sync' };
   }
 
-  let updated = 0;
+  const invoicesToUpdate: Invoice[] = [];
   for (const inv of termInvoices) {
     if (isFullPercentageExemption(student) && parseAmount(inv.paidAmount) <= 0.005) {
       inv.isVoided = true;
@@ -380,8 +381,7 @@ export async function syncExemptionInvoicesForStudent(
       inv.amount = 0;
       zeroTermFeeLineItems(inv);
       appendDescription(inv, 'Voided: 100% fee exemption');
-      await invoiceRepository.save(inv);
-      updated += 1;
+      invoicesToUpdate.push(inv);
       continue;
     }
 
@@ -392,8 +392,7 @@ export async function syncExemptionInvoicesForStudent(
       recomputeInvoiceTotalsFromLineItems(inv);
       inv.status = InvoiceStatus.PAID;
       appendDescription(inv, 'Exemption: 100% — all term fees waived');
-      await invoiceRepository.save(inv);
-      updated += 1;
+      invoicesToUpdate.push(inv);
       continue;
     }
 
@@ -402,9 +401,15 @@ export async function syncExemptionInvoicesForStudent(
     } else {
       restoreFullFeesToInvoice(student, inv, fees);
     }
-    await invoiceRepository.save(inv);
-    updated += 1;
+    invoicesToUpdate.push(inv);
   }
+
+  // Batch save all invoices at once for better performance
+  if (invoicesToUpdate.length > 0) {
+    await invoiceRepository.save(invoicesToUpdate);
+  }
+
+  const updated = invoicesToUpdate.length;
 
   const action = hasExemption ? 'Applied exemption to' : 'Restored standard fees on';
   return {

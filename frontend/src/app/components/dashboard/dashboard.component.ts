@@ -64,6 +64,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   schoolLogo: string | null = null;
   schoolLogo2: string | null = null;
   showBulkMessage = false;
+  showStudentAdjustments = false;
+  selectedStudentForAdjustments: string | null = null;
   displayedText: string = '';
   private textToggleInterval: any;
   private rotateTexts: string[] = [];
@@ -538,6 +540,11 @@ if (this.textToggleInterval) {
     return 'Your report card, invoice statement, and parent portal — all in one place.';
   }
 
+  viewStudentRecord(studentId: string): void {
+    if (!studentId) return;
+    this.router.navigate(['/students', studentId, 'edit']);
+  }
+
   formatStudentUpdatedAt(): string {
     if (!this.studentDataLastUpdated) {
       return '';
@@ -721,6 +728,16 @@ if (this.textToggleInterval) {
 
   closeBulkMessage() {
     this.showBulkMessage = false;
+  }
+
+  openStudentAdjustments(studentId?: string) {
+    this.selectedStudentForAdjustments = studentId || null;
+    this.showStudentAdjustments = true;
+  }
+
+  closeStudentAdjustments() {
+    this.showStudentAdjustments = false;
+    this.selectedStudentForAdjustments = null;
   }
 
   toggleSection(section: string) {

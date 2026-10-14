@@ -1,0 +1,205 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="student-adjustments-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>
+        <span class="modal-icon">⚙️</span>
+        Student Adjustments
+      </h2>
+      <div class="modal-header-actions">
+        <button class="modal-refresh-btn" (click)="refreshModal()" title="Refresh" [disabled]="searching || saving">
+          <span [class.spinning]="searching || saving">↻</span>
+        </button>
+        <button class="modal-close-btn" (click)="closeModal()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-body" #modalBody>
+      <div class="alert alert-error" *ngIf="searchError">{{ searchError }}</div>
+      <div class="alert alert-error" *ngIf="saveError">{{ saveError }}</div>
+      <div class="alert alert-success" *ngIf="saveSuccess">{{ saveSuccess }}</div>
+
+      <!-- Search Section -->
+      <div class="search-section" *ngIf="!selectedStudent && !studentId">
+        <p class="search-hint">
+          Search for a student by <strong>First Name</strong>, <strong>Last Name</strong>, or <strong>Student ID</strong>.
+        </p>
+        <div class="search-row">
+          <input
+            type="text"
+            class="form-control search-input"
+            [(ngModel)]="searchQuery"
+            (keyup.enter)="searchStudents()"
+            (input)="searchStudents()"
+            placeholder="Enter First Name, Last Name, or Student ID"
+            [disabled]="searching">
+          <button
+            type="button"
+            class="btn btn-primary search-btn"
+            (click)="searchStudents()"
+            [disabled]="searching || !searchQuery.trim()">
+            <span *ngIf="!searching">Search</span>
+            <span *ngIf="searching">Searching…</span>
+          </button>
+        </div>
+
+        <div class="search-results" *ngIf="searchResults.length > 0 && !studentId">
+          <p class="results-count">{{ searchResults.length }} student(s) found.</p>
+          <div class="results-list">
+            <div
+              *ngFor="let s of searchResults"
+              class="result-item"
+              (click)="selectStudent(s)">
+              <div class="result-content">
+                <div class="result-name">{{ s.firstName }} {{ s.lastName }}</div>
+                <div class="result-meta">
+                  <span class="meta-tag">{{ s.studentNumber }}</span>
+                  <span class="meta-tag">{{ s.classEntity?.name || s.classLevel || '—' }}</span>
+                  <span class="meta-tag">{{ s.studentType }}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm result-view-btn"
+                (click)="selectStudent(s); $event.stopPropagation()"
+                title="View student record">
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Record Section -->
+      <div class="student-record" *ngIf="selectedStudent">
+        <button type="button" class="btn btn-secondary btn-sm back-btn" (click)="backToSearch()">
+          ← Back to search
+        </button>
+
+        <h3 class="record-title">Student Record</h3>
+
+        <div class="record-grid">
+          <div class="record-field">
+            <span class="field-label">First Name</span>
+            <span class="field-value">{{ selectedStudent.firstName }}</span>
+          </div>
+          <div class="record-field">
+            <span class="field-label">Last Name</span>
+            <span class="field-value">{{ selectedStudent.lastName }}</span>
+          </div>
+          <div class="record-field">
+            <span class="field-label">Student ID</span>
+            <span class="field-value">{{ selectedStudent.studentNumber }}</span>
+          </div>
+          <div class="record-field">
+            <span class="field-label">Grade</span>
+            <span class="field-value">{{ selectedStudent.grade || '—' }}</span>
+          </div>
+          <div class="record-field">
+            <span class="field-label">Class</span>
+            <span class="field-value">{{ className }}</span>
+          </div>
+          <div class="record-field">
+            <span class="field-label">Student Type</span>
+            <span class="field-value">{{ studentTypeDisplay }}</span>
+          </div>
+        </div>
+
+        <div class="adjustment-toggles">
+          <h4>Logistics &amp; Fee Adjustments</h4>
+          <p class="toggles-hint">
+            Toggle the options below. Saving will automatically update the student's invoice balances.
+          </p>
+
+          <div class="toggle-group">
+            <label class="toggle-label">
+              <strong>Student Type</strong>
+              <span class="toggle-desc">Boarder vs Day Scholar (affects tuition)</span>
+            </label>
+            <div class="toggle-options" [class.disabled]="!editing">
+              <label class="toggle-option">
+                <input
+                  type="radio"
+                  name="studentType"
+                  [(ngModel)]="formStudentType"
+                  value="Day Scholar"
+                  [disabled]="!editing">
+                <span>Day Scholar</span>
+              </label>
+              <label class="toggle-option">
+                <input
+                  type="radio"
+                  name="studentType"
+                  [(ngModel)]="formStudentType"
+                  value="Boarder"
+                  [disabled]="!editing">
+                <span>Boarder</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="toggle-group">
+            <label class="toggle-label">
+              <strong>Dining Hall (DH) Meals</strong>
+              <span class="toggle-desc">Day scholars using dining hall meals</span>
+            </label>
+            <label class="switch">
+              <input
+                type="checkbox"
+                [(ngModel)]="formUsesDiningHall"
+                [disabled]="!editing">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-group">
+            <label class="toggle-label">
+              <strong>School Transport</strong>
+              <span class="toggle-desc">Day scholars using school transport</span>
+            </label>
+            <label class="switch">
+              <input
+                type="checkbox"
+                [(ngModel)]="formUsesTransport"
+                [disabled]="!editing">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            *ngIf="!editing"
+            type="button"
+            class="btn btn-primary"
+            (click)="startEditing()"
+            [disabled]="!canAdjust()">
+            ✎ Adjust
+          </button>
+          <ng-container *ngIf="editing">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="cancelEditing()"
+              [disabled]="saving">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="saveAdjustments()"
+              [disabled]="saving">
+              <span *ngIf="!saving">Save Adjustments</span>
+              <span *ngIf="saving">Saving…</span>
+            </button>
+          </ng-container>
+        </div>
+
+        <p class="permission-note" *ngIf="!canAdjust()">
+          Only administrators and accountants can make adjustments.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
