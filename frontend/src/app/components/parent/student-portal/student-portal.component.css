@@ -1,29 +1,428 @@
+/* ── Parent Results Page  ──────────────────────────────────────────────── */
+/* Shared `src-*` styles come from student-report-card.component.css      */
+/* These styles extend the page with a classical, modern navy layout.     */
+
 .pr-results-page {
-  max-width: 960px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
-.pr-empty {
-  margin-top: 18px;
-  padding: 24px;
-  border-radius: 16px;
+/* ── Hero fine-tuning ──────────────────────────────────────────────────── */
+.pr-hero {
+  padding: 24px 28px;
+}
+
+/* ── Column layout ─────────────────────────────────────────────────────── */
+.pr-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+.pr-col-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Student summary card ──────────────────────────────────────────────── */
+.pr-student-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.pr-student-card__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.pr-student-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-student-card__name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e3a8a;
+  margin-bottom: 8px;
+}
+
+.pr-student-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.pr-chip--accent {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.pr-student-card__badge {
+  text-align: center;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  flex-shrink: 0;
+}
+
+.pr-badge-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1d4ed8;
+  line-height: 1;
+}
+
+.pr-badge-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ── Report summary card ───────────────────────────────────────────────── */
+.pr-report-summary {
   background: #fff;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+}
+
+.pr-report-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pr-report-summary__head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.pr-report-summary__term {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.pr-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.pr-summary-item {
   text-align: center;
+  padding: 14px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.pr-summary-item--primary {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  border-color: transparent;
+}
+
+.pr-summary-item--primary .pr-summary-val,
+.pr-summary-item--primary .pr-summary-lbl {
+  color: #fff;
+}
+
+.pr-summary-item--pass {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.pr-summary-item--pass .pr-summary-val {
+  color: #16a34a;
+}
+
+.pr-summary-item--fail {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.pr-summary-item--fail .pr-summary-val {
+  color: #dc2626;
+}
+
+.pr-summary-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e3a8a;
+  line-height: 1.1;
+}
+
+.pr-summary-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.pr-report-summary__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Hints ─────────────────────────────────────────────────────────────── */
+.pr-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border: 1px dashed #bfdbfe;
+  border-radius: 12px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.pr-hint--ready {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.pr-hint__icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.pr-hint p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+.pr-empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
 .pr-empty__icon {
-  font-size: 2.5rem;
-  margin-bottom: 8px;
+  font-size: 52px;
+  margin-bottom: 12px;
+  opacity: 0.55;
 }
 
 .pr-empty h3 {
   margin: 0 0 8px;
-  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e3a8a;
 }
 
 .pr-empty p {
-  margin: 0 0 16px;
+  margin: 0 0 18px;
+  font-size: 14px;
   color: #64748b;
+  line-height: 1.6;
+}
+
+/* ── Aside ─────────────────────────────────────────────────────────────── */
+.pr-col-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 20px;
+}
+
+.pr-aside-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.pr-aside-card--highlight {
+  background: linear-gradient(160deg, #eff6ff, #fff);
+  border-color: #bfdbfe;
+}
+
+.pr-aside-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.pr-steps {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.pr-steps li {
+  margin-bottom: 8px;
+}
+
+.pr-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.pr-overview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pr-overview-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.pr-overview-list li:last-child {
+  border-bottom: none;
+}
+
+.pr-overview-list strong {
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.pr-quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pr-quick-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  text-decoration: none;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease;
+}
+
+.pr-quick-link:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .pr-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .pr-col-aside {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .pr-aside-card--highlight {
+    grid-column: 1 / -1;
+  }
+
+  .pr-quick-links {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .pr-quick-link {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .pr-student-card {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .pr-student-card__badge {
+    align-self: flex-start;
+  }
+
+  .pr-col-aside {
+    grid-template-columns: 1fr;
+  }
+
+  .pr-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .pr-summary-grid {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,13 +1,16 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { Subject, of } from 'rxjs';
+import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 import { environment } from '../../../../environments/environment';
 
+type OutboxFilter = 'all' | 'attachments';
+
 @Component({
-  standalone: false,  selector: 'app-parent-outbox',
-templateUrl: './parent-outbox.component.html',
+  standalone: false,
+  selector: 'app-parent-outbox',
+  templateUrl: './parent-outbox.component.html',
   styleUrls: ['./parent-outbox.component.css']
 })
 export class ParentOutboxComponent implements OnInit, OnDestroy {
@@ -17,9 +20,19 @@ export class ParentOutboxComponent implements OnInit, OnDestroy {
   error = '';
   success = '';
   parentName = '';
+  inboxCount = 0;
+  lastRefreshedAt: Date | null = null;
 
   searchQuery = '';
+  outboxFilter: OutboxFilter = 'all';
+  sortNewestFirst = true;
   expandedId: string | null = null;
+
+  readonly tips = [
+    'Tap a message to view the full content and attached files.',
+    'Use Send follow-up to continue the conversation with the school.',
+    'Search by subject, recipient, or message body.',
+  ];
 
   private readonly destroy$ = new Subject<void>();
   private readonly requestTimeoutMs = 60000;
@@ -46,60 +59,107 @@ export class ParentOutboxComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  load() {
-    this.loading = true;
-    this.error = '';
-    this.messageService
-      .getParentOutbox()
-      .pipe(
-        timeout(this.requestTimeoutMs),
-        takeUntil(this.destroy$),
-        catchError((err: any) => {
-          if (err?.status === 401) {
-            this.error = 'Session expired. Redirecting to login…';
-            setTimeout(() => this.authService.logout(), 2000);
-          } else {
-            this.error =
-              err?.name === 'TimeoutError'
-                ? 'Request timed out while loading messages.'
-                : err?.error?.message || err?.message || 'Failed to load sent messages';
-          }
-          setTimeout(() => {
-            this.error = '';
-            this.cdr.markForCheck();
-          }, 8000);
-          return of({ messages: [] });
-        }),
-        finalize(() => {
-          this.loading = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe({
-        next: (res: any) => {
-          this.allMessages = res?.messages || [];
-          this.applyFilter();
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  applyFilter() {
-    const q = (this.searchQuery || '').toLowerCase().trim();
-    this.messages = q
-      ? this.allMessages.filter(m =>
-          (m.subject || '').toLowerCase().includes(q) ||
-          (m.message || '').toLowerCase().includes(q) ||
-          (m.recipient || '').toLowerCase().includes(q))
-      : [...this.allMessages];
-  }
-
   get withAttachmentsCount(): number {
     return this.allMessages.filter(m => this.getAttachments(m).length > 0).length;
   }
 
+  load() {
+    this.loading = true;
+    this.error = '';
+
+    forkJoin({
+      outbox: this.messageService.getParentOutbox().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((err: any) => this.handleLoadError(err))
+      ),
+      inbox: this.messageService.getParentMessages().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of({ messages: [] }))
+      ),
+    })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loading = false;
+          this.lastRefreshedAt = new Date();
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe(({ outbox, inbox }) => {
+        this.allMessages = outbox?.messages || [];
+        this.inboxCount = (inbox?.messages || []).length;
+        this.applyFilter();
+        this.cdr.markForCheck();
+      });
+  }
+
+  private handleLoadError(err: any) {
+    if (err?.status === 401) {
+      this.error = 'Session expired. Redirecting to login…';
+      setTimeout(() => this.authService.logout(), 2000);
+    } else {
+      this.error =
+        err?.name === 'TimeoutError'
+          ? 'Request timed out while loading messages.'
+          : err?.error?.message || err?.message || 'Failed to load sent messages';
+    }
+    setTimeout(() => {
+      this.error = '';
+      this.cdr.markForCheck();
+    }, 8000);
+    return of({ messages: [] });
+  }
+
+  setFilter(filter: OutboxFilter): void {
+    this.outboxFilter = filter;
+    this.applyFilter();
+  }
+
+  toggleSort(): void {
+    this.sortNewestFirst = !this.sortNewestFirst;
+    this.applyFilter();
+  }
+
+  applyFilter() {
+    let list = [...this.allMessages];
+
+    if (this.outboxFilter === 'attachments') {
+      list = list.filter(m => this.getAttachments(m).length > 0);
+    }
+
+    const q = (this.searchQuery || '').toLowerCase().trim();
+    if (q) {
+      list = list.filter(m =>
+        (m.subject || '').toLowerCase().includes(q) ||
+        (m.message || '').toLowerCase().includes(q) ||
+        (this.recipientLabel(m).toLowerCase().includes(q)));
+    }
+
+    list.sort((a, b) => {
+      const ta = new Date(a.createdAt || 0).getTime();
+      const tb = new Date(b.createdAt || 0).getTime();
+      return this.sortNewestFirst ? tb - ta : ta - tb;
+    });
+
+    this.messages = list;
+  }
+
   toggleExpand(m: any) {
     this.expandedId = this.expandedId === m.id ? null : m.id;
+  }
+
+  formatRefreshedAt(): string {
+    if (!this.lastRefreshedAt) return '';
+    return this.lastRefreshedAt.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  getMessagePreview(text?: string, max = 100): string {
+    if (!text) return '';
+    const oneLine = text.replace(/\s+/g, ' ').trim();
+    return oneLine.length <= max ? oneLine : oneLine.slice(0, max) + '…';
   }
 
   getAttachments(message: any): { name: string; url: string; icon: string }[] {

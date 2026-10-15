@@ -1,233 +1,239 @@
-<div class="dashboard-container">
-  <!-- Main Content -->
-  <main class="main-content">
-    <!-- Content Header -->
-    <div class="content-header">
-      <div class="header-top">
-        <div class="header-left">
-          <div class="greeting-section">
-            <p class="welcome-text">
-              <span class="greeting-icon">👋</span>
-              Welcome back, <strong>{{ teacherWelcomeName || 'Teacher' }}</strong>!
-            </p>
-            <p class="date-time">{{ getCurrentDate() }}</p>
+<div class="td-page">
+  <main class="td-main">
+
+    <!-- Hero Header -->
+    <header class="td-hero">
+      <div class="td-hero__main">
+        <div class="td-hero__badges">
+          <span class="td-pill">Teacher Dashboard</span>
+          <span class="td-pill td-pill--live" *ngIf="!loading">
+            <span class="td-live-dot"></span> {{ getCurrentDate() }}
+          </span>
+        </div>
+        <h1 class="td-hero__title">
+          <span class="td-hero__wave">👋</span> Welcome back, {{ teacherWelcomeName || 'Teacher' }}
+        </h1>
+        <p class="td-hero__sub" *ngIf="schoolName">
+          🏫 {{ schoolName }}
+        </p>
+      </div>
+      <div class="td-hero__actions">
+        <div class="td-hero__stats" *ngIf="!loading">
+          <div class="td-stat-chip">
+            <span class="td-stat-num">{{ teacherClasses.length }}</span>
+            <span class="td-stat-lbl">Classes</span>
+          </div>
+          <div class="td-stat-chip td-stat-chip--accent">
+            <span class="td-stat-num">{{ availableModules.length }}</span>
+            <span class="td-stat-lbl">Modules</span>
           </div>
         </div>
+        <button type="button" class="td-refresh" (click)="refreshDashboard()" [disabled]="loading" title="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
       </div>
-    </div>
+    </header>
 
-    <!-- Password change reminder (use My Account from the sidebar) -->
-    <div class="alert alert-warning" *ngIf="mustChangePassword && !loading">
-      <span class="alert-icon">🔐</span>
-      <span class="alert-text">
+    <!-- Password change reminder -->
+    <div class="td-alert td-alert--warning" *ngIf="mustChangePassword && !loading">
+      <span class="td-alert__icon">🔐</span>
+      <span class="td-alert__text">
         You must change your temporary password. Open
-        <a routerLink="/teacher/manage-account" class="alert-link">My Account</a>
-        from the sidebar to update it.
+        <a routerLink="/teacher/manage-account" class="td-alert__link">My Account</a>
+        to update it.
       </span>
     </div>
 
-    <!-- Alerts -->
-    <div class="alert alert-error" *ngIf="error">
-      <span class="alert-icon">⚠️</span>
-      <span class="alert-text">{{ error }}</span>
-      <button class="alert-close" (click)="error = ''">✕</button>
+    <!-- Error alert -->
+    <div class="td-alert td-alert--error" *ngIf="error">
+      <span class="td-alert__icon">⚠️</span>
+      <span class="td-alert__text">{{ error }}</span>
+      <button class="td-alert__close" (click)="error = ''">✕</button>
     </div>
 
-    <!-- Loading State -->
-    <div class="loading-stats" *ngIf="loading">
-      <div class="spinner"></div>
-      <p>Loading your dashboard...</p>
+    <!-- Loading -->
+    <div class="td-loading" *ngIf="loading">
+      <div class="td-spinner"></div>
+      <p>Loading your dashboard…</p>
     </div>
 
-    <!-- Statistics Cards - Teacher Specific Only -->
-    <div class="stats-grid" *ngIf="!loading">
-      <div class="stat-card primary modern-card">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">🏫</div>
-          <div class="icon-badge">+</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value animated-value">{{ teacherClasses.length }}</div>
-          <div class="stat-label">Assigned Classes</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">📘 Active Term</span>
+    <!-- Content -->
+    <div class="td-columns" *ngIf="!loading">
+      <div class="td-col-main">
+
+        <!-- Stat Cards -->
+        <section class="td-stats">
+          <div class="td-stat-card td-stat-card--primary">
+            <div class="td-stat-card__icon">🏫</div>
+            <div class="td-stat-card__body">
+              <div class="td-stat-card__value">{{ teacherClasses.length }}</div>
+              <div class="td-stat-card__label">Assigned Classes</div>
+              <div class="td-stat-card__sub">Active Term</div>
+            </div>
           </div>
-        </div>
-        <div class="stat-trend up">
-          <span class="trend-icon">📈</span>
-        </div>
-      </div>
-
-      <div class="stat-card success modern-card">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">📚</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value animated-value">{{ availableModules.length }}</div>
-          <div class="stat-label">Available Modules</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Accessible Features</span>
+          <div class="td-stat-card td-stat-card--success">
+            <div class="td-stat-card__icon">📚</div>
+            <div class="td-stat-card__body">
+              <div class="td-stat-card__value">{{ availableModules.length }}</div>
+              <div class="td-stat-card__label">Available Modules</div>
+              <div class="td-stat-card__sub">Accessible Features</div>
+            </div>
           </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-icon">✨</span>
-        </div>
-      </div>
-
-      <div class="stat-card info modern-card">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">📝</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value animated-value">—</div>
-          <div class="stat-label">Pending Tasks</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Items to Review</span>
+          <div class="td-stat-card td-stat-card--info">
+            <div class="td-stat-card__icon">📝</div>
+            <div class="td-stat-card__body">
+              <div class="td-stat-card__value">—</div>
+              <div class="td-stat-card__label">Pending Tasks</div>
+              <div class="td-stat-card__sub">Items to Review</div>
+            </div>
           </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-icon">📋</span>
-        </div>
-      </div>
-
-      <div class="stat-card warning modern-card">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">📊</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value animated-value">—</div>
-          <div class="stat-label">Reports</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Generated This Term</span>
+          <div class="td-stat-card td-stat-card--warning">
+            <div class="td-stat-card__icon">📊</div>
+            <div class="td-stat-card__body">
+              <div class="td-stat-card__value">—</div>
+              <div class="td-stat-card__label">Reports</div>
+              <div class="td-stat-card__sub">Generated This Term</div>
+            </div>
           </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-icon">📄</span>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Quick Actions Section -->
-    <div class="quick-actions-section" *ngIf="!loading">
-      <div class="card modern-card quick-actions-card">
-        <div class="card-header-modern">
-          <h2>
-            <span class="card-icon">🚀</span>
-            Quick Actions
-          </h2>
-        </div>
-        <div class="quick-actions modern-actions">
-          <a routerLink="/teacher/record-book" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('recordBook')">
-            <span class="action-icon">📖</span>
-            <span class="action-text">Record Book</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/exams" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('exams')">
-            <span class="action-icon">📝</span>
-            <span class="action-text">Marks Capturing</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/mark-sheet" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('exams')">
-            <span class="action-icon">📄</span>
-            <span class="action-text">Mark Sheets</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/attendance/mark" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('attendance')">
-            <span class="action-icon">✅</span>
-            <span class="action-text">Mark Attendance</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/attendance/reports" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('attendance')">
-            <span class="action-icon">📊</span>
-            <span class="action-text">Attendance Reports</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/report-cards" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('reportCards')">
-            <span class="action-icon">📑</span>
-            <span class="action-text">Report Cards</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/students" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('students')">
-            <span class="action-icon">👥</span>
-            <span class="action-text">View Students</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/classes/lists" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('classes')">
-            <span class="action-icon">🏫</span>
-            <span class="action-text">Class Lists</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/check_mark_progess" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('exams')">
-            <span class="action-icon">📈</span>
-            <span class="action-text">Marks Progress</span>
-            <span class="action-arrow">→</span>
-          </a>
-        </div>
-      </div>
-    </div>
+        <!-- Quick Actions -->
+        <section class="td-section">
+          <div class="td-section__header">
+            <h2><span class="td-section__icon">🚀</span> Quick Actions</h2>
+          </div>
+          <div class="td-actions">
+            <a routerLink="/teacher/record-book" class="td-action td-action--primary" *ngIf="canAccessModule('recordBook')">
+              <span class="td-action__icon">📖</span>
+              <span class="td-action__text">Record Book</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/exams" class="td-action td-action--warning" *ngIf="canAccessModule('exams')">
+              <span class="td-action__icon">📝</span>
+              <span class="td-action__text">Marks Capturing</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/mark-sheet" class="td-action td-action--info" *ngIf="canAccessModule('exams')">
+              <span class="td-action__icon">📄</span>
+              <span class="td-action__text">Mark Sheets</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/attendance/mark" class="td-action td-action--success" *ngIf="canAccessModule('attendance')">
+              <span class="td-action__icon">✅</span>
+              <span class="td-action__text">Mark Attendance</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/attendance/reports" class="td-action td-action--secondary" *ngIf="canAccessModule('attendance')">
+              <span class="td-action__icon">📊</span>
+              <span class="td-action__text">Attendance Reports</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/report-cards" class="td-action td-action--info" *ngIf="canAccessModule('reportCards')">
+              <span class="td-action__icon">📑</span>
+              <span class="td-action__text">Report Cards</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/students" class="td-action td-action--primary" *ngIf="canAccessModule('students')">
+              <span class="td-action__icon">👥</span>
+              <span class="td-action__text">View Students</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/classes/lists" class="td-action td-action--warning" *ngIf="canAccessModule('classes')">
+              <span class="td-action__icon">🏫</span>
+              <span class="td-action__text">Class Lists</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+            <a routerLink="/check_mark_progess" class="td-action td-action--secondary" *ngIf="canAccessModule('exams')">
+              <span class="td-action__icon">📈</span>
+              <span class="td-action__text">Marks Progress</span>
+              <span class="td-action__arrow">→</span>
+            </a>
+          </div>
+        </section>
 
-    <!-- My Classes Section (Collapsed by default, shown when needed) -->
-    <div class="my-classes-section" *ngIf="!loading && teacherClasses.length > 0">
-      <div class="card modern-card my-classes-card">
-        <div class="card-header-flex">
-          <h2>
-            <span class="card-icon">🏫</span>
-            My Classes
-          </h2>
-          <span class="class-count-badge">{{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }}</span>
-        </div>
-        
-        <!-- Class Selector -->
-        <div class="class-selector">
-          <div class="selector-row">
-            <select 
-              class="class-dropdown"
+        <!-- My Classes -->
+        <section class="td-section" *ngIf="teacherClasses.length > 0">
+          <div class="td-section__header">
+            <h2><span class="td-section__icon">🏫</span> My Classes</h2>
+            <span class="td-count-badge">{{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }}</span>
+          </div>
+
+          <div class="td-selector">
+            <select
+              class="td-select"
               [(ngModel)]="selectedClassId"
               (change)="onClassSelected()">
-              <option value="">-- Select a Class --</option>
+              <option value="">— Select a class —</option>
               <option *ngFor="let classItem of teacherClasses" [value]="classItem.id">
-                {{ classItem.name }} {{ classItem.form ? '(' + classItem.form + ')' : '' }}
+                {{ classItem.name }}<span *ngIf="classItem.form"> ({{ classItem.form }})</span>
               </option>
             </select>
-            <button 
-              class="btn-open-record"
+            <button
+              class="td-btn td-btn--primary"
               (click)="openRecordBook()"
               [disabled]="!selectedClassId">
               <span>📚</span> Open Record Book
             </button>
           </div>
-        </div>
 
-        <!-- Class Cards Grid -->
-        <div class="classes-grid">
-          <div *ngFor="let classItem of teacherClasses" class="class-item" (click)="openRecordBook(classItem)">
-            <div class="class-item-icon">
-              <span>{{ getClassInitial(classItem) }}</span>
-            </div>
-            <div class="class-item-info">
-              <div class="class-item-name">{{ classItem.name }}</div>
-              <div class="class-item-meta" *ngIf="classItem.form">Form: {{ classItem.form }}</div>
-            </div>
-            <div class="class-item-action">
-              <span class="action-arrow">→</span>
+          <div class="td-classes-grid">
+            <div
+              *ngFor="let classItem of teacherClasses"
+              class="td-class-card"
+              (click)="openRecordBook(classItem)">
+              <div class="td-class-card__avatar">{{ getClassInitial(classItem) }}</div>
+              <div class="td-class-card__info">
+                <div class="td-class-card__name">{{ classItem.name }}</div>
+                <div class="td-class-card__meta" *ngIf="classItem.form">Form: {{ classItem.form }}</div>
+              </div>
+              <span class="td-class-card__arrow">→</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Empty State for No Classes -->
-    <div class="empty-state-section" *ngIf="!loading && teacherClasses.length === 0">
-      <div class="card modern-card empty-classes-card">
-        <div class="empty-state-content">
-          <div class="empty-icon">📭</div>
+        <!-- Empty State -->
+        <section class="td-empty" *ngIf="teacherClasses.length === 0">
+          <div class="td-empty__icon">📭</div>
           <h3>No Classes Assigned</h3>
           <p>You haven't been assigned to any classes yet. Please contact the administrator to get assigned to classes.</p>
-          <button class="btn-refresh" (click)="loadTeacherInfo()">
+          <button class="td-btn td-btn--primary" (click)="refreshDashboard()">
             <span>🔄</span> Refresh
           </button>
-        </div>
+        </section>
+
       </div>
+
+      <!-- Aside -->
+      <aside class="td-col-aside">
+        <section class="td-aside-card td-aside-card--highlight">
+          <h3 class="td-aside-title">📊 Overview</h3>
+          <ul class="td-overview-list">
+            <li><span>Assigned classes</span><strong>{{ teacherClasses.length }}</strong></li>
+            <li><span>Available modules</span><strong>{{ availableModules.length }}</strong></li>
+            <li><span>Quick actions</span><strong>{{ quickActionCount }}</strong></li>
+            <li><span>School</span><strong class="td-overflow">{{ schoolName || '—' }}</strong></li>
+          </ul>
+        </section>
+
+        <section class="td-aside-card">
+          <h3 class="td-aside-title">💡 Tips</h3>
+          <ul class="td-tips-list">
+            <li>Use <strong>Marks Capturing</strong> to record exam scores for your classes.</li>
+            <li>Open a class from <strong>My Classes</strong> to jump straight to the record book.</li>
+            <li>Take attendance daily to keep reports accurate.</li>
+            <li>Generate <strong>Report Cards</strong> once all marks are entered.</li>
+          </ul>
+        </section>
+
+        <section class="td-aside-card td-quick-links">
+          <h3 class="td-aside-title">🔗 Quick links</h3>
+          <a routerLink="/teacher/manage-account" class="td-quick-link">👤 My Account</a>
+          <a routerLink="/teacher/record-book" class="td-quick-link">📖 Record Book</a>
+          <a routerLink="/exams" class="td-quick-link">📝 Exams</a>
+          <a routerLink="/attendance/mark" class="td-quick-link">✅ Attendance</a>
+        </section>
+      </aside>
     </div>
+
   </main>
 </div>

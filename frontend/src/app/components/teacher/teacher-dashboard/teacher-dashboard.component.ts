@@ -386,4 +386,9 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
   get mustChangePassword(): boolean {
     return this.authService.getCurrentUser()?.mustChangePassword === true;
   }
+
+  get quickActionCount(): number {
+    const keys = ['recordBook', 'exams', 'attendance', 'reportCards', 'students', 'classes'];
+    return keys.filter(k => this.canAccessModule(k)).length;
+  }
 }

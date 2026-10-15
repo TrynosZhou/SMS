@@ -1,122 +1,191 @@
 <div class="pob-layout">
-
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<!-- Main Content -->
-  <main class="pob-main">
 
-    <!-- Header -->
-    <div class="pob-header">
-      <div class="header-left">
-        <h1 class="page-title">📤 Outbox</h1>
-        <p class="page-sub">Messages you have sent to the school</p>
+  <main class="pob-main">
+    <!-- Hero Header -->
+    <header class="pob-hero">
+      <div class="pob-hero__main">
+        <div class="pob-hero__badges">
+          <span class="pob-pill">Outbox</span>
+          <span class="pob-pill pob-pill--live" *ngIf="lastRefreshedAt && !loading">
+            <span class="pob-live-dot"></span> Updated {{ formatRefreshedAt() }}
+          </span>
+        </div>
+        <h1 class="pob-hero__title">📤 Sent messages</h1>
+        <p class="pob-hero__sub">Messages you have sent to the school</p>
       </div>
-      <div class="header-right">
-        <div class="stat-chip">
-          <span class="stat-value">{{ allMessages.length }}</span>
-          <span class="stat-label">Total Sent</span>
+      <div class="pob-hero__actions">
+        <div class="pob-hero__stats" *ngIf="!loading || allMessages.length > 0">
+          <div class="pob-stat-chip">
+            <span class="pob-stat-num">{{ allMessages.length }}</span>
+            <span class="pob-stat-lbl">Total</span>
+          </div>
+          <div class="pob-stat-chip pob-stat-chip--accent" *ngIf="withAttachmentsCount > 0">
+            <span class="pob-stat-num">{{ withAttachmentsCount }}</span>
+            <span class="pob-stat-lbl">With files</span>
+          </div>
+          <a routerLink="/parent/inbox" class="pob-stat-chip pob-stat-chip--link">
+            <span class="pob-stat-num">{{ inboxCount }}</span>
+            <span class="pob-stat-lbl">Inbox</span>
+          </a>
         </div>
-        <div class="stat-chip accent">
-          <span class="stat-value">{{ withAttachmentsCount }}</span>
-          <span class="stat-label">With Files</span>
-        </div>
-        <button class="refresh-btn" (click)="load()" title="Refresh">
-          <span [class.spinning]="loading">🔄</span>
+        <button type="button" class="pob-refresh" (click)="load()" [disabled]="loading" title="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Alerts -->
+    <div class="pob-alert pob-alert-error" *ngIf="error" role="alert">✕ {{ error }}</div>
+
+    <!-- Toolbar: Filters + Sort -->
+    <div class="pob-toolbar" *ngIf="!loading && allMessages.length > 0">
+      <div class="pob-filters">
+        <button type="button" class="pob-filter" [class.active]="outboxFilter === 'all'" (click)="setFilter('all')">
+          All <span class="pob-filter-count">{{ allMessages.length }}</span>
+        </button>
+        <button type="button" class="pob-filter" [class.active]="outboxFilter === 'attachments'" (click)="setFilter('attachments')">
+          With files <span class="pob-filter-count">{{ withAttachmentsCount }}</span>
+        </button>
+      </div>
+      <div class="pob-toolbar-right">
+        <button type="button" class="pob-tool-btn" (click)="toggleSort()">
+          {{ sortNewestFirst ? '↓ Newest' : '↑ Oldest' }}
         </button>
       </div>
     </div>
 
-    <!-- Alerts -->
-    <div class="pob-alert error" *ngIf="error">
-      <span>⚠️</span> {{ error }}
-    </div>
     <!-- Search Bar -->
-    <div class="pob-search">
+    <div class="search-bar" *ngIf="!loading && allMessages.length > 0">
       <span class="search-icon">🔍</span>
       <input
-        type="text"
         class="search-input"
-        placeholder="Search by subject, recipient or content…"
+        type="text"
         [(ngModel)]="searchQuery"
         (ngModelChange)="applyFilter()"
-      />
-      <button class="clear-search" *ngIf="searchQuery" (click)="searchQuery=''; applyFilter()">✕</button>
+        placeholder="Search subject, recipient, or message…" />
+      <button type="button" class="search-clear" *ngIf="searchQuery" (click)="searchQuery = ''; applyFilter()">✕</button>
     </div>
 
-    <!-- Loading -->
-    <div class="pob-loading" *ngIf="loading">
-      <div class="spinner"></div>
-      <span>Loading sent messages…</span>
-    </div>
-
-    <!-- Empty State -->
-    <div class="pob-empty" *ngIf="!loading && messages.length === 0 && !error">
-      <div class="empty-icon">📤</div>
-      <h3>{{ searchQuery ? 'No results found' : 'No sent messages yet' }}</h3>
-      <p>{{ searchQuery ? 'Try different search terms.' : 'Messages you send will appear here.' }}</p>
-      <a routerLink="/parent/send-message" class="empty-cta" *ngIf="!searchQuery">Send a Message</a>
-    </div>
-
-    <!-- Message List -->
-    <div class="msg-list" *ngIf="!loading && messages.length > 0">
-
-      <div
-        class="msg-card"
-        *ngFor="let m of messages"
-        [class.expanded]="expandedId === m.id"
-      >
-        <!-- Card Header -->
-        <div class="msg-card-header" (click)="toggleExpand(m)">
-          <div class="msg-avatar sent-avatar">{{ recipientInitial(m) }}</div>
-          <div class="msg-meta">
-            <div class="msg-subject">{{ m.subject || '(No subject)' }}</div>
-            <div class="msg-sender">To: <strong>{{ recipientLabel(m) }}</strong></div>
-          </div>
-          <div class="msg-right">
-            <span class="msg-date">{{ formatDate(m.createdAt) }}</span>
-            <span class="attach-badge" *ngIf="getAttachments(m).length > 0" title="Has attachments">
-              📎 {{ getAttachments(m).length }}
-            </span>
-            <span class="expand-icon">{{ expandedId === m.id ? '▲' : '▼' }}</span>
-          </div>
+    <!-- Two Column Layout -->
+    <div class="pob-columns">
+      <div class="pob-col-list">
+        <!-- Skeleton Loaders -->
+        <div class="pob-skeleton-list" *ngIf="loading" aria-busy="true">
+          <div class="pob-skeleton-card" *ngFor="let _ of [0,1,2,3]"></div>
         </div>
 
-        <!-- Expanded Body -->
-        <div class="msg-body" *ngIf="expandedId === m.id">
-          <div class="msg-body-meta">
-            <span class="meta-item">📅 Sent: {{ formatDateFull(m.createdAt) }}</span>
-            <span class="meta-item sent-badge">✅ Delivered</span>
-          </div>
+        <!-- Empty: no messages at all -->
+        <div class="pob-empty" *ngIf="!loading && messages.length === 0 && !searchQuery && outboxFilter === 'all' && !error">
+          <div class="empty-icon">📤</div>
+          <h2>No sent messages yet</h2>
+          <p>When you send a message to the school, it will appear here.</p>
+          <a routerLink="/parent/send-message" class="compose-btn">✉️ Send a message</a>
+        </div>
 
-          <div class="msg-body-text">{{ m.message }}</div>
+        <!-- Empty: search / filter no results -->
+        <div class="pob-empty" *ngIf="!loading && messages.length === 0 && (searchQuery || outboxFilter === 'attachments')">
+          <div class="empty-icon">🔍</div>
+          <h2>No results</h2>
+          <p *ngIf="searchQuery">Nothing matches "<strong>{{ searchQuery }}</strong>"</p>
+          <p *ngIf="!searchQuery && outboxFilter === 'attachments'">No messages with attachments.</p>
+          <button type="button" class="compose-btn ghost" (click)="searchQuery = ''; setFilter('all')">Clear filters</button>
+        </div>
 
-          <!-- Attachments -->
-          <div class="msg-attachments" *ngIf="getAttachments(m).length > 0">
-            <h4 class="attach-title">📎 Attachments</h4>
-            <div class="attach-grid">
-              <a
-                *ngFor="let a of getAttachments(m)"
-                [href]="a.url"
-                target="_blank"
-                rel="noopener"
-                class="attach-item"
-              >
-                <span class="attach-file-icon">{{ a.icon }}</span>
-                <span class="attach-name">{{ a.name }}</span>
-                <span class="attach-dl">⬇</span>
-              </a>
+        <!-- Message List -->
+        <div class="msg-list" *ngIf="!loading && messages.length > 0">
+          <article
+            class="msg-card"
+            *ngFor="let m of messages"
+            [class.expanded]="expandedId === m.id">
+            <div class="msg-card-header" (click)="toggleExpand(m)" role="button" tabindex="0">
+              <div class="msg-left">
+                <div class="msg-avatar sent-avatar">
+                  {{ recipientInitial(m) }}
+                </div>
+                <div class="msg-meta">
+                  <div class="msg-subject-row">
+                    <span class="msg-subject">{{ m.subject || '(No subject)' }}</span>
+                    <span class="delivered-pill">Delivered</span>
+                  </div>
+                  <span class="msg-recipient">To: {{ recipientLabel(m) }}</span>
+                  <p class="msg-preview" *ngIf="expandedId !== m.id">{{ getMessagePreview(m.message) }}</p>
+                </div>
+              </div>
+              <div class="msg-right">
+                <span class="msg-date" [title]="formatDateFull(m.createdAt)">{{ formatDate(m.createdAt) }}</span>
+                <span class="att-badge" *ngIf="getAttachments(m).length > 0">📎 {{ getAttachments(m).length }}</span>
+                <span class="expand-icon">{{ expandedId === m.id ? '▲' : '▼' }}</span>
+              </div>
             </div>
-          </div>
 
-          <!-- Quick action -->
-          <div class="msg-actions">
-            <a routerLink="/parent/send-message" class="follow-up-btn">
-              ✉️ Send Follow-up
-            </a>
-          </div>
+            <!-- Expanded Body -->
+            <div class="msg-body" *ngIf="expandedId === m.id">
+              <div class="msg-body-meta">
+                <span>To: <strong>{{ recipientLabel(m) }}</strong></span>
+                <span>{{ formatDateFull(m.createdAt) }}</span>
+              </div>
+              <div class="msg-text">{{ m.message }}</div>
+
+              <!-- Attachments -->
+              <div class="msg-attachments" *ngIf="getAttachments(m).length > 0">
+                <div class="att-header">📎 Attachments ({{ getAttachments(m).length }})</div>
+                <div class="att-list">
+                  <a
+                    *ngFor="let a of getAttachments(m)"
+                    [href]="a.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="att-item"
+                    download>
+                    <span class="att-icon">{{ a.icon }}</span>
+                    <span class="att-name">{{ a.name }}</span>
+                    <span class="att-dl">⬇</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="msg-actions">
+                <a routerLink="/parent/send-message" class="follow-up-btn">↩ Send follow-up</a>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
 
-    </div>
+      <!-- Aside -->
+      <aside class="pob-col-aside" *ngIf="!loading">
+        <section class="pob-aside-card pob-compose-card">
+          <h3 class="pob-aside-title">✉️ Compose</h3>
+          <p class="pob-aside-text">Need to send a new message to the school?</p>
+          <a routerLink="/parent/send-message" class="compose-btn full">New message</a>
+        </section>
 
+        <section class="pob-aside-card">
+          <h3 class="pob-aside-title">📊 Overview</h3>
+          <ul class="pob-overview-list">
+            <li><span>Total sent</span><strong>{{ allMessages.length }}</strong></li>
+            <li><span>With attachments</span><strong>{{ withAttachmentsCount }}</strong></li>
+            <li><span>Inbox count</span><strong>{{ inboxCount }}</strong></li>
+            <li><span>Showing</span><strong>{{ messages.length }}</strong></li>
+          </ul>
+        </section>
+
+        <section class="pob-aside-card">
+          <h3 class="pob-aside-title">💡 Tips</h3>
+          <ul class="pob-tips-list">
+            <li *ngFor="let tip of tips">{{ tip }}</li>
+          </ul>
+        </section>
+
+        <section class="pob-aside-card pob-quick-links">
+          <h3 class="pob-aside-title">🔗 Quick links</h3>
+          <a routerLink="/parent/send-message" class="pob-quick-link">✉️ Send message</a>
+          <a routerLink="/parent/inbox" class="pob-quick-link">📥 Inbox</a>
+          <a routerLink="/parent/dashboard" class="pob-quick-link">📊 Dashboard</a>
+        </section>
+      </aside>
+    </div>
   </main>
 </div>
