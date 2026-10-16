@@ -1,6 +1,8 @@
 import { Component, EventEmitter, Output, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { StudentService } from '../../../services/student.service';
 import { AuthService } from '../../../services/auth.service';
+import { FinanceService } from '../../../services/finance.service';
+import { SettingsService } from '../../../services/settings.service';
 
 interface AdjustmentStudent {
   id: string;
@@ -15,6 +17,9 @@ interface AdjustmentStudent {
   usesDiningHall: boolean;
   isStaffChild: boolean;
   isExempted: boolean;
+  exemptionType: string | null;
+  exemptionAmount: number | null;
+  exemptionPercent: number | null;
 }
 
 @Component({
@@ -32,6 +37,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
   searchError = '';
   searchResults: AdjustmentStudent[] = [];
   selectedStudent: AdjustmentStudent | null = null;
+  studentBalance: number | null = null;
+  loadingBalance = false;
+  balanceError = '';
+  currencySymbol = 'USD';
 
   editing = false;
   saving = false;
@@ -41,6 +50,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
   formStudentType = 'Day Scholar';
   formUsesTransport = false;
   formUsesDiningHall = false;
+  formIsExempted = false;
+  formExemptionType: string | null = null;
+  formExemptionAmount = '';
+  formExemptionPercent = '';
 
   // Credit / Debit Note popup state
   showAdjustmentNote = false;
@@ -50,18 +63,41 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
   noteSaving = false;
   noteError = '';
 
+  // Exemption popup state
+  showExemptionPopup = false;
+  exemptionSaving = false;
+  exemptionError = '';
+
   @ViewChild('modalBody') modalBody!: ElementRef<HTMLDivElement>;
 
   constructor(
     private studentService: StudentService,
     private authService: AuthService,
+    private financeService: FinanceService,
+    private settingsService: SettingsService,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {
+    this.loadCurrencySymbol();
+  }
 
   ngOnInit(): void {
     if (this.studentId) {
       this.loadStudentById(this.studentId);
     }
+  }
+
+  private loadCurrencySymbol(): void {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        const currency = String(settings?.currencySymbol || '').trim();
+        if (currency) {
+          this.currencySymbol = currency;
+        }
+      },
+      error: () => {
+        // Keep default USD
+      }
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -106,6 +142,145 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
     this.cdr.detectChanges();
   }
 
+  openExemptionPopup(): void {
+    if (!this.selectedStudent || !this.canAdjust()) {
+      return;
+    }
+    this.formExemptionType = this.selectedStudent.exemptionType || 'fixed';
+    this.formExemptionAmount = this.selectedStudent.exemptionAmount ? String(this.selectedStudent.exemptionAmount) : '';
+    this.formExemptionPercent = this.selectedStudent.exemptionPercent ? String(this.selectedStudent.exemptionPercent) : '';
+    this.exemptionError = '';
+    this.showExemptionPopup = true;
+    this.cdr.detectChanges();
+  }
+
+  closeExemptionPopup(): void {
+    this.showExemptionPopup = false;
+    this.exemptionSaving = false;
+    this.exemptionError = '';
+    // Reset form is exempted if popup was cancelled
+    if (!this.formIsExempted) {
+      this.formExemptionType = null;
+      this.formExemptionAmount = '';
+      this.formExemptionPercent = '';
+    }
+    this.cdr.detectChanges();
+  }
+
+  saveExemption(): void {
+    if (!this.selectedStudent) {
+      return;
+    }
+
+    const type = this.formExemptionType;
+    if (!type) {
+      this.exemptionError = 'Please select an exemption type.';
+      return;
+    }
+
+    if (type === 'fixed') {
+      const amount = parseFloat(this.formExemptionAmount);
+      if (!isFinite(amount) || amount <= 0) {
+        this.exemptionError = 'Please enter a valid exemption amount.';
+        return;
+      }
+      this.formExemptionPercent = '';
+    } else if (type === 'percentage') {
+      const percent = parseFloat(this.formExemptionPercent);
+      if (!isFinite(percent) || percent <= 0 || percent > 100) {
+        this.exemptionError = 'Please enter a valid percentage (0-100).';
+        return;
+      }
+      this.formExemptionAmount = '';
+    } else if (type === 'staff_sibling') {
+      this.formExemptionAmount = '';
+      this.formExemptionPercent = '';
+    }
+
+    this.exemptionSaving = true;
+    this.exemptionError = '';
+
+    const payload: any = {
+      isExempted: true,
+      exemptionType: type,
+      exemptionAmount: this.formExemptionAmount ? parseFloat(this.formExemptionAmount) : null,
+      exemptionPercent: this.formExemptionPercent ? parseFloat(this.formExemptionPercent) : null
+    };
+
+    this.studentService.updateStudent(this.selectedStudent.id, payload).subscribe({
+      next: (response: any) => {
+        this.exemptionSaving = false;
+        this.showExemptionPopup = false;
+        this.formIsExempted = true;
+
+        if (this.selectedStudent) {
+          this.selectedStudent.isExempted = true;
+          this.selectedStudent.exemptionType = type;
+          this.selectedStudent.exemptionAmount = payload.exemptionAmount;
+          this.selectedStudent.exemptionPercent = payload.exemptionPercent;
+        }
+
+        this.saveSuccess = 'Exemption settings saved successfully.';
+        this.saveError = '';
+        this.cdr.detectChanges();
+        this.scrollToTop();
+        // Refresh balance after exemption change
+        if (this.selectedStudent) {
+          this.loadStudentBalance(this.selectedStudent.id);
+        }
+      },
+      error: (err: any) => {
+        this.exemptionSaving = false;
+        this.exemptionError = err?.error?.message || 'Failed to save exemption settings. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onExemptionToggleChange(): void {
+    if (this.formIsExempted) {
+      this.openExemptionPopup();
+    } else {
+      // If disabling exemption, confirm and update
+      if (this.selectedStudent && this.selectedStudent.isExempted) {
+        this.saving = true;
+        this.saveError = '';
+
+        const payload: any = {
+          isExempted: false,
+          exemptionType: null,
+          exemptionAmount: null,
+          exemptionPercent: null
+        };
+
+        this.studentService.updateStudent(this.selectedStudent.id, payload).subscribe({
+          next: () => {
+            this.saving = false;
+            if (this.selectedStudent) {
+              this.selectedStudent.isExempted = false;
+              this.selectedStudent.exemptionType = null;
+              this.selectedStudent.exemptionAmount = null;
+              this.selectedStudent.exemptionPercent = null;
+            }
+            this.saveSuccess = 'Exemption removed successfully.';
+            this.cdr.detectChanges();
+            this.scrollToTop();
+            // Refresh balance after exemption removal
+            if (this.selectedStudent) {
+              this.loadStudentBalance(this.selectedStudent.id);
+            }
+          },
+          error: (err: any) => {
+            this.saving = false;
+            this.saveError = err?.error?.message || 'Failed to remove exemption. Please try again.';
+            this.formIsExempted = true; // Revert toggle
+            this.cdr.detectChanges();
+          }
+        });
+      }
+    }
+  }
+
   submitAdjustmentNote(): void {
     if (!this.selectedStudent) {
       return;
@@ -139,6 +314,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
         this.saveError = '';
         this.cdr.detectChanges();
         this.scrollToTop();
+        // Refresh balance after credit/debit note
+        if (this.selectedStudent) {
+          this.loadStudentBalance(this.selectedStudent.id);
+        }
       },
       error: (err: any) => {
         this.noteSaving = false;
@@ -218,7 +397,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
             usesTransport: s.usesTransport === true,
             usesDiningHall: s.usesDiningHall === true,
             isStaffChild: s.isStaffChild === true,
-            isExempted: s.isExempted === true
+            isExempted: s.isExempted === true,
+            exemptionType: s.exemptionType || null,
+            exemptionAmount: s.exemptionAmount || null,
+            exemptionPercent: s.exemptionPercent || null
           }));
         }
         this.cdr.detectChanges();
@@ -241,6 +423,8 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
     this.editing = false;
     this.saveSuccess = '';
     this.saveError = '';
+    this.studentBalance = null;
+    this.balanceError = '';
     this.cdr.detectChanges();
 
     this.studentService.getStudentById(studentId).subscribe({
@@ -261,8 +445,12 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
             usesTransport: response.usesTransport === true,
             usesDiningHall: response.usesDiningHall === true,
             isStaffChild: response.isStaffChild === true,
-            isExempted: response.isExempted === true
+            isExempted: response.isExempted === true,
+            exemptionType: response.exemptionType || null,
+            exemptionAmount: response.exemptionAmount || null,
+            exemptionPercent: response.exemptionPercent || null
           };
+          this.loadStudentBalance(studentId);
         }
         this.cdr.detectChanges();
         this.scrollToTop();
@@ -282,8 +470,11 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
     this.editing = false;
     this.saveSuccess = '';
     this.saveError = '';
+    this.studentBalance = null;
+    this.balanceError = '';
     this.cdr.detectChanges();
     this.scrollToTop();
+    this.loadStudentBalance(student.id);
   }
 
   startEditing(): void {
@@ -293,6 +484,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
     this.formStudentType = this.selectedStudent.studentType;
     this.formUsesTransport = this.selectedStudent.usesTransport;
     this.formUsesDiningHall = this.selectedStudent.usesDiningHall;
+    this.formIsExempted = this.selectedStudent.isExempted;
+    this.formExemptionType = this.selectedStudent.exemptionType;
+    this.formExemptionAmount = this.selectedStudent.exemptionAmount ? String(this.selectedStudent.exemptionAmount) : '';
+    this.formExemptionPercent = this.selectedStudent.exemptionPercent ? String(this.selectedStudent.exemptionPercent) : '';
     this.editing = true;
     this.saveError = '';
     this.saveSuccess = '';
@@ -310,6 +505,15 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
 
   get className(): string {
     return this.selectedStudent?.classEntity?.name || this.selectedStudent?.classLevel || '—';
+  }
+
+  get formattedBalance(): string {
+    if (this.studentBalance === null || this.studentBalance === undefined || typeof this.studentBalance !== 'number') {
+      return '';
+    }
+    const value = Math.abs(this.studentBalance);
+    const sign = this.studentBalance < 0 ? '-' : '';
+    return `${sign}${this.currencySymbol}${value.toFixed(2)}`;
   }
 
   saveAdjustments(): void {
@@ -363,6 +567,10 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
           : 'Adjustments saved successfully. Invoice balances have been updated automatically.';
         this.cdr.detectChanges();
         this.scrollToTop();
+        // Refresh balance after adjustments
+        if (this.selectedStudent) {
+          this.loadStudentBalance(this.selectedStudent.id);
+        }
       },
       error: (err: any) => {
         this.saving = false;
@@ -380,5 +588,29 @@ export class StudentAdjustmentsModalComponent implements OnInit, OnChanges {
     this.saveError = '';
     this.saveSuccess = '';
     this.studentId = null;
+    this.studentBalance = null;
+    this.balanceError = '';
+  }
+
+  private loadStudentBalance(studentId: string): void {
+    this.loadingBalance = true;
+    this.balanceError = '';
+    this.studentBalance = null;
+
+    this.financeService.getStudentBalance(studentId).subscribe({
+      next: (response: any) => {
+        this.loadingBalance = false;
+        // Try multiple possible response structures
+        this.studentBalance = response?.balance ?? response?.totalBalance ?? response?.amount ?? null;
+        console.log('Balance response:', response, 'Parsed balance:', this.studentBalance);
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.loadingBalance = false;
+        this.balanceError = err?.error?.message || 'Failed to load balance';
+        console.error('Balance error:', err);
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

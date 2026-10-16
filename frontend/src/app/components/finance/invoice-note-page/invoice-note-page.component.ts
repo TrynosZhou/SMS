@@ -407,6 +407,14 @@ export class InvoiceNotePageComponent implements OnInit, OnDestroy {
               `${this.currencySymbol} ${amtStr} was added to ${itemLabel} for ${studentName} ` +
               `(Invoice ${invNum}).${balChange}`;
           }
+          
+          // Auto-hide success message
+          setTimeout(() => {
+            if (this.noteSuccess) {
+              this.noteSuccess = '';
+              this.cdr.markForCheck();
+            }
+          }, 8000);
         },
         error: (err: any) => {
           this.noteError =

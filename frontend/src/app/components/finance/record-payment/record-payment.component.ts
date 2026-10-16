@@ -42,6 +42,7 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
   success = '';
   paymentRecorded = false;
   lastPaymentInvoiceId: string | null = null;
+  lastReceiptBase64: string | null = null;
   showConfirmModal = false;
   
   paymentForm = {
@@ -254,19 +255,24 @@ const currentYear = new Date().getFullYear();
       .subscribe({
         next: (data: any) => {
 if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
-          this.matchingStudents = data.matches;
-          this.studentData = null;
-          this.paymentForm.amount = 0;
+          // If preserving payment flag, don't show multiple matches - keep current student data
+          if (!preservePaymentFlag) {
+            this.matchingStudents = data.matches;
+            this.studentData = null;
+            this.paymentForm.amount = 0;
+            return;
+          }
+          // Otherwise, silently ignore multiple matches and keep existing student data
           return;
         }
         this.studentData = data;
         this.paymentForm.amount = data.balance || 0;
-        
+
         // Load recent payments if available
         if (data.recentPayments) {
           this.recentPayments = data.recentPayments;
         }
-        
+
         if (preservePaymentFlag) {
           if (preservedInvoiceId) {
             this.lastPaymentInvoiceId = preservedInvoiceId;
@@ -437,24 +443,12 @@ this.error = error.error?.message || 'Student not found. Please check the detail
         this.success = successMessage;
         this.paymentRecorded = true;
         this.lastPaymentInvoiceId = invoiceIdForPayment;
+        this.lastReceiptBase64 = response?.receiptPdf ? String(response.receiptPdf) : null;
         this.submitting = false;
         this.showConfirmModal = false;
 
-        if (response?.receiptPdf) {
-          this.showReceiptFromBase64(String(response.receiptPdf));
-        } else if (this.lastPaymentInvoiceId) {
-          this.showReceiptPreview();
-        }
-
         // Refresh student balance without clearing the receipt modal
         this.getBalance(true);
-        
-        // Auto-hide success message
-        setTimeout(() => {
-          if (this.success.includes('recorded successfully')) {
-            this.success = '';
-          }
-        }, 10000);
       },
       error: (error: any) => {
         this.error = error.error?.message || 'Failed to record payment. Please try again.';

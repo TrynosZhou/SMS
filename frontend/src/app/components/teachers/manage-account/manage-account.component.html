@@ -318,7 +318,12 @@
 
       <aside class="pma-aside">
         <div class="pma-profile-card">
-          <div class="pma-avatar" aria-hidden="true">{{ getProfileInitials() }}</div>
+          <div class="pma-avatar" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
           <h2 class="pma-profile-name">{{ displayName || currentUsername || 'Parent' }}</h2>
           <span class="pma-role-chip">{{ roleLabel }}</span>
           <p class="pma-sync-note" *ngIf="profileLastSynced">
@@ -454,7 +459,12 @@
   <div class="ma-layout">
     <aside class="ma-sidebar">
       <div class="ma-profile-card">
-        <div class="ma-avatar" aria-hidden="true">{{ getProfileInitials() }}</div>
+        <div class="ma-avatar" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
         <h2 class="ma-profile-name">{{ displayName || currentUsername || 'User' }}</h2>
         <span class="ma-role-chip">{{ roleLabel }}</span>
 

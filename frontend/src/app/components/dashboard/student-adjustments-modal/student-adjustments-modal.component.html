@@ -103,6 +103,19 @@
             <span class="field-label">Student Type</span>
             <span class="field-value">{{ studentTypeDisplay }}</span>
           </div>
+          <div class="record-field">
+            <span class="field-label">Invoice Balance</span>
+            <ng-container *ngIf="loadingBalance">
+              <span class="field-value field-value--loading">Loading…</span>
+            </ng-container>
+            <ng-container *ngIf="!loadingBalance">
+              <span class="field-value field-value--balance" [class.field-value--negative]="studentBalance < 0" [class.field-value--positive]="studentBalance > 0" *ngIf="formattedBalance">
+                {{ formattedBalance }}
+              </span>
+              <span class="field-value field-value--error" *ngIf="balanceError && !formattedBalance" title="{{ balanceError }}">Error</span>
+              <span class="field-value" *ngIf="!balanceError && !formattedBalance">—</span>
+            </ng-container>
+          </div>
         </div>
 
         <div class="adjustment-toggles">
@@ -165,6 +178,21 @@
               <span class="switch-slider"></span>
             </label>
           </div>
+
+          <div class="toggle-group">
+            <label class="toggle-label">
+              <strong>Exempted</strong>
+              <span class="toggle-desc">Student qualifies for fee exemption</span>
+            </label>
+            <label class="switch">
+              <input
+                type="checkbox"
+                [(ngModel)]="formIsExempted"
+                (change)="onExemptionToggleChange()"
+                [disabled]="!editing">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
         </div>
 
         <div class="adjustment-notes-section" *ngIf="canIssueNote()">
@@ -192,6 +220,13 @@
         </div>
 
         <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="closeModal()"
+            [disabled]="saving">
+            Close
+          </button>
           <button
             *ngIf="!editing"
             type="button"
@@ -284,6 +319,85 @@
               [disabled]="noteSaving">
               <span *ngIf="!noteSaving">Apply {{ noteType === 'credit' ? 'Credit' : 'Debit' }} Note</span>
               <span *ngIf="noteSaving">Applying…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exemption Popup -->
+      <div class="note-popup-overlay" *ngIf="showExemptionPopup" (click)="closeExemptionPopup()">
+        <div class="note-popup" (click)="$event.stopPropagation()">
+          <div class="note-popup-header">
+            <h3>Exemption Settings</h3>
+            <button type="button" class="note-popup-close" (click)="closeExemptionPopup()" title="Close">
+              &times;
+            </button>
+          </div>
+          <div class="note-popup-body">
+            <p class="note-popup-desc">
+              Select the type of exemption for this student. Exempted students follow modified fee rules.
+            </p>
+
+            <div class="alert alert-error" *ngIf="exemptionError">{{ exemptionError }}</div>
+
+            <div class="note-field">
+              <label class="field-label">Exemption Type</label>
+              <select
+                class="form-control"
+                [(ngModel)]="formExemptionType"
+                [disabled]="exemptionSaving">
+                <option value="staff_sibling">Staff Sibling</option>
+                <option value="fixed">Fixed Amount</option>
+                <option value="percentage">Percentage</option>
+              </select>
+            </div>
+
+            <div class="note-field" *ngIf="formExemptionType === 'fixed'">
+              <label class="field-label">Exemption Amount</label>
+              <input
+                type="number"
+                class="form-control"
+                [(ngModel)]="formExemptionAmount"
+                min="0.01"
+                step="0.01"
+                placeholder="Enter exemption amount"
+                [disabled]="exemptionSaving">
+            </div>
+
+            <div class="note-field" *ngIf="formExemptionType === 'percentage'">
+              <label class="field-label">Exemption Percentage (%)</label>
+              <input
+                type="number"
+                class="form-control"
+                [(ngModel)]="formExemptionPercent"
+                min="0.01"
+                max="100"
+                step="0.01"
+                placeholder="Enter percentage (0-100)"
+                [disabled]="exemptionSaving">
+            </div>
+
+            <div class="note-field" *ngIf="formExemptionType === 'staff_sibling'">
+              <p class="field-hint">
+                Staff siblings receive fee exemptions as defined by school policy (typically similar to staff children).
+              </p>
+            </div>
+          </div>
+          <div class="note-popup-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="closeExemptionPopup()"
+              [disabled]="exemptionSaving">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="saveExemption()"
+              [disabled]="exemptionSaving">
+              <span *ngIf="!exemptionSaving">Save Exemption</span>
+              <span *ngIf="exemptionSaving">Saving…</span>
             </button>
           </div>
         </div>

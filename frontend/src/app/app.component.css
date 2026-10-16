@@ -52,18 +52,37 @@
    ======================================== */
 
 .top-navbar {
-  --nav-navy: #1e3a5f;
-  --nav-navy-deep: #152a45;
-  --nav-gold: #c9a227;
-  --nav-gold-bright: #f59e0b;
+  /* CSS Variables for easy customization */
+  --header-height: 64px;
+  --header-bg: #1b3560;
+  --header-border: #d9a21b;
+  --header-gold: #d9a21b;
+  --icon-color: #ffffff;
+  --icon-size: 22px;
+  --icon-stroke: 2px;
+  --label-font-size: 11px;
+  --label-color: #ffffff;
+  --action-width: 52px;
+  --action-spacing: 6px;
+  --hover-bg: rgba(255, 255, 255, 0.12);
+  --hover-radius: 6px;
+  --focus-outline: 2px solid #d9a21b;
+  --active-bg: rgba(255, 255, 255, 0.18);
+  --badge-bg: #e5484d;
+  --badge-border: #1b3560;
+  --badge-color: #ffffff;
+  --badge-size: 16px;
+  --view-as-width: 140px;
   --nav-serif: Georgia, "Iowan Old Style", Palatino, "Palatino Linotype", "Times New Roman", serif;
-  background: linear-gradient(180deg, #23456e 0%, #1e3a5f 55%, #152a45 100%);
-  box-shadow: 0 10px 28px rgba(21, 42, 69, 0.18);
+
+  background: var(--header-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
   z-index: 1003;
-  border-bottom: 3px solid var(--nav-gold-bright);
+  border-bottom: 2px solid var(--header-border);
   color: #ffffff;
+  min-height: var(--header-height);
 }
 
 .top-navbar-content {
@@ -74,7 +93,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 64px;
+  min-height: var(--header-height);
   overflow: visible;
 }
 
@@ -121,8 +140,8 @@
 
 .top-navbar-school-name {
   font-family: var(--nav-serif);
-  font-size: 1.18rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
   letter-spacing: 0.01em;
   color: #ffffff;
   white-space: nowrap;
@@ -193,7 +212,7 @@
 .top-nav-identity {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--action-spacing);
 }
 
 .top-nav-identity {
@@ -202,36 +221,59 @@
   border-left: 1px solid rgba(201, 162, 39, 0.45);
 }
 
-.top-nav-icon-btn {
-  display: inline-flex;
+.top-nav-action-btn {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  width: var(--action-width);
+  min-height: 52px;
+  border: none;
+  border-radius: var(--hover-radius);
+  background: transparent;
+  color: var(--icon-color);
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s;
+  padding: 0;
+  position: relative;
+  gap: 2px;
 }
 
-.top-nav-icon-btn:hover {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: var(--nav-gold);
-  color: #fff;
+.top-nav-action-btn:hover {
+  background: var(--hover-bg);
 }
 
-.top-nav-icon-btn--messages {
+.top-nav-action-btn:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
+}
+
+.top-nav-action-btn.active {
+  background: var(--active-bg);
+}
+
+.top-nav-action-btn svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  stroke: var(--icon-color);
+  fill: none;
+}
+
+.top-nav-action-btn--messages {
   position: relative;
   overflow: visible;
 }
 
-.top-nav-icon-btn--website svg,
-.top-nav-icon-btn--facebook svg {
-  width: 16px;
-  height: 16px;
+.top-nav-action-label {
+  font-size: var(--label-font-size);
+  color: var(--label-color);
+  font-weight: 400;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-transform: sentence-case;
 }
 
 /* Header Balance Enquiry modal */
@@ -673,22 +715,22 @@
 
 .top-nav-icon-badge {
   position: absolute;
-  top: -5px;
-  right: -6px;
+  top: -2px;
+  right: -2px;
   z-index: 2;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.28rem;
-  border-radius: 2px;
-  background: #f59e0b;
-  color: #1a2332;
-  font-size: 0.62rem;
-  font-weight: 800;
-  line-height: 1.15rem;
+  min-width: var(--badge-size);
+  height: var(--badge-size);
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  color: var(--badge-color);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: var(--badge-size);
   letter-spacing: 0.02em;
   text-align: center;
-  border: 1px solid #fff8e7;
-  box-shadow: none;
+  border: 2px solid var(--badge-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   pointer-events: none;
 }
 
@@ -755,12 +797,12 @@
 }
 
 .top-nav-view-as-select {
-  min-width: 128px;
+  width: var(--view-as-width);
   height: 32px;
   padding: 0 1.7rem 0 0.55rem;
-  border-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background-color: #fffcf7;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: #ffffff;
   color: #1e3a5f;
   font-size: 0.8rem;
   font-weight: 600;
@@ -772,14 +814,8 @@
 }
 
 .top-navbar-user-name {
-  font-family: Georgia, "Iowan Old Style", Palatino, serif;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Deprecated - username now shown in top-user-trigger */
+  display: none;
 }
 
 .sr-only {
@@ -795,28 +831,7 @@
 }
 
 .top-navbar .theme-toggle {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.top-navbar .theme-toggle:hover {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: #c9a227;
-  transform: none;
-}
-
-.top-navbar .theme-icon {
-  font-size: 1.05rem;
-  line-height: 1;
+  /* Theme toggle now uses top-nav-action-btn styling */
 }
 
 /* Account menu (replaces Logout button) */
@@ -828,16 +843,34 @@
 .top-user-trigger {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid #f59e0b;
-  border-radius: 2px;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border: 2px solid #d9a21b;
+  border-radius: 999px;
   background: rgba(245, 158, 11, 0.16);
   color: #fff;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
+}
+
+.top-user-trigger-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.top-user-trigger-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .top-user-trigger:hover {
@@ -849,11 +882,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: Georgia, Palatino, serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
   line-height: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .top-user-trigger-chevron {
@@ -905,12 +937,10 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 2px;
+  border-radius: 50%;
   background: #1e3a5f;
   border: 1px solid #c9a227;
   color: #fff;
-  font-size: 0.85rem;
-  font-weight: 700;
   flex-shrink: 0;
 }
 
@@ -1928,6 +1958,15 @@
 
   .top-nav-home-btn {
     padding: 0.4rem 0.5rem;
+  }
+
+  .top-nav-action-label {
+    display: none;
+  }
+
+  .top-nav-action-btn {
+    width: 38px;
+    min-height: 38px;
   }
 
   .top-nav-view-as-label {

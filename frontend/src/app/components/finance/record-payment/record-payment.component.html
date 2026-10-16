@@ -1,6 +1,5 @@
 <div class="rp-page">
-  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="rp-toast-stack" *ngIf="error || success">
+<div class="rp-toast-stack" *ngIf="error">
     <div class="rp-toast rp-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="rp-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -193,6 +192,11 @@
             </table>
           </div>
         </section>
+
+        <div class="rp-confirmation-message" *ngIf="success" role="status">
+          <span class="rp-confirmation-icon" aria-hidden="true">✓</span>
+          <span class="rp-confirmation-text">{{ success }}</span>
+        </div>
 
         <div class="rp-notice" *ngIf="studentData.isStaffChild || studentData.isExempted">
           <span class="rp-notice-icon" aria-hidden="true">ℹ️</span>
