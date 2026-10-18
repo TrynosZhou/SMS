@@ -27,15 +27,15 @@
           aria-label="Refresh students">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <a routerLink="/students/enroll" class="ms-hero-btn" *ngIf="!isTeacher && !isLogisticsView">Enroll</a>
+        <a routerLink="/students/enroll" class="ms-hero-btn" *ngIf="!isTeacher && !isAccountant && !isLogisticsView">Enroll</a>
         <a routerLink="/students/new" class="ms-hero-btn ms-hero-btn--solid" *ngIf="!isTeacher" title="Add student">+ Add Student</a>
       </div>
     </div>
 
     <nav class="ms-cross-links" aria-label="Related student pages" *ngIf="!isLogisticsView">
-      <a routerLink="/students/new">Register</a>
-      <a routerLink="/students/enroll">Enroll</a>
-      <a routerLink="/students/transfer">Transfer</a>
+      <a routerLink="/students/new" *ngIf="!isTeacher">Register</a>
+      <a routerLink="/students/enroll" *ngIf="!isAccountant">Enroll</a>
+      <a routerLink="/students/transfer" *ngIf="!isAccountant">Transfer</a>
       <a routerLink="/classes">Classes</a>
       <a routerLink="/admin/admissions">Admissions</a>
     </nav>

@@ -26,13 +26,13 @@
           <span [class.spinning]="loading">↻</span>
         </button>
         <a routerLink="/students" class="es-hero-btn es-hero-btn--white">← Students</a>
-        <a routerLink="/students/new" class="es-hero-btn es-hero-btn--accent">+ Register student</a>
+        <a routerLink="/students/new" class="es-hero-btn es-hero-btn--accent" *ngIf="canRegisterStudent()">+ Register student</a>
       </div>
     </div>
 
     <nav class="es-cross-links" aria-label="Related student pages">
       <a routerLink="/students">All students</a>
-      <a routerLink="/students/new">New registration</a>
+      <a routerLink="/students/new" *ngIf="canRegisterStudent()">New registration</a>
       <a routerLink="/students/transfer">Transfer student</a>
       <a routerLink="/classes">Classes</a>
       <a routerLink="/admin/admissions">Admissions</a>
@@ -165,7 +165,7 @@
     <div class="es-empty-actions" *ngIf="hasActiveFilters()">
       <button type="button" class="es-btn es-btn--outline" (click)="clearFilters()">Clear filters</button>
     </div>
-    <div class="es-empty-actions" *ngIf="!hasActiveFilters()">
+    <div class="es-empty-actions" *ngIf="!hasActiveFilters() && canRegisterStudent()">
       <a routerLink="/students/new" class="es-btn es-btn--primary">Register new student</a>
     </div>
   </section>

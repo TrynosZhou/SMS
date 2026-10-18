@@ -155,10 +155,19 @@ constructor(
   }
 
   canEnroll(): boolean {
-    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin') || this.authService.hasRole('teacher');
+    // Enrollment is restricted to teachers, class teachers and administrators.
+    return (
+      this.authService.hasRole('admin') ||
+      this.authService.hasRole('superadmin') ||
+      this.authService.hasRole('teacher')
+    );
   }
   isAdmin(): boolean {
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+  }
+  /** Registration of brand-new students is handled by administrators and accountants only. */
+  canRegisterStudent(): boolean {
+    return !this.authService.hasRole('teacher') && (this.authService.isAdmin() || this.authService.isAccountant());
   }
 
   clearAlert(kind: 'success' | 'error'): void {

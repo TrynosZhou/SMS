@@ -1036,6 +1036,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   showStudentsRegistrationLink(): boolean {
+    // Teachers may enroll students into their classes, but never register new ones.
+    if (this.isTeacher()) {
+      return false;
+    }
     return (
       this.isAdmin() ||
       this.isSuperAdmin() ||
@@ -1091,6 +1095,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   canAccessEnrolStudent(): boolean {
+    // Enrollment is an academic operation: teachers, class teachers and administrators only.
+    if (this.isAccountant()) {
+      return false;
+    }
     return (
       this.isAdmin() ||
       this.isSuperAdmin() ||
@@ -1171,7 +1179,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return (
       (this.isAdmin() ||
         this.isSuperAdmin() ||
-        this.authService.hasRole('accountant') ||
         this.canAccessModule('studentManager')) &&
       this.matchesSidebarFilter('Class Manager', 'Transfer Student')
     );

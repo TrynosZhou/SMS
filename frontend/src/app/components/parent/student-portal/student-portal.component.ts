@@ -108,11 +108,6 @@ export class StudentPortalComponent implements OnInit, OnDestroy {
       || this.studentDisplayName(this.student);
   }
 
-  get studentInitial(): string {
-    const name = this.studentFullName || this.studentDisplayName(this.student);
-    return name.charAt(0).toUpperCase();
-  }
-
   get subjectCount(): number {
     return Array.isArray(this.reportCard?.subjects) ? this.reportCard.subjects.length : 0;
   }

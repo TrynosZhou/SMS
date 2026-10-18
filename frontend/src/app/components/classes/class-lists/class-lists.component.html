@@ -41,8 +41,8 @@
       <a routerLink="/classes">Manage classes</a>
       <a routerLink="/classes/new">Add class</a>
       <a routerLink="/students">Students</a>
-      <a routerLink="/students/enroll_student">Enroll student</a>
-      <a routerLink="/students/transfer">Transfer student</a>
+      <a routerLink="/students/enroll_student" *ngIf="!isAccountant">Enroll student</a>
+      <a routerLink="/students/transfer" *ngIf="!isAccountant">Transfer student</a>
       <a routerLink="/teachers">Teachers</a>
     </nav>
 

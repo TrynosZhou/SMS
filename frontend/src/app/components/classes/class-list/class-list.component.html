@@ -38,7 +38,7 @@
       <a routerLink="/classes/lists">Class lists</a>
       <a routerLink="/classes/new">Add class</a>
       <a routerLink="/students">Students</a>
-      <a routerLink="/students/enroll_student">Enroll</a>
+      <a routerLink="/students/enroll_student" *ngIf="!isAccountant">Enroll</a>
       <a routerLink="/teachers">Teachers</a>
       <a routerLink="/subjects">Subjects</a>
     </nav>

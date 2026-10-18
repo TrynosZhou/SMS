@@ -58,6 +58,7 @@ selectedStudent: any = null;
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
   isTeacher = false;
+  isAccountant = false;
   groupedStudents: Array<{ gender: string; students: any[] }> = [];
 
   selectedStudentIds = new Set<string>();
@@ -76,6 +77,7 @@ selectedStudent: any = null;
   ngOnInit() {
     const user = this.authService.getCurrentUser();
     this.isTeacher = !!user && String(user.role).toLowerCase() === 'teacher';
+    this.isAccountant = !!user && String(user.role).toLowerCase() === 'accountant';
     const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
     if (logisticsMode === 'transport') {
       this.selectedType = 'Day Scholar';

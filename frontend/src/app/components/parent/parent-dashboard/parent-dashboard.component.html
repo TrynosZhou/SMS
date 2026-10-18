@@ -41,28 +41,36 @@
       <!-- Stats -->
       <div class="pdb-stats" *ngIf="students.length > 0">
         <article class="pdb-stat pdb-stat--violet">
-          <span class="pdb-stat__icon">👨‍👩‍👧‍👦</span>
+          <span class="pdb-stat__icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </span>
           <div>
             <div class="pdb-stat__val">{{ students.length }}</div>
             <div class="pdb-stat__lbl">Linked students</div>
           </div>
         </article>
         <article class="pdb-stat pdb-stat--rose" [class.pdb-stat--alert]="totalOutstanding > 0">
-          <span class="pdb-stat__icon">💰</span>
+          <span class="pdb-stat__icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </span>
           <div>
             <div class="pdb-stat__val">{{ currencySymbol }} {{ totalOutstanding | number:'1.0-0' }}</div>
             <div class="pdb-stat__lbl">Outstanding fees</div>
           </div>
         </article>
         <article class="pdb-stat pdb-stat--emerald">
-          <span class="pdb-stat__icon">✅</span>
+          <span class="pdb-stat__icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
           <div>
             <div class="pdb-stat__val">{{ studentsCleared }}</div>
             <div class="pdb-stat__lbl">Fees cleared</div>
           </div>
         </article>
         <article class="pdb-stat pdb-stat--sky" [class.pdb-stat--alert]="unreadMessageCount > 0">
-          <span class="pdb-stat__icon">📧</span>
+          <span class="pdb-stat__icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </span>
           <div>
             <div class="pdb-stat__val">{{ unreadMessageCount }}</div>
             <div class="pdb-stat__lbl">Unread messages</div>
@@ -99,23 +107,31 @@
                 (click)="viewReportCardForFirstStudent()"
                 [class.qa-locked]="(getFirstStudent()?.termBalance || 0) > 0"
                 [disabled]="(getFirstStudent()?.termBalance || 0) > 0">
-                <span class="qa-icon">📄</span>
+                <span class="qa-icon" aria-hidden="true">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </span>
                 <span class="qa-label">Report card</span>
                 <span class="qa-hint" *ngIf="(getFirstStudent()?.termBalance || 0) > 0">Clear balance first</span>
                 <span class="qa-hint success" *ngIf="(getFirstStudent()?.termBalance || 0) === 0">Ready to view</span>
               </button>
               <button type="button" class="qa-tile" (click)="previewCurrentInvoice()" [disabled]="invoiceLoading">
-                <span class="qa-icon">👁</span>
+                <span class="qa-icon" aria-hidden="true">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </span>
                 <span class="qa-label">Preview invoice</span>
                 <span class="qa-hint">{{ invoiceLoading ? 'Loading…' : 'Latest PDF' }}</span>
               </button>
               <button type="button" class="qa-tile" (click)="downloadCurrentInvoice()" [disabled]="invoiceLoading">
-                <span class="qa-icon">⬇️</span>
+                <span class="qa-icon" aria-hidden="true">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </span>
                 <span class="qa-label">Download invoice</span>
                 <span class="qa-hint">Save to device</span>
               </button>
               <a class="qa-tile qa-link" routerLink="/parent/send-message">
-                <span class="qa-icon">✉️</span>
+                <span class="qa-icon" aria-hidden="true">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                </span>
                 <span class="qa-label">Send message</span>
                 <span class="qa-hint">Contact school</span>
               </a>
@@ -129,17 +145,22 @@
               <button type="button" class="hdr-btn primary sm" (click)="linkMoreStudents()">➕ Link more</button>
             </div>
             <div class="students-grid">
-              <article class="student-card" *ngFor="let student of students">
-                <div class="sc-header">
-                  <div class="sc-avatar">{{ studentInitials(student) }}</div>
-                  <div class="sc-name-block">
-                    <div class="sc-name">{{ student.firstName }} {{ student.lastName }}</div>
-                    <div class="sc-number">{{ student.studentNumber }}</div>
-                  </div>
-                  <span class="sc-badge" [class.cleared]="(student.termBalance || 0) === 0" [class.owing]="(student.termBalance || 0) > 0">
-                    {{ (student.termBalance || 0) === 0 ? 'Cleared' : 'Balance due' }}
-                  </span>
+            <article class="student-card" *ngFor="let student of students">
+              <div class="sc-header">
+                <div class="sc-avatar" aria-hidden="true">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
                 </div>
+                <div class="sc-name-block">
+                  <div class="sc-name">{{ student.firstName }} {{ student.lastName }}</div>
+                  <div class="sc-number">🆔 {{ student.studentNumber }}</div>
+                </div>
+                <span class="sc-badge" [class.cleared]="(student.termBalance || 0) === 0" [class.owing]="(student.termBalance || 0) > 0">
+                  {{ (student.termBalance || 0) === 0 ? 'Cleared' : 'Balance due' }}
+                </span>
+              </div>
                 <div class="sc-details">
                   <div class="sc-detail-row">
                     <span class="sc-detail-lbl">Class</span>
@@ -176,6 +197,7 @@
         </div>
 
         <aside class="pdb-col-aside">
+          <!-- Inbox -->
           <section class="section-card pdb-inbox-card">
             <div class="section-title-row">
               <h2 class="section-title">📬 Recent messages</h2>
@@ -192,6 +214,28 @@
                   <span class="pdb-inbox-meta">{{ m.senderName || 'School' }} · {{ formatMessageDate(m.createdAt) }}</span>
                 </a>
               </li>
+            </ul>
+          </section>
+
+          <!-- Quick links -->
+          <section class="section-card">
+            <h2 class="section-title">🔗 Quick links</h2>
+            <div class="pdb-quick-links">
+              <a routerLink="/parent/results" class="pr-quick-link">🎓 Academic Results</a>
+              <a routerLink="/parent/invoice-statement" class="pr-quick-link">💰 Financial Ledger</a>
+              <a routerLink="/parent/link-students" class="pr-quick-link">➕ Link a Student</a>
+              <a routerLink="/parent/manage-account" class="pr-quick-link">👤 Profile Settings</a>
+            </div>
+          </section>
+
+          <!-- Tips -->
+          <section class="section-card pr-aside-card--tips">
+            <h2 class="section-title">💡 Helpful tips</h2>
+            <ul class="pr-tips">
+              <li>Keep your <strong>Student ID</strong> ready when linking new children.</li>
+              <li>Report card access requires <strong>cleared tuition</strong> balances.</li>
+              <li>Check <strong>Recent Messages</strong> for school-wide updates.</li>
+              <li>Use the <strong>Refresh</strong> button to see the latest fee updates.</li>
             </ul>
           </section>
         </aside>

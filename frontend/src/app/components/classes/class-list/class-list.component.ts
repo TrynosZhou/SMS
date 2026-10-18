@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { ClassService } from '../../../services/class.service';
+import { AuthService } from '../../../services/auth.service';
 
 type ClassViewMode = 'table' | 'cards';
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -25,6 +26,7 @@ export class ClassListComponent implements OnInit, OnDestroy {
   error = '';
   success = '';
   lastLoadedAt: Date | null = null;
+  isAccountant = false;
 
   searchTerm = '';
   statusFilter: StatusFilter = 'all';
@@ -45,10 +47,12 @@ export class ClassListComponent implements OnInit, OnDestroy {
     private classService: ClassService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
+    this.isAccountant = this.authService.hasRole('accountant');
     this.searchInput$
       .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((q) => {

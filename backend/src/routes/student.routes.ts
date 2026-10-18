@@ -32,9 +32,9 @@ router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNT
 router.get('/', requireModuleView('students'), getStudents);
 router.put('/:id/status', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), correctStudentStatus);
 router.post('/status-corrections/bulk', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), bulkCorrectStudentStatus);
-router.post('/enroll', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), enrollStudent);
+router.post('/enroll', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), enrollStudent);
 router.post('/promote', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), promoteStudents);
-router.post('/transfer', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), transferStudent);
+router.post('/transfer', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), transferStudent);
 router.get('/logistics/transport/bus-id-cards', generateTransportBusIdCards);
 router.get('/logistics/transport/report', generateTransportStudentsReport);
 router.get('/logistics/dining-hall/report', generateDiningHallStudentsReport);

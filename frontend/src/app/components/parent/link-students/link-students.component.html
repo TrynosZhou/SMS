@@ -5,9 +5,9 @@
     <header class="pls-hero">
       <div class="pls-hero__main">
         <div class="pls-hero__badges">
-          <span class="pls-pill">Parent Portal</span>
+          <span class="pls-pill">Portal Access</span>
           <span class="pls-pill pls-pill--live" *ngIf="!loading">
-            <span class="pls-live-dot"></span> {{ linkedStudents.length }} linked
+            <span class="pls-live-dot"></span> {{ linkedStudents.length }} Student{{ linkedStudents.length === 1 ? '' : 's' }} Linked
           </span>
         </div>
         <h1 class="pls-hero__title">Link Students</h1>
@@ -117,29 +117,34 @@
 
           <div class="pls-empty" *ngIf="!loading && linkedStudents.length === 0">
             <div class="pls-empty__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
             </div>
-            <h3>No students linked yet</h3>
-            <p>Use the form to link your first child.</p>
+            <h3>No linked students</h3>
+            <p>Enter a Student ID to connect your child's profile.</p>
           </div>
 
           <div class="pls-student-list" *ngIf="!loading && linkedStudents.length > 0">
             <article class="pls-student" *ngFor="let s of linkedStudents">
               <div class="pls-unlink" *ngIf="confirmUnlinkId === s.id">
-                <p>Remove <strong>{{ formatStudentName(s) }}</strong> from your account?</p>
+                <p>Unlink <strong>{{ formatStudentName(s) }}</strong> from your account?</p>
                 <div class="pls-unlink__actions">
-                  <button type="button" class="pls-unlink__yes" (click)="confirmUnlink()">Yes, unlink</button>
+                  <button type="button" class="pls-unlink__yes" (click)="confirmUnlink()">Unlink</button>
                   <button type="button" class="pls-unlink__no" (click)="cancelUnlink()">Cancel</button>
                 </div>
               </div>
 
               <div class="pls-student__body" [class.pls-student__body--dimmed]="confirmUnlinkId === s.id">
-                <div class="pls-student__avatar" aria-hidden="true">{{ studentInitials(s) }}</div>
+                <div class="pls-student__avatar" aria-hidden="true">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
                 <div class="pls-student__info">
                   <h3 class="pls-student__name">{{ formatStudentName(s) }}</h3>
                   <div class="pls-student__meta">

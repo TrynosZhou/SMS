@@ -143,12 +143,6 @@ export class LinkStudentsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  studentInitials(student: any): string {
-    const f = (student.firstName || '').charAt(0).toUpperCase();
-    const l = (student.lastName || '').charAt(0).toUpperCase();
-    return (f + l) || '?';
-  }
-
   formatStudentName(student: any): string {
     const name = [student?.lastName, student?.firstName].filter(Boolean).join(' ').trim();
     return name || student?.fullName?.trim() || 'Student';

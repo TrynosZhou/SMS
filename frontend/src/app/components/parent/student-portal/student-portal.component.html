@@ -60,7 +60,14 @@
 
   <!-- No linked students -->
   <div class="pr-empty" *ngIf="!loadingStudents && students.length === 0 && !error">
-    <div class="pr-empty__icon">👨‍👩‍👧‍👦</div>
+    <div class="pr-empty__icon" aria-hidden="true">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    </div>
     <h3>No linked students</h3>
     <p>Link your account to your child’s student profile to view their report cards.</p>
     <button type="button" class="src-btn src-btn--primary" (click)="linkStudents()">🔗 Link a student</button>
@@ -72,8 +79,11 @@
 
       <!-- Student summary card -->
       <section class="pr-student-card" *ngIf="student" [@fadeIn]>
-        <div class="pr-student-card__avatar">
-          {{ studentInitial }}
+        <div class="pr-student-card__avatar" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
         </div>
         <div class="pr-student-card__info">
           <div class="pr-student-card__name">{{ studentFullName }}</div>
@@ -216,7 +226,15 @@
 
       <!-- PDF preview unavailable -->
       <div class="pr-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && !error && pdfLoadError" [@fadeIn]>
-        <div class="pr-empty__icon">📄</div>
+        <div class="pr-empty__icon" aria-hidden="true">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+            <line x1="9" y1="11" x2="15" y2="11"></line>
+            <line x1="9" y1="19" x2="15" y2="19"></line>
+          </svg>
+        </div>
         <h3>PDF preview unavailable</h3>
         <p>Could not render the report card PDF. Try <strong>Refresh</strong> or use <strong>Download PDF</strong> if available.</p>
         <button type="button" class="src-btn src-btn--secondary" (click)="viewResults()">🔄 Retry</button>
@@ -224,7 +242,14 @@
 
       <!-- No report card found -->
       <div class="pr-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && error" [@fadeIn]>
-        <div class="pr-empty__icon">📄</div>
+        <div class="pr-empty__icon" aria-hidden="true">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            <line x1="12" y1="13" x2="12" y2="13.01"></line>
+          </svg>
+        </div>
         <h3>No report card found</h3>
         <p>No report card is available for <strong>{{ getExamTypeLabel(selectedExamType) }}</strong> in <strong>{{ selectedTerm }}</strong>.<br>
            Try another exam type or term, or contact the school.</p>
@@ -242,6 +267,18 @@
           <li><strong>View results</strong> — click View Results to generate the report card.</li>
           <li><strong>Download</strong> — save the PDF for your records.</li>
         </ol>
+      </section>
+
+      <section class="pr-aside-card pr-aside-card--tips">
+        <h3 class="pr-aside-title">💡 Tips for parents</h3>
+        <ul class="pr-tips">
+          <li>Results are shown only for <strong>students linked</strong> to your parent account.</li>
+          <li>Linked more than one child? Use the <strong>Student</strong> dropdown to switch between them.</li>
+          <li>A child missing from the list? Use <strong>Link a student</strong> to connect your account.</li>
+          <li>Select the correct <strong>academic term</strong> and <strong>exam type</strong> — results are published per term and exam.</li>
+          <li>No report card shown usually means results for that term are <strong>not yet published</strong>. Try another term or contact the school.</li>
+          <li>Use <strong>Download PDF</strong> to save or print a copy of your child’s report card.</li>
+        </ul>
       </section>
 
       <section class="pr-aside-card">
