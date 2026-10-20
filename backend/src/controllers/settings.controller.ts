@@ -182,13 +182,14 @@ export const getPublicBranding = async (_req: Request, res: Response) => {
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
       take: 1,
-      select: ['schoolName', 'schoolLogo']
+      select: ['schoolName', 'schoolLogo', 'schoolMotto']
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     res.json({
       schoolName: String(settings?.schoolName || '').trim(),
-      schoolLogo: settings?.schoolLogo ?? null
+      schoolLogo: settings?.schoolLogo ?? null,
+      schoolMotto: String(settings?.schoolMotto || '').trim()
     });
   } catch (error: any) {
     console.error('Error fetching public branding:', error);

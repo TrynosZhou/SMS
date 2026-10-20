@@ -103,10 +103,12 @@ export class LoginComponent implements OnInit {
 
   private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
   private static readonly SCHOOL_LOGO_CACHE_KEY = 'sms_schoolDisplayLogo';
+  private static readonly SCHOOL_MOTTO_CACHE_KEY = 'sms_schoolMotto';
 
   /** Full school name from Settings (login hero). */
   schoolName = '';
   schoolLogo: string | null = null;
+  schoolMotto = '';
 
   get schoolDisplayName(): string {
     const n = this.schoolName.trim();
@@ -1007,11 +1009,15 @@ export class LoginComponent implements OnInit {
     try {
       const cachedName = sessionStorage.getItem(LoginComponent.SCHOOL_NAME_CACHE_KEY);
       const cachedLogo = sessionStorage.getItem(LoginComponent.SCHOOL_LOGO_CACHE_KEY);
+      const cachedMotto = sessionStorage.getItem(LoginComponent.SCHOOL_MOTTO_CACHE_KEY);
       if (cachedName?.trim()) {
         this.schoolName = cachedName.trim();
       }
       if (cachedLogo) {
         this.schoolLogo = this.normalizeSchoolLogoSrc(cachedLogo);
+      }
+      if (cachedMotto?.trim()) {
+        this.schoolMotto = cachedMotto.trim();
       }
     } catch {
       // ignore sessionStorage errors
@@ -1025,6 +1031,7 @@ export class LoginComponent implements OnInit {
 
         const name = String(branding.schoolName || '').trim();
         const logo = this.normalizeSchoolLogoSrc(branding.schoolLogo ?? null);
+        const motto = String((branding as any).schoolMotto || '').trim();
 
         if (name) {
           this.schoolName = name;
@@ -1041,6 +1048,14 @@ export class LoginComponent implements OnInit {
             if (logo.length < 500_000) {
               sessionStorage.setItem(LoginComponent.SCHOOL_LOGO_CACHE_KEY, logo);
             }
+          } catch {
+            // ignore
+          }
+        }
+        if (motto) {
+          this.schoolMotto = motto;
+          try {
+            sessionStorage.setItem(LoginComponent.SCHOOL_MOTTO_CACHE_KEY, motto);
           } catch {
             // ignore
           }

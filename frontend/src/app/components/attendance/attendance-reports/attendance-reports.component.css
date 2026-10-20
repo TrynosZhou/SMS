@@ -270,6 +270,42 @@
 
 .att-status-strip strong { color: #1e3a5f; font-weight: 700; }
 
+/* Success banner for inline confirmation */
+.att-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-left: 4px solid #059669;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #047857;
+  font-weight: 600;
+  animation: att-slide-down 0.3s ease;
+}
+
+@keyframes att-slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.att-success-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #059669;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 /* Panels */
 .att-panel {
   background: #fff;
@@ -872,6 +908,35 @@
   font-weight: 700;
 }
 
+.att-num--editable {
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+  padding: 6px 10px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.att-num--editable:hover {
+  background: #f1f5f9;
+  color: #f59e0b;
+}
+
+.att-num--editable::after {
+  content: '✎';
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #f59e0b;
+}
+
+.att-num--editable:hover::after {
+  opacity: 1;
+}
+
 .att-progress {
   height: 8px;
   background: #e2e8f0;
@@ -1014,4 +1079,177 @@
   .att-hero__main { flex-direction: column; }
   .att-student-card__stats { grid-template-columns: repeat(2, 1fr); }
   .att-hero-toolbar .att-hero-btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Edit Attendance Modal */
+.att-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: att-fade-in 0.2s ease;
+}
+
+@keyframes att-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.att-modal {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-top: 4px solid #1e3a5f;
+  border-radius: 12px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  animation: att-slide-up 0.25s ease;
+}
+
+@keyframes att-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.att-modal__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.att-modal__head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+.att-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.att-modal__close:hover {
+  background: #e2e8f0;
+  color: #1e3a5f;
+}
+
+.att-modal__body {
+  padding: 1.5rem;
+}
+
+.att-modal-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.att-modal-student {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.att-modal-student strong {
+  color: #1e3a5f;
+  font-weight: 700;
+}
+
+.att-modal-student span {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.att-modal-field,
+.att-modal-current {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.att-modal-field span,
+.att-modal-current span {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.att-modal-field strong,
+.att-modal-current strong {
+  color: #1e3a5f;
+  font-weight: 700;
+}
+
+.att-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.att-modal-form label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.att-modal-form .att-input {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-color: #94a3b8;
+}
+
+.att-modal-form .att-input:focus {
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+}
+
+.att-modal-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.att-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.att-modal__footer .att-btn {
+  min-width: 100px;
 }

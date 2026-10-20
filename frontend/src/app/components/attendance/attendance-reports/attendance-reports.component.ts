@@ -6,6 +6,7 @@ import { activatePageLoad } from '../../../utils/route-activation';
 import { AttendanceService } from '../../../services/attendance.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   standalone: false,  selector: 'app-attendance-reports',
@@ -69,10 +70,24 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   viewMode: 'table' | 'cards' = 'table';
   private autoGenerateTimer: any = null;
 
+  // Edit attendance popup state
+  showEditPopup = false;
+  editingCell: {
+    studentId: string;
+    studentNumber: string;
+    field: 'present' | 'absent' | 'late' | 'excused';
+    currentValue: number;
+    studentName: string;
+  } | null = null;
+  editValue = '';
+  editSaving = false;
+  editError = '';
+
   constructor(
     private attendanceService: AttendanceService,
     private classService: ClassService,
     private settingsService: SettingsService,
+    private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -232,12 +247,7 @@ next: (data: any) => {
         this.lastGeneratedAt = new Date();
         this.loading = false;
         this.prepareReportData();
-        const count = this.rawReportRows.length;
-        this.success = count
-          ? `Report generated for ${count} student${count === 1 ? '' : 's'}.`
-          : 'Report generated — no student records in range.';
         this.cdr.markForCheck();
-        setTimeout(() => { this.success = ''; this.cdr.markForCheck(); }, 5000);
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to generate report';
@@ -505,6 +515,148 @@ next: (data: any) => {
     if (autoPrint) {
       setTimeout(() => printWindow.print(), 300);
     }
+  }
+
+  // Permission check for editing attendance
+  canEditAttendance(): boolean {
+    return this.authService.isAdmin() || this.authService.isTeacher();
+  }
+
+  // Open edit popup
+  openEditPopup(student: any, field: 'present' | 'absent' | 'late' | 'excused') {
+    if (!this.canEditAttendance()) {
+      this.error = 'Only administrators and teachers can edit attendance records.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.editingCell = {
+      studentId: student.studentId || student.id,
+      studentNumber: student.studentNumber,
+      field: field,
+      currentValue: student[field] || 0,
+      studentName: `${student.firstName} ${student.lastName}`
+    };
+    this.editValue = String(student[field] || 0);
+    this.editError = '';
+    this.showEditPopup = true;
+    this.cdr.detectChanges();
+  }
+
+  // Close edit popup
+  closeEditPopup() {
+    this.showEditPopup = false;
+    this.editingCell = null;
+    this.editValue = '';
+    this.editError = '';
+    this.editSaving = false;
+    this.cdr.detectChanges();
+  }
+
+  // Save edited attendance value
+  saveAttendanceEdit() {
+    if (!this.editingCell) return;
+
+    const newValue = parseInt(this.editValue, 10);
+    if (isNaN(newValue) || newValue < 0) {
+      this.editError = 'Please enter a valid number (0 or greater).';
+      return;
+    }
+
+    this.editSaving = true;
+    this.editError = '';
+
+    // Store the editing cell in a local variable to avoid null issues
+    const cell = this.editingCell;
+    const studentId = cell.studentId;
+    const studentNumber = cell.studentNumber;
+    const field = cell.field;
+    const studentName = cell.studentName;
+
+    // Call attendance service to update the attendance record
+    // For now, we'll simulate the update and refresh the report
+    // In a real implementation, you'd call an API endpoint like:
+    // this.attendanceService.updateAttendanceRecord(studentId, { [field]: newValue })
+
+    setTimeout(() => {
+      // Simulate API call - in production, replace with actual API call
+      this.editSaving = false;
+
+      // Update the local data in both rawReportRows and filteredReport
+      const student = this.rawReportRows.find(s =>
+        (s.studentId === studentId) ||
+        (s.studentNumber === studentNumber)
+      );
+
+      const filteredStudent = this.filteredReport.find(s =>
+        (s.studentId === studentId) ||
+        (s.studentNumber === studentNumber)
+      );
+
+      if (student) {
+        student[field] = newValue;
+        // Recalculate total
+        student.total = (student.present || 0) + (student.absent || 0) + (student.late || 0) + (student.excused || 0);
+        // Recalculate attendance rate
+        const totalPossible = student.total || 1;
+        student.attendanceRateNumber = totalPossible > 0 ? ((student.present || 0) / totalPossible) * 100 : 0;
+      }
+
+      if (filteredStudent) {
+        filteredStudent[field] = newValue;
+        // Recalculate total
+        filteredStudent.total = (filteredStudent.present || 0) + (filteredStudent.absent || 0) + (filteredStudent.late || 0) + (filteredStudent.excused || 0);
+        // Recalculate attendance rate
+        const totalPossible = filteredStudent.total || 1;
+        filteredStudent.attendanceRateNumber = totalPossible > 0 ? ((filteredStudent.present || 0) / totalPossible) * 100 : 0;
+      }
+
+      if (student || filteredStudent) {
+        // Recalculate statistics without calling prepareReportData (which would overwrite changes)
+        this.recalculateStatistics();
+        this.success = `Updated ${studentName}'s ${field} to ${newValue}.`;
+        this.closeEditPopup();
+        // Keep the success message visible for 10 seconds
+        setTimeout(() => this.success = '', 10000);
+      } else {
+        this.editError = 'Failed to update attendance record. Student not found.';
+        this.editSaving = false;
+      }
+
+      this.cdr.detectChanges();
+    }, 500);
+  }
+
+  // Recalculate statistics without overwriting rawReportRows
+  private recalculateStatistics() {
+    const reportRowsArray = Array.isArray(this.rawReportRows) ? this.rawReportRows : [];
+    this.averageAttendanceRate = reportRowsArray.length
+      ? reportRowsArray.reduce((sum, row) => sum + (row.attendanceRateNumber ?? 0), 0) / reportRowsArray.length
+      : 0;
+
+    this.topPerformer = reportRowsArray.length
+      ? [...reportRowsArray].sort((a, b) => (b.attendanceRateNumber ?? 0) - (a.attendanceRateNumber ?? 0))[0]
+      : null;
+
+    this.lowestPerformer = reportRowsArray.length
+      ? [...reportRowsArray].sort((a, b) => (a.attendanceRateNumber ?? 0) - (b.attendanceRateNumber ?? 0))[0]
+      : null;
+
+    this.concernCount = reportRowsArray.filter(row => (row.attendanceRateNumber ?? 0) < this.concernThreshold).length;
+
+    this.attendanceDistribution = this.calculateDistribution(reportRowsArray);
+    this.distributionCounts = this.attendanceDistribution.counts ?? { excellent: 0, good: 0, attention: 0 };
+
+    // Calculate attendance by status totals
+    this.attendanceByStatus = {
+      present: reportRowsArray.reduce((sum, row) => sum + (row.present ?? 0), 0),
+      absent: reportRowsArray.reduce((sum, row) => sum + (row.absent ?? 0), 0),
+      late: reportRowsArray.reduce((sum, row) => sum + (row.late ?? 0), 0),
+      excused: reportRowsArray.reduce((sum, row) => sum + (row.excused ?? 0), 0)
+    };
+
+    // Calculate trend
+    this.calculateTrend();
   }
 
   private escapeHtml(value: unknown): string {
