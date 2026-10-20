@@ -226,7 +226,7 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
 export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    
+
     // Check if user has permission
     if (!user || (user.role !== UserRole.TEACHER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
       return res.status(403).json({ message: 'You do not have permission to view attendance reports' });
@@ -355,7 +355,7 @@ export const getStudentTotalAttendance = async (req: AuthRequest, res: Response)
 export const deleteAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    
+
     // Check if user has permission (admin or superadmin)
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
       return res.status(403).json({ message: 'You do not have permission to delete attendance' });
@@ -387,6 +387,141 @@ export const deleteAttendance = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error deleting attendance:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const updateAttendanceRecord = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+
+    // Check if user has permission (admin, superadmin, or teacher)
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN && user.role !== UserRole.TEACHER)) {
+      return res.status(403).json({ message: 'You do not have permission to update attendance' });
+    }
+
+    const { studentId, classId, field, newValue } = req.body;
+
+    if (!studentId || !classId || !field || newValue === undefined) {
+      return res.status(400).json({ message: 'Student ID, class ID, field, and new value are required' });
+    }
+
+    // Validate field name
+    const validFields = ['present', 'absent', 'late', 'excused'];
+    if (!validFields.includes(field)) {
+      return res.status(400).json({ message: 'Invalid field. Must be one of: present, absent, late, excused' });
+    }
+
+    const attendanceRepository = AppDataSource.getRepository(Attendance);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    // Verify student exists and is in the class
+    const student = await studentRepository.findOne({
+      where: { id: studentId, classId }
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found in this class' });
+    }
+
+    // Get current term from settings
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const currentTerm = settings?.activeTerm || settings?.currentTerm || null;
+
+    // Get all attendance records for this student in the current term
+    const attendanceRecords = await attendanceRepository.find({
+      where: {
+        studentId,
+        classId,
+        term: currentTerm
+      },
+      order: { date: 'ASC' }
+    });
+
+    // Count current status values
+    const currentCounts = {
+      present: attendanceRecords.filter(a => a.status === AttendanceStatus.PRESENT).length,
+      absent: attendanceRecords.filter(a => a.status === AttendanceStatus.ABSENT).length,
+      late: attendanceRecords.filter(a => a.status === AttendanceStatus.LATE).length,
+      excused: attendanceRecords.filter(a => a.status === AttendanceStatus.EXCUSED).length
+    };
+
+    // Determine which status to set based on the field being updated
+    const statusMap: any = {
+      present: AttendanceStatus.PRESENT,
+      absent: AttendanceStatus.ABSENT,
+      late: AttendanceStatus.LATE,
+      excused: AttendanceStatus.EXCUSED
+    };
+
+    const targetStatus = statusMap[field];
+    const currentCount = currentCounts[field];
+
+    if (newValue > currentCount) {
+      // Need to add more records with this status
+      const toAdd = newValue - currentCount;
+      const today = new Date();
+      let addedCount = 0;
+
+      for (let i = 0; i < toAdd && addedCount < toAdd; i++) {
+        // Find a date where this student doesn't have attendance (skip weekends)
+        const dateOffset = i + 1;
+        const checkDate = new Date(today);
+        checkDate.setDate(checkDate.getDate() - dateOffset);
+
+        const dayOfWeek = checkDate.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
+
+        const dateStr = checkDate.toISOString().slice(0, 10);
+
+        // Check if attendance already exists for this date
+        const existing = await attendanceRepository.findOne({
+          where: { studentId, classId, date: dateStr as any }
+        });
+
+        if (!existing) {
+          const newAttendance = attendanceRepository.create({
+            studentId,
+            classId,
+            date: dateStr as any,
+            status: targetStatus,
+            term: currentTerm,
+            markedBy: user.id
+          });
+          await attendanceRepository.save(newAttendance);
+          addedCount++;
+        }
+      }
+    } else if (newValue < currentCount) {
+      // Need to remove some records with this status
+      const toRemove = currentCount - newValue;
+      let removedCount = 0;
+
+      // Remove the most recent records with this status
+      for (let i = attendanceRecords.length - 1; i >= 0 && removedCount < toRemove; i--) {
+        const record = attendanceRecords[i];
+        if (record.status === targetStatus) {
+          await attendanceRepository.remove(record);
+          removedCount++;
+        }
+      }
+    }
+
+    res.json({
+      message: 'Attendance record updated successfully',
+      studentId,
+      classId,
+      field,
+      newValue,
+      previousValue: currentCount
+    });
+  } catch (error: any) {
+    console.error('Error updating attendance record:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

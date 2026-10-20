@@ -40,5 +40,14 @@ export class AttendanceService {
       params: { classId, date }
     });
   }
+
+  updateAttendanceRecord(studentId: string, classId: string, field: string, newValue: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/attendance/update`, {
+      studentId,
+      classId,
+      field,
+      newValue
+    });
+  }
 }
 

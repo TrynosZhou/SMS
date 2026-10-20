@@ -574,57 +574,59 @@ next: (data: any) => {
     const studentName = cell.studentName;
 
     // Call attendance service to update the attendance record
-    // For now, we'll simulate the update and refresh the report
-    // In a real implementation, you'd call an API endpoint like:
-    // this.attendanceService.updateAttendanceRecord(studentId, { [field]: newValue })
-
-    setTimeout(() => {
-      // Simulate API call - in production, replace with actual API call
-      this.editSaving = false;
-
-      // Update the local data in both rawReportRows and filteredReport
-      const student = this.rawReportRows.find(s =>
-        (s.studentId === studentId) ||
-        (s.studentNumber === studentNumber)
-      );
-
-      const filteredStudent = this.filteredReport.find(s =>
-        (s.studentId === studentId) ||
-        (s.studentNumber === studentNumber)
-      );
-
-      if (student) {
-        student[field] = newValue;
-        // Recalculate total
-        student.total = (student.present || 0) + (student.absent || 0) + (student.late || 0) + (student.excused || 0);
-        // Recalculate attendance rate
-        const totalPossible = student.total || 1;
-        student.attendanceRateNumber = totalPossible > 0 ? ((student.present || 0) / totalPossible) * 100 : 0;
-      }
-
-      if (filteredStudent) {
-        filteredStudent[field] = newValue;
-        // Recalculate total
-        filteredStudent.total = (filteredStudent.present || 0) + (filteredStudent.absent || 0) + (filteredStudent.late || 0) + (filteredStudent.excused || 0);
-        // Recalculate attendance rate
-        const totalPossible = filteredStudent.total || 1;
-        filteredStudent.attendanceRateNumber = totalPossible > 0 ? ((filteredStudent.present || 0) / totalPossible) * 100 : 0;
-      }
-
-      if (student || filteredStudent) {
-        // Recalculate statistics without calling prepareReportData (which would overwrite changes)
-        this.recalculateStatistics();
-        this.success = `Updated ${studentName}'s ${field} to ${newValue}.`;
-        this.closeEditPopup();
-        // Keep the success message visible for 10 seconds
-        setTimeout(() => this.success = '', 10000);
-      } else {
-        this.editError = 'Failed to update attendance record. Student not found.';
+    this.attendanceService.updateAttendanceRecord(studentId, this.selectedClassId, field, newValue).subscribe({
+      next: (response) => {
         this.editSaving = false;
-      }
 
-      this.cdr.detectChanges();
-    }, 500);
+        // Update the local data in both rawReportRows and filteredReport
+        const student = this.rawReportRows.find(s =>
+          (s.studentId === studentId) ||
+          (s.studentNumber === studentNumber)
+        );
+
+        const filteredStudent = this.filteredReport.find(s =>
+          (s.studentId === studentId) ||
+          (s.studentNumber === studentNumber)
+        );
+
+        if (student) {
+          student[field] = newValue;
+          // Recalculate total
+          student.total = (student.present || 0) + (student.absent || 0) + (student.late || 0) + (student.excused || 0);
+          // Recalculate attendance rate
+          const totalPossible = student.total || 1;
+          student.attendanceRateNumber = totalPossible > 0 ? ((student.present || 0) / totalPossible) * 100 : 0;
+        }
+
+        if (filteredStudent) {
+          filteredStudent[field] = newValue;
+          // Recalculate total
+          filteredStudent.total = (filteredStudent.present || 0) + (filteredStudent.absent || 0) + (filteredStudent.late || 0) + (filteredStudent.excused || 0);
+          // Recalculate attendance rate
+          const totalPossible = filteredStudent.total || 1;
+          filteredStudent.attendanceRateNumber = totalPossible > 0 ? ((filteredStudent.present || 0) / totalPossible) * 100 : 0;
+        }
+
+        if (student || filteredStudent) {
+          // Recalculate statistics without calling prepareReportData (which would overwrite changes)
+          this.recalculateStatistics();
+          this.success = `Updated ${studentName}'s ${field} to ${newValue}.`;
+          this.closeEditPopup();
+          // Keep the success message visible for 10 seconds
+          setTimeout(() => this.success = '', 10000);
+        } else {
+          this.editError = 'Failed to update attendance record. Student not found.';
+          this.editSaving = false;
+        }
+
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.editSaving = false;
+        this.editError = err.error?.message || 'Failed to update attendance record. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   // Recalculate statistics without overwriting rawReportRows
