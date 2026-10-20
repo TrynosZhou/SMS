@@ -467,12 +467,14 @@ export const updateAttendanceRecord = async (req: AuthRequest, res: Response) =>
       const toAdd = newValue - currentCount;
       const today = new Date();
       let addedCount = 0;
+      let dateOffset = 1;
+      const maxAttempts = 365; // Prevent infinite loop, look back up to a year
 
-      for (let i = 0; i < toAdd && addedCount < toAdd; i++) {
+      while (addedCount < toAdd && dateOffset < maxAttempts) {
         // Find a date where this student doesn't have attendance (skip weekends)
-        const dateOffset = i + 1;
         const checkDate = new Date(today);
         checkDate.setDate(checkDate.getDate() - dateOffset);
+        dateOffset++;
 
         const dayOfWeek = checkDate.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
@@ -497,6 +499,11 @@ export const updateAttendanceRecord = async (req: AuthRequest, res: Response) =>
           addedCount++;
         }
       }
+
+      // If we couldn't add all the records, warn the user
+      if (addedCount < toAdd) {
+        console.warn(`Could only add ${addedCount} of ${toAdd} attendance records due to date conflicts`);
+      }
     } else if (newValue < currentCount) {
       // Need to remove some records with this status
       const toRemove = currentCount - newValue;
@@ -510,6 +517,36 @@ export const updateAttendanceRecord = async (req: AuthRequest, res: Response) =>
           removedCount++;
         }
       }
+
+      // If we couldn't remove all the records, this is a data integrity issue
+      if (removedCount < toRemove) {
+        console.error(`Could only remove ${removedCount} of ${toRemove} attendance records. Data integrity issue detected.`);
+        return res.status(500).json({
+          message: 'Data integrity error: Could not remove expected number of attendance records',
+          expected: toRemove,
+          actual: removedCount
+        });
+      }
+    }
+
+    // Verify the update was successful by recounting
+    const updatedRecords = await attendanceRepository.find({
+      where: {
+        studentId,
+        classId,
+        term: currentTerm
+      }
+    });
+
+    const updatedCount = updatedRecords.filter(a => a.status === targetStatus).length;
+
+    if (updatedCount !== newValue) {
+      console.error(`Attendance update verification failed. Expected: ${newValue}, Actual: ${updatedCount}`);
+      return res.status(500).json({
+        message: 'Attendance update verification failed',
+        expected: newValue,
+        actual: updatedCount
+      });
     }
 
     res.json({
@@ -518,7 +555,8 @@ export const updateAttendanceRecord = async (req: AuthRequest, res: Response) =>
       classId,
       field,
       newValue,
-      previousValue: currentCount
+      previousValue: currentCount,
+      verified: true
     });
   } catch (error: any) {
     console.error('Error updating attendance record:', error);

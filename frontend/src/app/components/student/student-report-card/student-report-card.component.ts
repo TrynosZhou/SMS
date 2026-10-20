@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
+import { AttendanceService } from '../../../services/attendance.service';
 import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
 import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
@@ -23,6 +24,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   user: any;
   student: any;
   reportCard: any = null;
+  private attendanceUpdateSubscription: any;
 
   // Loading / error states
   loading = false;
@@ -67,6 +69,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private examService: ExamService,
     private settingsService: SettingsService,
+    private attendanceService: AttendanceService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
   ) {}
@@ -74,10 +77,20 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadSettings();
     this.loadStudentData();
+    // Subscribe to attendance updates to refresh report card when attendance is edited
+    this.attendanceUpdateSubscription = this.attendanceService.attendanceUpdated$.subscribe(() => {
+      // If a report card is currently loaded, refresh it to get updated attendance data
+      if (this.reportCard && this.selectedTerm && this.selectedExamType) {
+        this.viewReport();
+      }
+    });
   }
 
   ngOnDestroy() {
     this.revokePdfUrl();
+    if (this.attendanceUpdateSubscription) {
+      this.attendanceUpdateSubscription.unsubscribe();
+    }
   }
 
   private revokePdfUrl() {

@@ -217,10 +217,10 @@ next: (data: any) => {
       });
   }
 
-  generateReport() {
+  generateReport(): Promise<void> {
     if (!this.selectedClassId) {
       this.error = 'Please select a class';
-      return;
+      return Promise.reject('No class selected');
     }
 
     this.loading = true;
@@ -228,33 +228,37 @@ next: (data: any) => {
     this.report = null;
 
     const params: any = { classId: this.selectedClassId };
-    
+
     if (this.selectedTerm) {
       params.term = this.selectedTerm;
     }
-    
+
     if (this.startDate) {
       params.startDate = this.startDate;
     }
-    
+
     if (this.endDate) {
       params.endDate = this.endDate;
     }
 
-    this.attendanceService.getAttendanceReport(params).subscribe({
-      next: (response: any) => {
-        this.report = response;
-        this.lastGeneratedAt = new Date();
-        this.loading = false;
-        this.prepareReportData();
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        this.error = err.error?.message || 'Failed to generate report';
-        this.loading = false;
-        this.cdr.markForCheck();
-        setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 7000);
-      }
+    return new Promise((resolve, reject) => {
+      this.attendanceService.getAttendanceReport(params).subscribe({
+        next: (response: any) => {
+          this.report = response;
+          this.lastGeneratedAt = new Date();
+          this.loading = false;
+          this.prepareReportData();
+          this.cdr.markForCheck();
+          resolve();
+        },
+        error: (err: any) => {
+          this.error = err.error?.message || 'Failed to generate report';
+          this.loading = false;
+          this.cdr.markForCheck();
+          setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 7000);
+          reject(err);
+        }
+      });
     });
   }
 
@@ -576,50 +580,30 @@ next: (data: any) => {
     // Call attendance service to update the attendance record
     this.attendanceService.updateAttendanceRecord(studentId, this.selectedClassId, field, newValue).subscribe({
       next: (response) => {
-        this.editSaving = false;
-
-        // Update the local data in both rawReportRows and filteredReport
-        const student = this.rawReportRows.find(s =>
-          (s.studentId === studentId) ||
-          (s.studentNumber === studentNumber)
-        );
-
-        const filteredStudent = this.filteredReport.find(s =>
-          (s.studentId === studentId) ||
-          (s.studentNumber === studentNumber)
-        );
-
-        if (student) {
-          student[field] = newValue;
-          // Recalculate total
-          student.total = (student.present || 0) + (student.absent || 0) + (student.late || 0) + (student.excused || 0);
-          // Recalculate attendance rate
-          const totalPossible = student.total || 1;
-          student.attendanceRateNumber = totalPossible > 0 ? ((student.present || 0) / totalPossible) * 100 : 0;
+        // Check if the backend verified the update successfully
+        if (!response.verified) {
+          this.editSaving = false;
+          this.editError = 'Attendance update could not be verified. Please try again.';
+          this.cdr.detectChanges();
+          return;
         }
 
-        if (filteredStudent) {
-          filteredStudent[field] = newValue;
-          // Recalculate total
-          filteredStudent.total = (filteredStudent.present || 0) + (filteredStudent.absent || 0) + (filteredStudent.late || 0) + (filteredStudent.excused || 0);
-          // Recalculate attendance rate
-          const totalPossible = filteredStudent.total || 1;
-          filteredStudent.attendanceRateNumber = totalPossible > 0 ? ((filteredStudent.present || 0) / totalPossible) * 100 : 0;
-        }
-
-        if (student || filteredStudent) {
-          // Recalculate statistics without calling prepareReportData (which would overwrite changes)
-          this.recalculateStatistics();
-          this.success = `Updated ${studentName}'s ${field} to ${newValue}.`;
+        // Instead of updating local data, regenerate the report from the server
+        // to ensure consistency with the database
+        this.generateReport().then(() => {
+          this.editSaving = false;
+          this.success = `Updated ${studentName}'s ${field} to ${newValue}. Data verified.`;
           this.closeEditPopup();
+          // Notify other components (like report cards) that attendance has been updated
+          this.attendanceService.notifyAttendanceUpdated();
           // Keep the success message visible for 10 seconds
           setTimeout(() => this.success = '', 10000);
-        } else {
-          this.editError = 'Failed to update attendance record. Student not found.';
+          this.cdr.detectChanges();
+        }).catch((err) => {
           this.editSaving = false;
-        }
-
-        this.cdr.detectChanges();
+          this.editError = 'Attendance updated but failed to refresh report. Please refresh the page.';
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => {
         this.editSaving = false;
@@ -1405,7 +1389,9 @@ next: (data: any) => {
     }
     this.autoGenerateTimer = setTimeout(() => {
       if (this.selectedClassId && this.selectedTerm) {
-        this.generateReport();
+        this.generateReport().catch(err => {
+          console.error('Auto-generate report failed:', err);
+        });
       }
     }, 300);
   }

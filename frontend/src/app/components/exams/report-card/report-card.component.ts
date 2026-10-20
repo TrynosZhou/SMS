@@ -9,6 +9,7 @@ import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
 import { ConnectivityService } from '../../../services/connectivity.service';
 import { OfflineSyncService } from '../../../services/offline-sync.service';
+import { AttendanceService } from '../../../services/attendance.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
@@ -142,7 +143,8 @@ error = '';
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef,
     public connectivity: ConnectivityService,
-    private offlineSync: OfflineSyncService
+    private offlineSync: OfflineSyncService,
+    private attendanceService: AttendanceService
 ) {
     // Check if user can edit remarks (teacher, admin, school leadership, demo)
     this.remarksEditRoleAllowed =
@@ -195,6 +197,14 @@ error = '';
       });
 
     this.offlineSync.onQueueChanged().pipe(takeUntil(this.destroy$)).subscribe(() => this.cdr.markForCheck());
+
+    // Subscribe to attendance updates to refresh report card data when attendance is edited
+    this.attendanceService.attendanceUpdated$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      // Only refresh if report cards are already loaded
+      if (this.reportCards.length > 0 && this.selectedClass && this.selectedTerm && this.selectedExamType) {
+        this.generateReportCards();
+      }
+    });
 
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       if (params['studentId'] && this.isParent) {
