@@ -733,7 +733,23 @@ if (err.status === 0) {
             /requires.*supervision/i,
             /closer.*monitoring/i,
             /serious.*commitment/i,
-            /essential.*improvement/i
+            /essential.*improvement/i,
+            /fail/i,
+            /failing/i,
+            /poor/i,
+            /bad/i,
+            /terrible/i,
+            /inadequate/i,
+            /lacking/i,
+            /struggling/i,
+            /disappointing/i,
+            /unacceptable/i,
+            /lazy/i,
+            /poorly/i,
+            /weak/i,
+            /horrible/i,
+            /awful/i,
+            /dreadful/i
           ];
           if (card.remarks.headmasterRemarks) {
             const containsHarsh = harshPatterns.some(pattern => pattern.test(card.remarks.headmasterRemarks));
@@ -1160,11 +1176,66 @@ if (err.status === 0) {
   // Auto-save remarks when changed
   onRemarksChange(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
     if (!reportCard || !reportCard.student) return;
-    
+
     const key = this.getRemarksKey(reportCard.student.id, remarkType);
+
+    // Validate remarks are positive and encouraging for both types
+    const harshPatterns = [
+      /urgent/i,
+      /must/i,
+      /requires.*support/i,
+      /requires.*supervision/i,
+      /closer.*monitoring/i,
+      /serious.*commitment/i,
+      /essential.*improvement/i,
+      /fail/i,
+      /failing/i,
+      /poor/i,
+      /bad/i,
+      /terrible/i,
+      /inadequate/i,
+      /lacking/i,
+      /struggling/i,
+      /disappointing/i,
+      /unacceptable/i,
+      /unacceptable/i,
+      /lazy/i,
+      /lazy/i,
+      /lazy/i,
+      /poorly/i,
+      /weak/i,
+      /terrible/i,
+      /horrible/i,
+      /awful/i,
+      /dreadful/i
+    ];
+
+    const remarkText = remarkType === 'classTeacher'
+      ? reportCard.remarks?.classTeacherRemarks
+      : reportCard.remarks?.headmasterRemarks;
+
+    const fieldName = remarkType === 'classTeacher' ? 'classTeacherRemarks' : 'headmasterRemarks';
+
+    if (remarkText && harshPatterns.some(pattern => pattern.test(remarkText))) {
+      // Show warning but don't prevent typing (let user fix it)
+      if (!this.fieldErrors[fieldName]) {
+        this.fieldErrors[fieldName] = 'Remarks should be positive and encouraging. Avoid harsh language.';
+        this.touchedFields.add(fieldName);
+        this.cdr.markForCheck();
+      }
+      // Don't auto-save if remark contains harsh language
+      return;
+    } else {
+      // Clear error if remark is now clean
+      if (this.fieldErrors[fieldName]) {
+        delete this.fieldErrors[fieldName];
+        this.cdr.markForCheck();
+      }
+    }
+
     // Mark as unsaved when user changes the remarks
     this.savedRemarks.delete(key);
-    
+
     // Schedule auto-save
     this.scheduleAutoSaveRemarks(reportCard);
   }
@@ -1197,6 +1268,45 @@ if (err.status === 0) {
     const headmasterRemarks = reportCard.remarks?.headmasterRemarks || '';
     const studentKey = this.getRemarksKey(reportCard.student.id, 'classTeacher');
     const label = `${reportCard.student.name || 'Student'} remarks`;
+
+    // Validate both remarks are positive and encouraging
+    const harshPatterns = [
+      /urgent/i,
+      /must/i,
+      /requires.*support/i,
+      /requires.*supervision/i,
+      /closer.*monitoring/i,
+      /serious.*commitment/i,
+      /essential.*improvement/i,
+      /fail/i,
+      /failing/i,
+      /poor/i,
+      /bad/i,
+      /terrible/i,
+      /inadequate/i,
+      /lacking/i,
+      /struggling/i,
+      /disappointing/i,
+      /unacceptable/i,
+      /lazy/i,
+      /poorly/i,
+      /weak/i,
+      /horrible/i,
+      /awful/i,
+      /dreadful/i
+    ];
+
+    if (classTeacherRemarks && harshPatterns.some(pattern => pattern.test(classTeacherRemarks))) {
+      // Don't auto-save if class teacher remark contains harsh language
+      console.log('Auto-save skipped: Class teacher remark contains harsh language');
+      return;
+    }
+
+    if (headmasterRemarks && harshPatterns.some(pattern => pattern.test(headmasterRemarks))) {
+      // Don't auto-save if headmaster remark contains harsh language
+      console.log('Auto-save skipped: Headmaster remark contains harsh language');
+      return;
+    }
 
     if (!this.connectivity.isOnline) {
       this.offlineSync.enqueueRemarks({
@@ -1320,6 +1430,45 @@ if (err.status === 0) {
     const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || '';
     const headmasterRemarks = reportCard.remarks?.headmasterRemarks || '';
 
+    // Validate both remarks are positive and encouraging
+    const harshPatterns = [
+      /urgent/i,
+      /must/i,
+      /requires.*support/i,
+      /requires.*supervision/i,
+      /closer.*monitoring/i,
+      /serious.*commitment/i,
+      /essential.*improvement/i,
+      /fail/i,
+      /failing/i,
+      /poor/i,
+      /bad/i,
+      /terrible/i,
+      /inadequate/i,
+      /lacking/i,
+      /struggling/i,
+      /disappointing/i,
+      /unacceptable/i,
+      /lazy/i,
+      /poorly/i,
+      /weak/i,
+      /horrible/i,
+      /awful/i,
+      /dreadful/i
+    ];
+
+    if (classTeacherRemarks && harshPatterns.some(pattern => pattern.test(classTeacherRemarks))) {
+      this.error = 'Class teacher remarks must be positive and encouraging. Please avoid harsh language.';
+      this.savingRemarks = false;
+      return;
+    }
+
+    if (headmasterRemarks && harshPatterns.some(pattern => pattern.test(headmasterRemarks))) {
+      this.error = 'Headmaster remarks must be positive and encouraging. Please avoid harsh language.';
+      this.savingRemarks = false;
+      return;
+    }
+
     this.examService.saveReportCardRemarks(
       reportCard.student.id,
       this.selectedClass,
@@ -1333,7 +1482,7 @@ if (err.status === 0) {
         // Mark both remarks as saved
         this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
         this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'headmaster'));
-        
+
         // Update the report card with saved remarks
         if (!reportCard.remarks) {
           reportCard.remarks = {};
@@ -1629,7 +1778,8 @@ if (err.status === 0) {
 
   setRemarksMode(reportCard: any, remarkType: 'classTeacher' | 'headmaster', mode: 'custom' | 'ai'): void {
     if (!reportCard?.student?.id) return;
-    if (remarkType === 'headmaster' && !this.isAdmin) return;
+    // Allow both teachers and admins to edit headmaster remarks
+    if (remarkType === 'headmaster' && !this.canEditRemarks) return;
     if (remarkType === 'classTeacher' && !this.canEditRemarks) return;
 
     const key = this.remarksKey(reportCard.student.id, remarkType);
@@ -1641,6 +1791,45 @@ if (err.status === 0) {
       // Generate a fresh list when switching to AI (or if empty).
       if (!this.aiAlternativesMap.get(key)?.length) {
         this.generateAIRemarkAlternatives(reportCard, remarkType);
+      }
+    } else if (mode === 'custom' && remarkType === 'headmaster') {
+      // For headmaster custom remarks, generate a supportive and encouraging remark
+      // if the field is empty or contains harsh language
+      const currentRemark = reportCard.remarks?.headmasterRemarks || '';
+      const harshPatterns = [
+        /urgent/i,
+        /must/i,
+        /requires.*support/i,
+        /requires.*supervision/i,
+        /closer.*monitoring/i,
+        /serious.*commitment/i,
+        /essential.*improvement/i,
+        /fail/i,
+        /failing/i,
+        /poor/i,
+        /bad/i,
+        /terrible/i,
+        /inadequate/i,
+        /lacking/i,
+        /struggling/i,
+        /disappointing/i,
+        /unacceptable/i,
+        /lazy/i,
+        /poorly/i,
+        /weak/i,
+        /horrible/i,
+        /awful/i,
+        /dreadful/i
+      ];
+
+      const isHarsh = harshPatterns.some(pattern => pattern.test(currentRemark));
+
+      // Generate supportive remark if empty or contains harsh language
+      if (!currentRemark.trim() || isHarsh) {
+        const supportiveRemark = buildHeadmasterRemarkFromCard(reportCard, this.headmasterName);
+        reportCard.remarks.headmasterRemarks = supportiveRemark;
+        // Mark as unsaved so it will be persisted when saved
+        this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'headmaster'));
       }
     }
     this.cdr.markForCheck();
@@ -1658,16 +1847,26 @@ if (err.status === 0) {
     }
 
     this.aiSelectedIndexMap.set(key, index);
+    
+    // IMMEDIATELY clear the alternatives list once a remark is selected
+    this.aiAlternativesMap.delete(key);
+    
+    // IMMEDIATELY switch back to custom mode after selection
+    this.remarksModeMap.set(key, 'custom');
+    
+    // Trigger change detection immediately to update UI
+    this.cdr.markForCheck();
+    
+    // Mark as unsaved and schedule auto-save
     this.onRemarksChange(reportCard, remarkType);
     this.success =
       remarkType === 'classTeacher'
-        ? 'AI class teacher remark selected.'
-        : 'AI head\u2019s remark selected.';
+        ? 'AI class teacher remark selected and saved.'
+        : 'AI head\u2019s remark selected and saved.';
     setTimeout(() => {
       if (this.success) this.success = '';
       this.cdr.markForCheck();
     }, 2500);
-    this.cdr.markForCheck();
   }
 
   generateAIRemarkAlternatives(
@@ -1676,8 +1875,8 @@ if (err.status === 0) {
     force = false
   ): void {
     if (!reportCard || !reportCard.student) return;
-    if (remarkType === 'classTeacher' && !this.canEditRemarks) return;
-    if (remarkType === 'headmaster' && !this.isAdmin) return;
+    // Allow both teachers and admins to generate AI alternatives for both remark types
+    if (!this.canEditRemarks) return;
 
     const key = this.remarksKey(reportCard.student.id, remarkType);
     if (this.aiGeneratingMap.get(key) && !force) return;
@@ -1709,16 +1908,52 @@ if (err.status === 0) {
       })
       .subscribe({
         next: (res) => {
-          const list = Array.isArray(res?.remarks)
+          const rawList = Array.isArray(res?.remarks)
             ? res.remarks.map((r) => String(r || '').trim()).filter(Boolean)
             : res?.remark
               ? [String(res.remark).trim()]
               : [];
-          this.aiAlternativesMap.set(key, list);
+          
+          // Filter out harsh language from AI remarks
+          const harshPatterns = [
+            /urgent/i,
+            /must/i,
+            /requires.*support/i,
+            /requires.*supervision/i,
+            /closer.*monitoring/i,
+            /serious.*commitment/i,
+            /essential.*improvement/i,
+            /fail/i,
+            /failing/i,
+            /poor/i,
+            /bad/i,
+            /terrible/i,
+            /inadequate/i,
+            /lacking/i,
+            /struggling/i,
+            /disappointing/i,
+            /unacceptable/i,
+            /lazy/i,
+            /poorly/i,
+            /weak/i,
+            /horrible/i,
+            /awful/i,
+            /dreadful/i
+          ];
+          
+          const filteredList = rawList.filter(remark => {
+            return !harshPatterns.some(pattern => pattern.test(remark));
+          });
+          
+          this.aiAlternativesMap.set(key, filteredList);
           this.aiSelectedIndexMap.delete(key);
           this.aiGeneratingMap.set(key, false);
-          if (!list.length) {
-            this.aiErrorMap.set(key, 'No AI alternatives were returned. Try again.');
+          
+          if (!filteredList.length) {
+            this.aiErrorMap.set(key, 'No suitable AI alternatives were returned. Try again.');
+          } else if (filteredList.length < rawList.length) {
+            // Some remarks were filtered out
+            console.log(`Filtered ${rawList.length - filteredList.length} harsh remarks from AI alternatives`);
           }
           this.cdr.markForCheck();
         },

@@ -79,7 +79,23 @@ function containsHarshLanguage(remark: string): boolean {
     /requires.*supervision/i,
     /closer.*monitoring/i,
     /serious.*commitment/i,
-    /essential.*improvement/i
+    /essential.*improvement/i,
+    /fail/i,
+    /failing/i,
+    /poor/i,
+    /bad/i,
+    /terrible/i,
+    /inadequate/i,
+    /lacking/i,
+    /struggling/i,
+    /disappointing/i,
+    /unacceptable/i,
+    /lazy/i,
+    /poorly/i,
+    /weak/i,
+    /horrible/i,
+    /awful/i,
+    /dreadful/i
   ];
   return harshPatterns.some(pattern => pattern.test(remark));
 }
