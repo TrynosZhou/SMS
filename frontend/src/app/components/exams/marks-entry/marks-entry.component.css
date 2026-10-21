@@ -104,6 +104,6 @@ textarea:focus {
 
 /* Ensure proper spacing between sequential student cards */
 .student-marks-card + .student-marks-card {
-  margin-top: 40px;
+  margin-top: 20px;
 }
 

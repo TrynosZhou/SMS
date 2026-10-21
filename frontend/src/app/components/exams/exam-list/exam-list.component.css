@@ -60,7 +60,7 @@
 .exam-hero {
   background: var(--exam-gradient);
   border-radius: 12px;
-  padding: 1.35rem 1.5rem 1.1rem;
+  padding: 0.9rem 1.5rem 0.75rem;
   margin-bottom: 1.25rem;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(15, 23, 42, 0.12);
@@ -81,46 +81,46 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
-.exam-hero-left { display: flex; align-items: flex-start; gap: 14px; }
+.exam-hero-left { display: flex; align-items: flex-start; gap: 10px; }
 
 .exam-hero-icon {
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   background: #f59e0b;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1rem;
   flex-shrink: 0;
   color: #111;
 }
 
 .exam-hero-eyebrow {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fbbf24;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.exam-hero h1 { margin: 0 0 6px; font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
-.exam-hero-sub { margin: 0; font-size: 0.95rem; color: rgba(255, 255, 255, 0.92); max-width: 640px; line-height: 1.5; }
+.exam-hero h1 { margin: 0 0 4px; font-size: clamp(1.1rem, 1.8vw, 1.4rem); font-weight: 700; letter-spacing: -0.02em; }
+.exam-hero-sub { margin: 0; font-size: 0.8rem; color: rgba(255, 255, 255, 0.92); max-width: 640px; line-height: 1.3; }
 
-.exam-hero-aside { display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; }
+.exam-hero-aside { display: flex; flex-wrap: wrap; gap: 0.4rem; align-content: flex-start; }
 
 .exam-hero-badge {
   display: inline-block;
-  padding: 0.35rem 0.75rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -132,15 +132,15 @@
   border-color: rgba(251, 191, 36, 0.5);
 }
 
-.exam-hero__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.exam-hero__actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
 .exam-hero-btn {
-  padding: 0.5rem 0.95rem;
+  padding: 0.35rem 0.7rem;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
@@ -186,15 +186,15 @@
 .exam-cross-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0 16px;
+  gap: 0.4rem;
+  margin: 0 0 10px;
 }
 
 .exam-cross-links a {
   display: inline-block;
-  padding: 0.35rem 0.75rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #fff;
   text-decoration: none;
@@ -208,15 +208,15 @@
 .exam-hero-stats {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0 0 14px;
+  gap: 8px;
+  margin: 0 0 10px;
 }
 
 .exam-stat {
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 6px 8px;
   color: #fff;
   text-align: left;
 }
@@ -225,7 +225,7 @@
 
 .exam-stat__value {
   display: block;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
@@ -233,8 +233,8 @@
 
 .exam-stat__label {
   display: block;
-  font-size: 0.65rem;
-  margin-top: 2px;
+  font-size: 0.55rem;
+  margin-top: 1px;
   color: rgba(255, 255, 255, 0.85);
   font-weight: 700;
   text-transform: uppercase;
@@ -246,12 +246,12 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding-top: 4px;
+  gap: 0.5rem;
+  padding-top: 2px;
 }
 
 .exam-autosave-hint {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   opacity: 0.85;
   font-variant-numeric: tabular-nums;
 }

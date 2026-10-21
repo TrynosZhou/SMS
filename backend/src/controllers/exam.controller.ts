@@ -4556,7 +4556,8 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
     }
 
     // Update remarks based on user role
-    if (isStaffAdmin || isSchoolLeadership) {
+    // Allow teachers, school leadership, and admins to save headmaster remarks
+    if (isStaffAdmin || isSchoolLeadership || isTeacher || isDemoUser) {
       remarks.headmasterRemarks = headmasterRemarks || null;
       remarks.headmasterId = user.id;
     }
