@@ -401,11 +401,26 @@ export class StudentPortalComponent implements OnInit, OnDestroy {
             this.reportCard.overallAverage = avg.toFixed(2);
           }
           const existingHead = String(this.reportCard.remarks.headmasterRemarks || '').trim();
-          if (!existingHead) {
+          // Check for harsh language patterns
+          const harshPatterns = [
+            /urgent/i,
+            /must/i,
+            /requires.*support/i,
+            /requires.*supervision/i,
+            /closer.*monitoring/i,
+            /serious.*commitment/i,
+            /essential.*improvement/i
+          ];
+          const containsHarsh = harshPatterns.some(pattern => pattern.test(existingHead));
+
+          if (!existingHead || containsHarsh) {
             this.reportCard.remarks.headmasterRemarks = buildHeadmasterRemarkFromCard(
               this.reportCard,
               this.headmasterName
             );
+          } else {
+            // Clean up redundant "by [name]" pattern from existing remarks
+            this.reportCard.remarks.headmasterRemarks = existingHead.replace(/ by [A-Z][a-zA-Z\s]+(?=\. \s*[A-Z])/g, '.');
           }
 
           this.loading = false;

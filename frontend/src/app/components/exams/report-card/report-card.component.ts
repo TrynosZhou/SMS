@@ -17,6 +17,7 @@ import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
+import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
 // Template auto-remarks removed — users choose Custom or AI remarks only.
 
 type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
@@ -719,6 +720,29 @@ if (err.status === 0) {
               classTeacherRemarks: null,
               headmasterRemarks: null
             };
+          }
+          // Clean up redundant "by [name]" pattern from existing headmaster remarks
+          if (card.remarks.headmasterRemarks) {
+            card.remarks.headmasterRemarks = String(card.remarks.headmasterRemarks).replace(/ by [A-Z][a-zA-Z\s]+(?=\. \s*[A-Z])/g, '.');
+          }
+          // Check for harsh language patterns in headmaster remarks and regenerate if found
+          const harshPatterns = [
+            /urgent/i,
+            /must/i,
+            /requires.*support/i,
+            /requires.*supervision/i,
+            /closer.*monitoring/i,
+            /serious.*commitment/i,
+            /essential.*improvement/i
+          ];
+          if (card.remarks.headmasterRemarks) {
+            const containsHarsh = harshPatterns.some(pattern => pattern.test(card.remarks.headmasterRemarks));
+            if (containsHarsh) {
+              // Regenerate the remark with encouraging language
+              card.remarks.headmasterRemarks = buildHeadmasterRemarkFromCard(card, this.headmasterName);
+              // Mark as unsaved so it will be persisted when saved
+              this.savedRemarks.delete(this.getRemarksKey(card.student.id, 'headmaster'));
+            }
           }
           if (card.remarks.id) {
             if (String(card.remarks.classTeacherRemarks || '').trim()) {

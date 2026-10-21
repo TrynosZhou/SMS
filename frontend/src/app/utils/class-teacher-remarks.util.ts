@@ -51,7 +51,7 @@ export function generateClassTeacherRemark(input: HeadmasterRemarkInput): string
     return `${studentName} is generally cooperative but needs to sustain focus and complete tasks on time. Regular revision, active participation, and asking for help when unsure are recommended.`;
   }
   if (weakCount >= 2 || average < 40) {
-    return `${studentName} requires closer monitoring of classroom behaviour and study habits. Punctuality, attentiveness, and daily homework completion must improve with support from home and school.`;
+    return `${studentName} will benefit from additional support with classroom behaviour and study habits. Improved punctuality, attentiveness, and daily homework completion with guidance from home and school will lead to better outcomes.`;
   }
   if (strongCount > 0 && weakCount > 0) {
     return `${studentName} shows positive conduct in class but effort is uneven across subjects. Building consistent study routines and seeking guidance in weaker areas will help balance results.`;
