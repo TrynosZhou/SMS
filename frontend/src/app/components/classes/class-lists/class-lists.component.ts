@@ -49,8 +49,10 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   schoolEmail = '';
   schoolMotto = '';
   academicYear = '';
-  // Logo used in the PDF header. Must prefer logo2 from Settings.
-  schoolLogo: string | null = null;
+  /** School logo (Settings → schoolLogo) shown on the report header. */
+  schoolLogoPrimary: string | null = null;
+  /** Cambridge / secondary logo (Settings → schoolLogo2) shown on the report header. */
+  schoolLogoSecondary: string | null = null;
   
   loading = false;
   loadingStudents = false;
@@ -644,7 +646,8 @@ next: (settings: any) => {
         this.schoolEmail = settings.schoolEmail || '';
         this.schoolMotto = settings.schoolMotto || '';
         this.academicYear = settings.academicYear || '';
-        this.schoolLogo = settings.schoolLogo || null;
+        this.schoolLogoPrimary = settings.schoolLogo || null;
+        this.schoolLogoSecondary = settings.schoolLogo2 || null;
 
         const terms: string[] = [];
         
@@ -738,9 +741,8 @@ next: (settings: any) => {
 
         if (this.filteredStudents.length === 0) {
           this.error = 'No students found in the selected class for this term.';
-        } else {
-          this.success = `Successfully loaded ${this.filteredStudents.length} student(s) from the selected class.`;
         }
+        // Success message removed to avoid displaying it when class list is generated
       },
       error: (err) => {
         console.error('Error loading students:', err);
@@ -1320,6 +1322,11 @@ next: (settings: any) => {
           const names = this.resolveClassTeacherNamesFromClass(cls);
           this.classTeacher1FullName = names.teacher1;
           this.classTeacher2FullName = names.teacher2;
+          // Update the class in the classes array with the fetched data
+          const classIndex = this.classes.findIndex(c => c.id === this.selectedClassId);
+          if (classIndex !== -1) {
+            this.classes[classIndex] = cls;
+          }
         },
         error: () => {
           this.classTeacher1FullName = '';

@@ -938,6 +938,8 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
       const teacherClasses = await teacherClassRepository
         .createQueryBuilder('tc')
         .innerJoinAndSelect('tc.class', 'class')
+        .leftJoinAndSelect('class.classTeacher1', 'classTeacher1')
+        .leftJoinAndSelect('class.classTeacher2', 'classTeacher2')
         .where('tc.teacherId = :teacherId', { teacherId: teacher.id })
         .andWhere('class.isActive = :isActive', { isActive: true })
         .getMany();
@@ -950,12 +952,14 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
           name: tc.class.name,
           form: tc.class.form,
           description: tc.class.description,
-          isActive: tc.class.isActive
+          isActive: tc.class.isActive,
+          classTeacher1: tc.class.classTeacher1,
+          classTeacher2: tc.class.classTeacher2
         }));
       } else {
         const teacherWithClasses = await teacherRepository.findOne({
           where: { id: teacher.id },
-          relations: ['classes']
+          relations: ['classes', 'classes.classTeacher1', 'classes.classTeacher2']
         });
 
         if (teacherWithClasses && teacherWithClasses.classes && teacherWithClasses.classes.length > 0) {
@@ -967,7 +971,9 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
               name: c.name,
               form: c.form,
               description: c.description,
-              isActive: c.isActive
+              isActive: c.isActive,
+              classTeacher1: c.classTeacher1,
+              classTeacher2: c.classTeacher2
             }));
           try {
             const { linkTeacherToClasses } = await import('../utils/teacherClassLinker');

@@ -120,6 +120,19 @@ export class ClassListComponent implements OnInit, OnDestroy {
     return Number.isFinite(n) ? n : 0;
   }
 
+  getClassTeacherName(classItem: any): string {
+    if (!classItem) return 'Not assigned';
+    const t1 = classItem.classTeacher1;
+    const t2 = classItem.classTeacher2;
+    if (t1 && t1.firstName && t1.lastName) {
+      return `${t1.lastName} ${t1.firstName}`.trim();
+    }
+    if (t1 && t1.teacherId) {
+      return t1.teacherId;
+    }
+    return 'Not assigned';
+  }
+
   get statusChips(): Array<{ id: StatusFilter; label: string; count: number }> {
     const active = this.classes.filter((c) => c.isActive).length;
     return [

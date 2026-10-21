@@ -119,15 +119,18 @@
 
       <div class="pr-field">
         <label for="pr-term">Term <span class="pr-required">*</span></label>
-        <input
-          id="pr-term"
-          type="text"
-          class="pr-input"
-          [(ngModel)]="publishTerm"
-          (ngModelChange)="onTermChange()"
-          [placeholder]="loadingTerm ? 'Loading active term…' : 'e.g. Term 1 2026'"
-          [disabled]="loadingTerm" />
-        <span class="pr-field-hint">{{ loadingTerm ? 'Loading…' : 'Defaults to the active term from Academic Settings' }}</span>
+        <div class="pr-input-group">
+          <input
+            id="pr-term"
+            type="text"
+            class="pr-input"
+            [(ngModel)]="publishTerm"
+            (ngModelChange)="onTermChange()"
+            [placeholder]="loadingTerm ? 'Loading active term…' : 'e.g. Term 1 2026'"
+            [disabled]="loadingTerm" />
+          <span class="pr-input-badge" *ngIf="!loadingTerm && publishTerm">Active Term</span>
+        </div>
+        <span class="pr-field-hint">{{ loadingTerm ? 'Loading…' : 'Currently set to the active term from Academic Settings' }}</span>
       </div>
     </div>
 

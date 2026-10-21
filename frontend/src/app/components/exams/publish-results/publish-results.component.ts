@@ -194,7 +194,11 @@ export class PublishResultsComponent implements OnInit, OnDestroy {
         finalize(() => {
           this.loadingTerm = false;
           this.cdr.markForCheck();
-          if (refreshPreviewAfter && this.hasSelection) this.loadPreview();
+          // If a type is already selected (e.g. user selected it while term was loading),
+          // or if explicitly requested, trigger preview.
+          if ((refreshPreviewAfter || this.publishExamType) && this.hasSelection) {
+            this.loadPreview();
+          }
         })
       )
       .subscribe({

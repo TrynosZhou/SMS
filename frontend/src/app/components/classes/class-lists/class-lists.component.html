@@ -154,11 +154,44 @@
     <div class="cll-pills" *ngIf="selectedClassId && selectedTerm">
       <span class="cll-pill">{{ getSelectedClassName() }}</span>
       <span class="cll-pill">{{ selectedTerm }}</span>
+      <span class="cll-pill cll-pill--teacher">
+        Class Teacher: {{ classTeacher1FullName || 'Not assigned' }}
+      </span>
+      <span class="cll-pill cll-pill--teacher" *ngIf="classTeacher2FullName">
+        Assistant: {{ classTeacher2FullName }}
+      </span>
       <span class="cll-pill cll-pill--count" *ngIf="filteredStudents.length">
         {{ filteredStudents.length }} student{{ filteredStudents.length !== 1 ? 's' : '' }}
       </span>
     </div>
   </section>
+
+  <!-- Reusable PDF letterhead: school logo (left), school details, Cambridge/secondary logo (right) -->
+  <ng-template #pdfLetterhead>
+    <div class="school-header">
+      <div class="school-logo-box" *ngIf="schoolLogoPrimary">
+        <img [src]="schoolLogoPrimary" alt="School logo" class="school-logo" />
+      </div>
+      <div class="school-info">
+        <h3 class="school-name">{{ schoolName || 'School Name' }}</h3>
+        <p class="school-address" *ngIf="schoolAddress">{{ schoolAddress }}</p>
+        <p class="school-contact" *ngIf="schoolPhone || schoolEmail">
+          <span *ngIf="schoolPhone">{{ schoolPhone }}</span>
+          <span *ngIf="schoolPhone && schoolEmail"> · </span>
+          <span *ngIf="schoolEmail">{{ schoolEmail }}</span>
+        </p>
+        <p class="school-motto" *ngIf="schoolMotto">{{ schoolMotto }}</p>
+        <span class="school-year" *ngIf="academicYear">{{ academicYear }}</span>
+      </div>
+      <div class="school-logo-box" *ngIf="schoolLogoSecondary">
+        <img [src]="schoolLogoSecondary" alt="Cambridge logo" class="school-logo" />
+      </div>
+    </div>
+    <div class="report-title">
+      <h2>Class List Report</h2>
+      <span class="report-title__rule"></span>
+    </div>
+  </ng-template>
 
   <section class="cll-panel cll-loading-panel" *ngIf="loadingStudents">
     <div class="cll-spinner" aria-hidden="true"></div>
@@ -177,15 +210,13 @@
       <div>
         <h2 class="cll-panel__title">Student roster</h2>
         <p class="cll-panel__intro">{{ getSelectedClassName() }} · {{ selectedTerm }}</p>
-        <p class="cll-teachers" *ngIf="classTeacher1FullName || classTeacher2FullName">
-          <span *ngIf="classTeacher1FullName">
-            Home teacher:
-            <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(1); $event.preventDefault()">{{ classTeacher1FullName }}</a>
-            <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName }}</span>
-          </span>
-          <span class="cll-teachers-sep" *ngIf="classTeacher1FullName && classTeacher2FullName">·</span>
+        <p class="cll-teachers">
+          <span class="cll-teachers__label">Class Teacher:</span>
+          <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(1); $event.preventDefault()">{{ classTeacher1FullName || 'Not assigned' }}</a>
+          <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName || 'Not assigned' }}</span>
+          <span class="cll-teachers-sep" *ngIf="classTeacher2FullName">·</span>
           <span *ngIf="classTeacher2FullName">
-            Class teacher:
+            <span class="cll-teachers__label">Assistant:</span>
             <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(2); $event.preventDefault()">{{ classTeacher2FullName }}</a>
             <span *ngIf="!canEditClassTeacher()">{{ classTeacher2FullName }}</span>
           </span>
@@ -215,34 +246,20 @@
       </div>
     </div>
 
-    <div class="cll-chips">
-      <button
-        type="button"
-        class="cll-chip"
-        *ngFor="let chip of genderChips"
-        [class.cll-chip--active]="genderFilter === chip.id"
-        (click)="onGenderFilterChange(chip.id)">
-        {{ chip.label }}<span class="cll-chip__count"> ({{ chip.count }})</span>
-      </button>
-    </div>
-    <div class="cll-chips">
-      <button
-        type="button"
-        class="cll-chip"
-        *ngFor="let chip of typeChips"
-        [class.cll-chip--active]="typeFilter === chip.id"
-        (click)="onTypeFilterChange(chip.id)">
-        {{ chip.label }}<span class="cll-chip__count"> ({{ chip.count }})</span>
-      </button>
-    </div>
-
-    <div class="cll-summary" *ngIf="hasActiveFilters() || filteredStudents.length !== students.length">
-      <span class="cll-summary-pill">{{ filterSummary }}</span>
-    </div>
-
     <div class="cll-data-panel">
         <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
         <div class="table-container" id="class-list-pdf">
+          <ng-container *ngTemplateOutlet="pdfLetterhead"></ng-container>
+
+          <div class="meta-bar">
+            <div class="meta-item"><span class="meta-label">Class:</span> <span class="meta-value">{{ getSelectedClassName() }}</span></div>
+            <div class="meta-item" *ngIf="selectedTerm"><span class="meta-label">Term:</span> <span class="meta-value">{{ selectedTerm }}</span></div>
+            <div class="meta-item" *ngIf="filteredStudents.length"><span class="meta-label">Students:</span> <span class="meta-value">{{ filteredStudents.length }}</span></div>
+          </div>
+          <div class="class-teacher-header">
+            <div class="meta-item"><span class="meta-label">Class Teacher:</span> <span class="meta-value">{{ classTeacher1FullName || 'Not assigned' }}</span></div>
+            <div class="meta-item" *ngIf="classTeacher2FullName"><span class="meta-label">Assistant Class Teacher:</span> <span class="meta-value">{{ classTeacher2FullName }}</span></div>
+          </div>
           <table class="students-table">
             <thead>
               <tr>
@@ -318,6 +335,11 @@
               </ng-container>
             </tbody>
           </table>
+          <p class="report-footer">
+            <span>Generated on {{ generatedAt | date : 'medium' }}</span>
+            <span class="report-footer__sep">·</span>
+            <span>{{ schoolName }}</span>
+          </p>
         </div>
       </div>
 
@@ -360,17 +382,16 @@
   <!-- Hidden PDF source when in cards mode -->
   <div class="cll-pdf-offscreen" *ngIf="viewMode === 'cards' && filteredStudents.length">
     <div class="table-container" id="class-list-pdf">
-      <div class="school-header" *ngIf="schoolName || schoolLogo">
-        <div class="school-logo-box" *ngIf="schoolLogo">
-          <img [src]="schoolLogo" alt="School Logo" class="school-logo" />
-        </div>
-        <div class="school-info">
-          <h3 *ngIf="schoolName">{{ schoolName }}</h3>
-          <p *ngIf="schoolMotto" class="motto">{{ schoolMotto }}</p>
-        </div>
-      </div>
+      <ng-container *ngTemplateOutlet="pdfLetterhead"></ng-container>
+
       <div class="meta-bar">
-        <div class="meta-item"><span class="meta-value">{{ getSelectedClassName() }} · {{ selectedTerm }}</span></div>
+        <div class="meta-item"><span class="meta-label">Class:</span> <span class="meta-value">{{ getSelectedClassName() }}</span></div>
+        <div class="meta-item" *ngIf="selectedTerm"><span class="meta-label">Term:</span> <span class="meta-value">{{ selectedTerm }}</span></div>
+        <div class="meta-item" *ngIf="filteredStudents.length"><span class="meta-label">Students:</span> <span class="meta-value">{{ filteredStudents.length }}</span></div>
+      </div>
+      <div class="class-teacher-header">
+        <div class="meta-item"><span class="meta-label">Class Teacher:</span> <span class="meta-value">{{ classTeacher1FullName || 'Not assigned' }}</span></div>
+        <div class="meta-item" *ngIf="classTeacher2FullName"><span class="meta-label">Assistant Class Teacher:</span> <span class="meta-value">{{ classTeacher2FullName }}</span></div>
       </div>
       <table class="students-table">
         <thead>
@@ -392,6 +413,11 @@
           </ng-container>
         </tbody>
       </table>
+      <p class="report-footer">
+        <span>Generated on {{ generatedAt | date : 'medium' }}</span>
+        <span class="report-footer__sep">·</span>
+        <span>{{ schoolName }}</span>
+      </p>
     </div>
   </div>
 

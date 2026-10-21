@@ -191,6 +191,7 @@
                 Teachers <span class="cl-sort">{{ sortIndicator('teachers') }}</span>
               </button>
             </th>
+            <th>Class Teacher</th>
             <th>
               <button type="button" class="cl-th-btn" (click)="sortByColumn('subjects')">
                 Subjects <span class="cl-sort">{{ sortIndicator('subjects') }}</span>
@@ -208,6 +209,7 @@
             <td><span class="cl-form-pill">{{ classItem.form || '—' }}</span></td>
             <td><span class="cl-count-pill">{{ classItem.students?.length || 0 }}</span></td>
             <td><span class="cl-count-pill">{{ classItem.teachers?.length || 0 }}</span></td>
+            <td><span class="cl-teacher-name">{{ getClassTeacherName(classItem) }}</span></td>
             <td><span class="cl-count-pill">{{ getSubjectCount(classItem) }}</span></td>
             <td>
               <span class="cl-status-pill" [class.cl-status-pill--active]="classItem.isActive" [class.cl-status-pill--inactive]="!classItem.isActive">
@@ -235,6 +237,7 @@
         </div>
         <p class="cl-card__form">{{ classItem.form || 'No grade set' }}</p>
         <p class="cl-card__meta" *ngIf="classItem.description">{{ classItem.description }}</p>
+        <p class="cl-card__teacher"><span class="cl-card__label">Class Teacher:</span> {{ getClassTeacherName(classItem) }}</p>
         <div class="cl-card__counts">
           <span class="cl-count-pill">{{ classItem.students?.length || 0 }} students</span>
           <span class="cl-count-pill">{{ classItem.teachers?.length || 0 }} teachers</span>

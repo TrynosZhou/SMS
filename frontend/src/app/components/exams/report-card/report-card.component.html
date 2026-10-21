@@ -738,14 +738,14 @@
             <div class="remarks-item" *ngIf="!isParent || reportCard.remarks?.headmasterRemarks">
               <label class="remarks-label">
                 Head's Remarks
-                <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'headmaster')"
+                <span *ngIf="canEditHeadRemarks && isRemarksSaved(reportCard.student.id, 'headmaster')"
                       class="saved-badge" title="Saved">✓ Saved</span>
-                <span *ngIf="canEditRemarks && !isRemarksSaved(reportCard.student.id, 'headmaster') && reportCard.remarks?.headmasterRemarks"
+                <span *ngIf="canEditHeadRemarks && !isRemarksSaved(reportCard.student.id, 'headmaster') && reportCard.remarks?.headmasterRemarks"
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
-                <span *ngIf="!canEditRemarks" class="read-only-badge">Read-only</span>
+                <span *ngIf="!canEditHeadRemarks" class="read-only-badge">Read-only</span>
               </label>
 
-              <div class="remarks-mode-toggle" *ngIf="canEditRemarks" role="group" aria-label="Head remarks mode">
+              <div class="remarks-mode-toggle" *ngIf="canEditHeadRemarks" role="group" aria-label="Head remarks mode">
                 <button
                   type="button"
                   class="remarks-mode-btn"
@@ -763,16 +763,16 @@
                 </button>
               </div>
 
-              <p class="remarks-ai-hint" *ngIf="canEditRemarks && getRemarksMode(reportCard, 'headmaster') === 'custom'">
+              <p class="remarks-ai-hint" *ngIf="canEditHeadRemarks && getRemarksMode(reportCard, 'headmaster') === 'custom'">
                 Type your own head's remark below.
               </p>
-              <p class="remarks-ai-hint" *ngIf="canEditRemarks && getRemarksMode(reportCard, 'headmaster') === 'ai'">
+              <p class="remarks-ai-hint" *ngIf="canEditHeadRemarks && getRemarksMode(reportCard, 'headmaster') === 'ai'">
                 Choose an AI alternative below — it will be pasted into the text box. You can still edit it before saving.
               </p>
 
               <div
                 class="ai-alternatives"
-                *ngIf="canEditRemarks && getRemarksMode(reportCard, 'headmaster') === 'ai'">
+                *ngIf="canEditHeadRemarks && getRemarksMode(reportCard, 'headmaster') === 'ai'">
                 <div class="ai-alternatives__toolbar">
                   <span class="ai-alternatives__title">AI alternatives</span>
                   <button
@@ -805,7 +805,7 @@
               </div>
 
               <textarea
-                *ngIf="canEditRemarks"
+                *ngIf="canEditHeadRemarks"
                 [(ngModel)]="reportCard.remarks.headmasterRemarks"
                 name="headmasterRemarks_{{reportCard.student.id}}"
                 class="remarks-textarea"
@@ -819,7 +819,7 @@
               <div *ngIf="isFieldInvalid('headmasterRemarks')" class="remarks-error">
                 {{ getFieldError('headmasterRemarks') }}
               </div>
-              <div *ngIf="!canEditRemarks" class="remarks-readonly">
+              <div *ngIf="!canEditHeadRemarks" class="remarks-readonly">
                 {{ reportCard.remarks?.headmasterRemarks || 'No head\u2019s remarks entered' }}
               </div>
             </div>

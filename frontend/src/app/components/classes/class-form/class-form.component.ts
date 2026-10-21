@@ -48,6 +48,10 @@ export class ClassFormComponent implements OnInit, OnDestroy {
   selectedTeacherIds: string[] = [];
   teacherSearchQuery = '';
   loadingTeachers = false;
+
+  // Class Teachers
+  selectedClassTeacher1Id: string = '';
+  selectedClassTeacher2Id: string = '';
   
   // Subjects
   subjects: any[] = [];
@@ -136,6 +140,12 @@ export class ClassFormComponent implements OnInit, OnDestroy {
           }
           if (data.subjects) {
             this.selectedSubjectIds = data.subjects.map((s: any) => s.id);
+          }
+          if (data.classTeacher1) {
+            this.selectedClassTeacher1Id = data.classTeacher1.id;
+          }
+          if (data.classTeacher2) {
+            this.selectedClassTeacher2Id = data.classTeacher2.id;
           }
           this.loadTeachersAndSubjects();
           this.cdr.markForCheck();
@@ -246,6 +256,13 @@ export class ClassFormComponent implements OnInit, OnDestroy {
       .map((id) => this.subjects.find((s) => s.id === id))
       .filter(Boolean)
       .map((s: any) => s.name || s.code || 'Subject');
+  }
+
+  getClassTeacherDisplayName(teacherId: string): string {
+    if (!teacherId) return 'Not assigned';
+    const teacher = this.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return 'Unknown';
+    return `${teacher.lastName} ${teacher.firstName}`.trim() || teacher.teacherId || 'Unknown';
   }
 
   selectAllVisibleTeachers(): void {
@@ -430,6 +447,14 @@ export class ClassFormComponent implements OnInit, OnDestroy {
     }
     if (this.selectedSubjectIds.length > 0) {
       classData.subjectIds = this.selectedSubjectIds;
+    }
+
+    // Include class teacher IDs if selected
+    if (this.selectedClassTeacher1Id) {
+      classData.classTeacher1Id = this.selectedClassTeacher1Id;
+    }
+    if (this.selectedClassTeacher2Id) {
+      classData.classTeacher2Id = this.selectedClassTeacher2Id;
     }
 
     if (this.isEdit) {

@@ -63,6 +63,11 @@ error = '';
   success = '';
   generateSuccess = '';
   canEditRemarks = false;
+  /**
+   * Head's remarks (incl. the AI Remark button) stay available to every staff role
+   * except parents, students and accountants — even after results are published.
+   */
+  canEditHeadRemarks = false;
   private remarksEditRoleAllowed = false;
   savingRemarks = false;
   validationError: any = null; // Store detailed validation error data
@@ -147,13 +152,14 @@ error = '';
     private offlineSync: OfflineSyncService,
     private attendanceService: AttendanceService
 ) {
-    // Check if user can edit remarks (teacher, admin, school leadership, demo)
+    // Remarks (and the AI Remark for the head's comment) are available to every
+    // role except parents, students and accountants.
     this.remarksEditRoleAllowed =
-      this.authService.isAdmin() ||
-      this.authService.isSchoolLeadership() ||
-      this.authService.isTeacher() ||
-      this.authService.hasRole('demo_user');
+      !this.authService.hasRole('parent') &&
+      !this.authService.hasRole('student') &&
+      !this.authService.hasRole('accountant');
     this.canEditRemarks = this.remarksEditRoleAllowed;
+    this.canEditHeadRemarks = this.remarksEditRoleAllowed;
     this.isParent = this.authService.hasRole('parent');
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
@@ -692,9 +698,12 @@ if (err.status === 0) {
         this.canEditRemarks =
           this.remarksEditRoleAllowed &&
           (!resultsPublished || this.authService.isAdmin());
+        // Head's remarks (and their AI Remark button) remain usable by staff roles
+        // after publication — only class teacher remarks lock down.
+        this.canEditHeadRemarks = this.remarksEditRoleAllowed;
         if (resultsPublished && !this.canEditRemarks && this.remarksEditRoleAllowed) {
           this.error =
-            'Exam results are published — remarks are read-only for your role. Administrators can still edit.';
+            'Exam results are published — class teacher remarks are read-only for your role. Head\u2019s remarks remain editable.';
         }
         
         // For parents, filter to only their student
@@ -1255,7 +1264,7 @@ if (err.status === 0) {
   
   // Auto-save remarks
   autoSaveRemarks(reportCard: any) {
-    if (!this.canEditRemarks) {
+    if (!this.canEditRemarks && !this.canEditHeadRemarks) {
       return;
     }
 
@@ -1779,7 +1788,7 @@ if (err.status === 0) {
   setRemarksMode(reportCard: any, remarkType: 'classTeacher' | 'headmaster', mode: 'custom' | 'ai'): void {
     if (!reportCard?.student?.id) return;
     // Allow both teachers and admins to edit headmaster remarks
-    if (remarkType === 'headmaster' && !this.canEditRemarks) return;
+    if (remarkType === 'headmaster' && !this.canEditHeadRemarks) return;
     if (remarkType === 'classTeacher' && !this.canEditRemarks) return;
 
     const key = this.remarksKey(reportCard.student.id, remarkType);
@@ -1876,7 +1885,7 @@ if (err.status === 0) {
   ): void {
     if (!reportCard || !reportCard.student) return;
     // Allow both teachers and admins to generate AI alternatives for both remark types
-    if (!this.canEditRemarks) return;
+    if (remarkType === 'headmaster' ? !this.canEditHeadRemarks : !this.canEditRemarks) return;
 
     const key = this.remarksKey(reportCard.student.id, remarkType);
     if (this.aiGeneratingMap.get(key) && !force) return;

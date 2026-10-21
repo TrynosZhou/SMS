@@ -4515,7 +4515,11 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
     const resultsPublished =
       exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED);
 
-    if (resultsPublished && !isStaffAdmin) {
+    // Class teacher remarks lock down for non-admins once results are published,
+    // but head's remarks (and the AI Remark flow) stay editable for staff roles.
+    const classTeacherRemarksLocked = resultsPublished && !isStaffAdmin;
+
+    if (classTeacherRemarksLocked && !(isSchoolLeadership || isTeacher || isDemoUser)) {
       return res.status(403).json({
         message: 'Cannot edit remarks. Exam results have been published and are now read-only.'
       });
@@ -4562,7 +4566,7 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
       remarks.headmasterId = user.id;
     }
 
-    if (isTeacher || isStaffAdmin || isDemoUser) {
+    if (!classTeacherRemarksLocked && (isTeacher || isStaffAdmin || isDemoUser)) {
       remarks.classTeacherRemarks = classTeacherRemarks || null;
       remarks.classTeacherId = user.id;
     }
