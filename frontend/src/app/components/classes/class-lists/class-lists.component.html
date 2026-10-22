@@ -186,6 +186,19 @@
       <div class="school-logo-box" *ngIf="schoolLogoSecondary">
         <img [src]="schoolLogoSecondary" alt="Cambridge logo" class="school-logo" />
       </div>
+      <button
+        type="button"
+        class="cll-header-download hide-print"
+        (click)="downloadPdf(); $event.stopPropagation()"
+        [disabled]="downloadingPdf || loadingPdf || !filteredStudents.length"
+        title="Download class list PDF"
+        aria-label="Download class list PDF">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 3v12" fill="none" stroke="currentColor" stroke-width="3.75" stroke-linecap="round"/>
+          <path d="M5.5 11.5 12 20l6.5-8.5" fill="none" stroke="currentColor" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 21h16" fill="none" stroke="currentColor" stroke-width="3.75" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
     <div class="report-title">
       <h2>Class List Report</h2>
@@ -248,7 +261,7 @@
 
     <div class="cll-data-panel">
         <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
-        <div class="table-container" id="class-list-pdf">
+        <div class="table-container">
           <ng-container *ngTemplateOutlet="pdfLetterhead"></ng-container>
 
           <div class="meta-bar">
@@ -379,8 +392,8 @@
     </div>
   </section>
 
-  <!-- Hidden PDF source when in cards mode -->
-  <div class="cll-pdf-offscreen" *ngIf="viewMode === 'cards' && filteredStudents.length">
+  <!-- Clean PDF source: no Action column (used for preview + download) -->
+  <div class="cll-pdf-offscreen" *ngIf="filteredStudents.length">
     <div class="table-container" id="class-list-pdf">
       <ng-container *ngTemplateOutlet="pdfLetterhead"></ng-container>
 

@@ -699,6 +699,14 @@
   visibility: hidden;
 }
 
+.cll-pdf-offscreen .cll-header-download,
+.pdf-mode .cll-header-download,
+.pdf-mode .col-action,
+.pdf-mode .hide-print,
+.pdf-mode .sort-arrow {
+  display: none !important;
+}
+
 .pdf-mode .school-header {
   background: #fff;
   border: none;
@@ -761,12 +769,46 @@
 
 /* Letterhead: school logo, name and address */
 .school-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 18px 22px;
   background: #fff;
   border-bottom: 3px double var(--cll-navy);
+}
+
+.cll-header-download {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  border: 3px solid var(--cll-navy);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--cll-navy);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.18);
+}
+
+.cll-header-download svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.cll-header-download:hover:not(:disabled) {
+  background: var(--cll-navy);
+  color: #f59e0b;
+}
+
+.cll-header-download:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .school-logo-box {

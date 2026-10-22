@@ -1336,80 +1336,106 @@ next: (settings: any) => {
     }
   }
 
-  async previewPdf() {
+  private classListPdfFilename(): string {
+    const className = this.getSelectedClassName().replace(/\s+/g, '_');
+    const term = (this.selectedTerm || '').replace(/\s+/g, '_');
+    return `Class_List_${className}_${term || 'Term'}.pdf`;
+  }
+
+  private async buildClassListPdf(): Promise<jsPDF> {
     const element = document.getElementById('class-list-pdf');
     if (!element) {
-      this.error = 'Class list content not found.';
+      throw new Error('Class list content not found.');
+    }
+
+    const offscreen = element.closest('.cll-pdf-offscreen') as HTMLElement | null;
+    const prev = offscreen
+      ? {
+          visibility: offscreen.style.visibility,
+          left: offscreen.style.left,
+          position: offscreen.style.position,
+          top: offscreen.style.top,
+          zIndex: offscreen.style.zIndex,
+        }
+      : null;
+
+    if (offscreen) {
+      offscreen.style.visibility = 'visible';
+      offscreen.style.position = 'fixed';
+      offscreen.style.left = '0';
+      offscreen.style.top = '0';
+      offscreen.style.zIndex = '-1';
+    }
+
+    element.classList.add('pdf-mode');
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      return pdf;
+    } finally {
+      element.classList.remove('pdf-mode');
+      if (offscreen && prev) {
+        offscreen.style.visibility = prev.visibility;
+        offscreen.style.left = prev.left;
+        offscreen.style.position = prev.position;
+        offscreen.style.top = prev.top;
+        offscreen.style.zIndex = prev.zIndex;
+      }
+    }
+  }
+
+  async previewPdf() {
+    if (!this.filteredStudents.length) {
+      this.error = 'Load a class list before previewing the PDF.';
       return;
     }
     this.loadingPdf = true;
     this.error = '';
     try {
-      element.classList.add('pdf-mode');
-      await new Promise(resolve => setTimeout(resolve, 50));
-      const canvas = await html2canvas(element, { scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const pdf = await this.buildClassListPdf();
+      const pdfUrl = URL.createObjectURL(pdf.output('blob'));
       window.open(pdfUrl, '_blank');
       setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
     } catch (error: any) {
       this.error = error?.message || 'Failed to generate PDF preview.';
     } finally {
-      element.classList.remove('pdf-mode');
       this.loadingPdf = false;
     }
   }
 
   async downloadPdf() {
-    const element = document.getElementById('class-list-pdf');
-    if (!element) {
-      this.error = 'Class list content not found.';
+    if (!this.filteredStudents.length) {
+      this.error = 'Load a class list before downloading the PDF.';
       return;
     }
     this.downloadingPdf = true;
     this.error = '';
     try {
-      element.classList.add('pdf-mode');
-      await new Promise(resolve => setTimeout(resolve, 50));
-      const canvas = await html2canvas(element, { scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      const className = this.getSelectedClassName().replace(/\s+/g, '_');
-      const term = (this.selectedTerm || '').replace(/\s+/g, '_');
-      const filename = `Class_List_${className}_${term || 'Term'}.pdf`;
-      pdf.save(filename);
+      const pdf = await this.buildClassListPdf();
+      pdf.save(this.classListPdfFilename());
     } catch (error: any) {
       this.error = error?.message || 'Failed to download PDF.';
     } finally {
-      element.classList.remove('pdf-mode');
       this.downloadingPdf = false;
     }
   }
