@@ -53,13 +53,15 @@ export class FinanceService {
     );
   }
 
-  getInvoicesPaginated(options: { studentId?: string; status?: string; page?: number; limit?: number } = {}): Observable<PaginatedResponse<any>> {
+  getInvoicesPaginated(options: { studentId?: string; status?: string; page?: number; limit?: number; hasDiningHallFee?: boolean; hasTransportFee?: boolean } = {}): Observable<PaginatedResponse<any>> {
     const params: any = {
       page: options.page ?? 1,
       limit: options.limit ?? 20
     };
     if (options.studentId) params.studentId = options.studentId;
     if (options.status) params.status = options.status;
+    if (options.hasDiningHallFee) params.hasDiningHallFee = 'true';
+    if (options.hasTransportFee) params.hasTransportFee = 'true';
     return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance`, { params }).pipe(
       catchError((error: any) => {
         if (error?.status !== 0) {
@@ -677,6 +679,30 @@ export class FinanceService {
     reason?: string;
   }): Observable<any> {
     return this.http.post(`${this.apiUrl}/finance/remediation/credit-note`, payload);
+  }
+
+  // Dining Hall Report
+  getDiningHallReport(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/students/logistics/dining-hall/report`, {
+      responseType: 'text'
+    });
+  }
+
+  downloadDiningHallReport(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/students/logistics/dining-hall/report`, {
+      responseType: 'blob'
+    });
+  }
+
+  // Transport Report
+  getTransportReport(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/students/logistics/transport/report`);
+  }
+
+  downloadTransportReport(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/students/logistics/transport/report`, {
+      responseType: 'blob'
+    });
   }
 }
 

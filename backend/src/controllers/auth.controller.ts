@@ -12,6 +12,7 @@ import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import { parseDOB, compareDates, formatDOB } from '../utils/dateParser';
 import { sendParentRegistrationNotifications } from '../utils/parentRegistrationNotifications';
+import { resolveParentLoginSnapshot } from '../utils/parentSessionLog';
 
 async function findUserByEmailInsensitive(email: string): Promise<User | null> {
   const normalized = String(email || '').trim().toLowerCase();
@@ -1043,9 +1044,12 @@ export const login = async (req: Request, res: Response) => {
       const repo = AppDataSource.getRepository(UserSessionLog);
       const crypto = require('crypto');
       const sessionId: string = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : crypto.createHash('sha256').update(`${user.id}-${Date.now()}`).digest('hex');
+      const parentSnap = await resolveParentLoginSnapshot(user);
       const session = repo.create({
         userId: user.id,
         username: user.username || user.email || null,
+        displayName: parentSnap.displayName,
+        linkedChildren: parentSnap.linkedChildren,
         role: user.role,
         sessionId,
         ipAddress,

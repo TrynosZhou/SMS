@@ -555,8 +555,10 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       status,
       invoiceId,
       page: pageParam,
-      limit: limitParam
-    } = req.query as { studentId?: string; status?: string; invoiceId?: string; page?: string; limit?: string };
+      limit: limitParam,
+      hasDiningHallFee,
+      hasTransportFee
+    } = req.query as { studentId?: string; status?: string; invoiceId?: string; page?: string; limit?: string; hasDiningHallFee?: string; hasTransportFee?: string };
 
     const scope = await resolvePortalFinanceStudentScope(req, res, studentId);
     if (!scope) return;
@@ -571,6 +573,14 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       .leftJoinAndSelect('invoice.student', 'student')
       .where('COALESCE(invoice.isVoided, false) = false')
       .orderBy('invoice.createdAt', 'DESC');
+
+    if (hasDiningHallFee === 'true') {
+      queryBuilder.andWhere('invoice.diningHallAmount > 0');
+    }
+
+    if (hasTransportFee === 'true') {
+      queryBuilder.andWhere('invoice.transportAmount > 0');
+    }
 
     if (studentId) {
       // Query by studentId, but also handle cases where studentId might be a studentNumber
@@ -632,6 +642,8 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     let totalBalance = 0;
     let totalInvoicedAmount = 0;
     let totalPaidAmount = 0;
+    let totalDiningHallAmount = 0;
+    let totalTransportAmount = 0;
     for (const inv of allForTotals) {
       totalBalance = parseFloat(
         (totalBalance + computeInvoiceOwedAmount(inv, inv.student, configuredDeskFee)).toFixed(2)
@@ -640,13 +652,17 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
         (totalInvoicedAmount + parseAmount(inv.amount) + parseAmount(inv.previousBalance)).toFixed(2)
       );
       totalPaidAmount = parseFloat((totalPaidAmount + parseAmount(inv.paidAmount)).toFixed(2));
+      totalDiningHallAmount = parseFloat((totalDiningHallAmount + parseAmount(inv.diningHallAmount)).toFixed(2));
+      totalTransportAmount = parseFloat((totalTransportAmount + parseAmount(inv.transportAmount)).toFixed(2));
     }
 
     res.json(
       buildPaginationResponse(invoicesForClient, total, page, limit, {
         totalBalance,
         totalInvoicedAmount,
-        totalPaidAmount
+        totalPaidAmount,
+        totalDiningHallAmount,
+        totalTransportAmount
       })
     );
   } catch (error: any) {

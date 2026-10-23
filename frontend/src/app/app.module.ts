@@ -29,6 +29,7 @@ import { InvoiceNotePageComponent } from './components/finance/invoice-note-page
 import { InvoiceSyncRemediationComponent } from './components/finance/invoice-sync-remediation/invoice-sync-remediation.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
+import { DiningHallComponent } from './components/finance/dining-hall/dining-hall.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -205,6 +206,7 @@ SendMessageComponent,
     NewsFeedComponent,
     NewsFormComponent,
     NewsDetailComponent,
+    DiningHallComponent,
     AgedDebtorsReportComponent,
     AcademicSettingsComponent,
     UserManagementComponent,

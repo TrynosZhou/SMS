@@ -1,8 +1,12 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
+import { FinanceService } from '../../../services/finance.service';
+import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { StudentRefreshService } from '../../../services/student-refresh.service';
 import { Subject } from 'rxjs';
@@ -64,9 +68,31 @@ selectedStudent: any = null;
   selectedStudentIds = new Set<string>();
   bulkSubmitting = false;
 
+  showDHReceiptsReport = false;
+  dhReceipts: any[] = [];
+  dhReceiptsTotal = 0;
+  dhLoading = false;
+
+  showTransportReceiptsReport = false;
+  transportReceipts: any[] = [];
+  transportReceiptsTotal = 0;
+  transportLoading = false;
+
+  schoolName = '';
+  schoolAddress = '';
+  schoolPhone = '';
+  schoolEmail = '';
+  schoolMotto = '';
+  schoolLogoPrimary: string | null = null;
+  schoolLogoSecondary: string | null = null;
+  academicYear = '';
+  currentTerm = '';
+
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
+    private financeService: FinanceService,
+    private settingsService: SettingsService,
     private router: Router,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
@@ -86,12 +112,12 @@ selectedStudent: any = null;
       this.pageTitle = 'Transport';
       this.pageSubtitle = 'Day scholar students using school transport';
       this.pageIcon = '🚌';
-    } else if (logisticsMode === 'diningHall') {
-      this.selectedType = 'Day Scholar';
+    } else if (logisticsMode === 'dining-hall') {
+      this.selectedType = 'Boarder';
       this.isLogisticsDiningHall = true;
       this.filterUsesDiningHall = true;
       this.pageTitle = 'Dining Hall';
-      this.pageSubtitle = 'Day scholar students using dining hall meals';
+      this.pageSubtitle = 'Boarder students enrolled for DH meals';
       this.pageIcon = '🍽️';
     }
     this.studentRefresh.onRefreshRequested().pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -104,6 +130,7 @@ selectedStudent: any = null;
 
     const pagePath = (this.router.url || '').split('?')[0];
     activatePageLoad(this.router, this.destroy$, pagePath, () => {
+      this.loadSchoolSettings();
       this.loadClasses();
       this.loadStudents(this.pagination.page);
     });
@@ -254,6 +281,25 @@ selectedStudent: any = null;
   onGenderFilterChange(): void {
     this.applyFilters();
     this.cdr.markForCheck();
+  }
+
+  loadSchoolSettings() {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        if (settings) {
+          this.schoolName = settings.schoolName || '';
+          this.schoolAddress = settings.address || '';
+          this.schoolPhone = settings.phone || '';
+          this.schoolEmail = settings.email || '';
+          this.schoolMotto = settings.motto || '';
+          this.schoolLogoPrimary = settings.logoPrimary || null;
+          this.schoolLogoSecondary = settings.logoSecondary || null;
+          this.academicYear = settings.academicYear || '';
+          this.currentTerm = settings.currentTerm || '';
+        }
+      },
+      error: (err) => console.error('Error loading school settings:', err)
+    });
   }
 
   loadClasses() {
@@ -965,5 +1011,73 @@ try {
     const t = String(student?.studentType || '').trim().toLowerCase();
     if (t === 'boarder') return 'Boarder';
     return 'Day';
+  }
+
+  toggleDHReceipts(): void {
+    this.showDHReceiptsReport = !this.showDHReceiptsReport;
+    if (this.showDHReceiptsReport) {
+      this.fetchDHReceipts();
+    }
+  }
+
+  fetchDHReceipts(): void {
+    this.dhLoading = true;
+    this.dhReceipts = [];
+    this.dhReceiptsTotal = 0;
+    this.error = '';
+
+    this.financeService.getInvoicesPaginated({
+      hasDiningHallFee: true,
+      page: 1,
+      limit: 1000 // Fetch all for the report
+    }).pipe(
+      finalize(() => {
+        this.dhLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (resp) => {
+        this.dhReceipts = resp.data || [];
+        this.dhReceiptsTotal = resp.totalDiningHallAmount || 0;
+      },
+      error: (err) => {
+        console.error('Error fetching DH receipts:', err);
+        this.error = 'Failed to load DH receipts.';
+      }
+    });
+  }
+
+  toggleTransportReceipts(): void {
+    this.showTransportReceiptsReport = !this.showTransportReceiptsReport;
+    if (this.showTransportReceiptsReport) {
+      this.fetchTransportReceipts();
+    }
+  }
+
+  fetchTransportReceipts(): void {
+    this.transportLoading = true;
+    this.transportReceipts = [];
+    this.transportReceiptsTotal = 0;
+    this.error = '';
+
+    this.financeService.getInvoicesPaginated({
+      hasTransportFee: true,
+      page: 1,
+      limit: 1000 // Fetch all for the report
+    }).pipe(
+      finalize(() => {
+        this.transportLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (resp) => {
+        this.transportReceipts = resp.data || [];
+        this.transportReceiptsTotal = resp.totalTransportAmount || 0;
+      },
+      error: (err) => {
+        console.error('Error fetching transport receipts:', err);
+        this.error = 'Failed to load transport receipts.';
+      }
+    });
   }
 }

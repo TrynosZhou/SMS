@@ -19,15 +19,15 @@ const HEADER_BG = '#f8fafc';
 const ROW_ALT_BG = '#f5f9ff';
 
 const COLUMNS: { key: string; label: string; width: number }[] = [
-  { key: 'user', label: 'User', width: 68 },
+  { key: 'user', label: 'Name', width: 90 },
   { key: 'role', label: 'Role', width: 52 },
+  { key: 'children', label: 'Linked children', width: 130 },
+  { key: 'date', label: 'Date', width: 62 },
+  { key: 'entry', label: 'Time of entry', width: 62 },
+  { key: 'minutes', label: 'Minutes', width: 48 },
   { key: 'status', label: 'Status', width: 48 },
-  { key: 'login', label: 'Login', width: 82 },
-  { key: 'last', label: 'Last activity', width: 82 },
-  { key: 'logout', label: 'Logout', width: 82 },
-  { key: 'duration', label: 'Duration', width: 48 },
-  { key: 'modules', label: 'Modules', width: 130 },
-  { key: 'ip', label: 'IP', width: 72 },
+  { key: 'modules', label: 'Modules', width: 100 },
+  { key: 'ip', label: 'IP', width: 70 },
 ];
 
 function decodeLogoBuffer(logo: string | null | undefined): Buffer | null {
@@ -57,13 +57,32 @@ function formatDateTime(value: Date | string | null | undefined): string {
   });
 }
 
-function formatDuration(seconds: number | null | undefined): string {
-  const total = Math.max(0, Number(seconds) || 0);
-  const minutes = Math.floor(total / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  return rem ? `${hours}h ${rem}m` : `${hours}h`;
+function formatMinutes(seconds: number | null | undefined): string {
+  const minutes = Math.max(0, Math.round(Number(seconds || 0) / 60));
+  return `${minutes} min`;
+}
+
+function formatDateOnly(value: Date | string | null | undefined): string {
+  if (!value) return '—';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatTimeOnly(value: Date | string | null | undefined): string {
+  if (!value) return '—';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 }
 
 function formatRole(role: string | null | undefined): string {
@@ -74,19 +93,21 @@ function formatRole(role: string | null | undefined): string {
 function cellValue(row: UserSessionLog, key: string): string {
   switch (key) {
     case 'user':
-      return String(row.username || row.userId || '—');
+      return String(row.displayName || row.username || row.userId || '—');
     case 'role':
       return formatRole(row.role);
+    case 'children':
+      return String(row.linkedChildren || (String(row.role || '').toLowerCase() === 'parent' ? 'No linked children' : '—'));
+    case 'date':
+      return formatDateOnly(row.loginAt);
+    case 'entry':
+      return formatTimeOnly(row.loginAt);
+    case 'minutes':
+      return formatMinutes(row.timeSpentSeconds);
     case 'status':
       return row.logoutAt ? 'Logged out' : 'Active';
     case 'login':
       return formatDateTime(row.loginAt);
-    case 'last':
-      return formatDateTime(row.lastActivityAt);
-    case 'logout':
-      return formatDateTime(row.logoutAt);
-    case 'duration':
-      return formatDuration(row.timeSpentSeconds);
     case 'modules':
       return String(row.modules || '—');
     case 'ip':

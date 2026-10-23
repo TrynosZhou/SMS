@@ -213,6 +213,23 @@ export class UserLogComponent implements OnInit, OnDestroy {
     return String(role).replace(/_/g, ' ');
   }
 
+  /** Preferred label: parent/staff display name, falling back to username or user ID. */
+  displayName(session: any): string {
+    return String(session?.displayName || session?.username || session?.userId || '—');
+  }
+
+  isParent(session: any): boolean {
+    return String(session?.role || '').toLowerCase() === 'parent';
+  }
+
+  /** Linked children for a parent session, split into individual labels. */
+  childList(session: any): string[] {
+    return String(session?.linkedChildren || '')
+      .split(',')
+      .map((child) => child.trim())
+      .filter((child) => child && child.toLowerCase() !== 'no linked children');
+  }
+
   getInitials(value: string | null | undefined): string {
     const raw = String(value || 'U').trim();
     if (raw.length <= 2) {
@@ -258,31 +275,39 @@ export class UserLogComponent implements OnInit, OnDestroy {
   }
 
   exportCSV(): void {
-    const rows = this.sessions.map(s => ({
-      user: s.username || s.userId,
-      role: s.role,
-      loginAt: s.loginAt,
-      lastActivityAt: s.lastActivityAt,
-      logoutAt: s.logoutAt,
-      timeSpentSeconds: s.timeSpentSeconds,
-      modules: s.modules,
-      sessionId: s.sessionId,
-      ipAddress: s.ipAddress
-    }));
-    const header = ['User', 'Role', 'Login Time', 'Last Activity', 'Logout Time', 'Time Spent (s)', 'Modules', 'Session ID', 'IP Address'];
+    const rows = this.sessions.map(s => {
+      const login = s.loginAt ? new Date(s.loginAt) : null;
+      const minutes = Math.max(0, Math.round(Number(s.timeSpentSeconds || 0) / 60));
+      return {
+        name: s.displayName || s.username || s.userId || '',
+        username: s.username || '',
+        role: s.role || '',
+        children: this.childList(s).join('; '),
+        date: login ? login.toISOString().slice(0, 10) : '',
+        entry: login ? login.toISOString().slice(11, 19) : '',
+        minutes: String(minutes),
+        status: this.isSessionActive(s) ? 'Active' : 'Logged out',
+        modules: s.modules || '',
+        sessionId: s.sessionId || '',
+        ipAddress: s.ipAddress || ''
+      };
+    });
+    const header = ['Name', 'Username', 'Role', 'Linked Children', 'Date', 'Time of Entry', 'Minutes Spent', 'Status', 'Modules', 'Session ID', 'IP Address'];
     const csv = [
       header.join(','),
       ...rows.map(r =>
         [
-          `"${(r.user || '').replace(/"/g, '""')}"`,
-          r.role || '',
-          r.loginAt ? new Date(r.loginAt).toISOString() : '',
-          r.lastActivityAt ? new Date(r.lastActivityAt).toISOString() : '',
-          r.logoutAt ? new Date(r.logoutAt).toISOString() : '',
-          String(r.timeSpentSeconds || 0),
-          `"${(r.modules || '').replace(/"/g, '""')}"`,
-          r.sessionId || '',
-          r.ipAddress || ''
+          `"${r.name.replace(/"/g, '""')}"`,
+          `"${r.username.replace(/"/g, '""')}"`,
+          r.role,
+          `"${r.children.replace(/"/g, '""')}"`,
+          r.date,
+          r.entry,
+          r.minutes,
+          r.status,
+          `"${r.modules.replace(/"/g, '""')}"`,
+          r.sessionId,
+          r.ipAddress
         ].join(',')
       )
     ].join('\n');

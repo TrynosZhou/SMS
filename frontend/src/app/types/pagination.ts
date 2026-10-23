@@ -9,6 +9,8 @@ export interface PaginatedResponse<T> {
   totalBalance?: number;
   totalInvoicedAmount?: number;
   totalPaidAmount?: number;
+  totalDiningHallAmount?: number;
+  totalTransportAmount?: number;
   /** Set when the service catches an HTTP error and returns an empty page */
   loadFailed?: boolean;
   errorMessage?: string;

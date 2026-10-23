@@ -27,8 +27,69 @@
           aria-label="Refresh students">
           <span [class.spinning]="loading">↻</span>
         </button>
+        <button
+          type="button"
+          class="ms-hero-btn ms-hero-btn--solid"
+          *ngIf="isLogisticsDiningHall"
+          (click)="toggleDHReceipts()"
+          title="View invoices with Dining Hall fees">
+          {{ showDHReceiptsReport ? 'Close DH Receipts' : 'DH Receipts' }}
+        </button>
+        <button
+          type="button"
+          class="ms-hero-btn ms-hero-btn--solid"
+          *ngIf="isLogisticsTransport"
+          (click)="toggleTransportReceipts()"
+          title="View invoices with Transport fees">
+          {{ showTransportReceiptsReport ? 'Close Transport Receipts' : 'Transport Receipts' }}
+        </button>
         <a routerLink="/students/enroll" class="ms-hero-btn" *ngIf="!isTeacher && !isAccountant && !isLogisticsView">Enroll</a>
         <a routerLink="/students/new" class="ms-hero-btn ms-hero-btn--solid" *ngIf="!isTeacher" title="Add student">+ Add Student</a>
+      </div>
+    </div>
+
+    <!-- Transport Receipts Report -->
+    <div class="dh-receipts-overlay" *ngIf="showTransportReceiptsReport">
+      <div class="dh-receipts-container">
+        <div class="dh-receipts-header">
+          <h2>Transport Receipts</h2>
+          <div class="dh-receipts-actions">
+            <button type="button" class="ms-btn ms-btn--outline" (click)="fetchTransportReceipts()" [disabled]="transportLoading">Refresh</button>
+            <button type="button" class="ms-btn ms-btn--ghost" (click)="toggleTransportReceipts()">Close</button>
+          </div>
+        </div>
+
+        <div class="dh-receipts-body">
+          <div class="dh-loading" *ngIf="transportLoading">Loading receipts…</div>
+          <div class="dh-empty" *ngIf="!transportLoading && transportReceipts.length === 0">No transport receipts found.</div>
+
+          <table class="manage-students-table dh-table" *ngIf="!transportLoading && transportReceipts.length > 0">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Surname</th>
+                <th>Name</th>
+                <th>Sex</th>
+                <th class="col-amount">Transport Fee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let inv of transportReceipts">
+                <td>{{ inv.student?.studentNumber || '—' }}</td>
+                <td>{{ inv.student?.lastName || '—' }}</td>
+                <td>{{ inv.student?.firstName || '—' }}</td>
+                <td>{{ inv.student?.gender || '—' }}</td>
+                <td class="col-amount">${{ inv.transportAmount | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="dh-total-row">
+                <td colspan="4" class="text-right"><strong>Total Transport Fees:</strong></td>
+                <td class="col-amount"><strong>${{ transportReceiptsTotal | number:'1.2-2' }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -230,7 +291,29 @@
     </div>
 
     <div class="manage-students-table-wrap" *ngIf="!loading && filteredStudents.length > 0 && viewMode === 'list'">
-      <table class="manage-students-table">
+      <!-- Dining Hall roster: students taking food from the dining hall -->
+      <table class="manage-students-table dh-table" *ngIf="isLogisticsDiningHall">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Last Name</th>
+            <th>First Name</th>
+            <th>Class</th>
+            <th>Sex</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of filteredStudents">
+            <td class="col-student-id">{{ student.studentNumber || '—' }}</td>
+            <td>{{ student.lastName || '—' }}</td>
+            <td>{{ student.firstName || '—' }}</td>
+            <td>{{ getStudentClassName(student) }}</td>
+            <td>{{ student.gender || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="manage-students-table" *ngIf="!isLogisticsDiningHall">
         <thead>
           <tr>
             <th class="col-check" *ngIf="canBulkCorrectStatus()">
@@ -355,6 +438,51 @@
         <button type="button" class="ms-btn ms-btn--primary" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
         <button type="button" class="ms-btn ms-btn--outline" *ngIf="!loadFailed && hasActiveFilters()" (click)="clearAllFilters()">Clear filters</button>
         <a routerLink="/students/new" class="ms-btn ms-btn--primary" *ngIf="!isTeacher && !loadFailed && !hasActiveFilters()">+ Add Student</a>
+      </div>
+    </div>
+
+    <!-- DH Receipts Report -->
+    <div class="dh-receipts-overlay" *ngIf="showDHReceiptsReport">
+      <div class="dh-receipts-container">
+        <div class="dh-receipts-header">
+          <h2>Dining Hall Receipts</h2>
+          <div class="dh-receipts-actions">
+            <button type="button" class="ms-btn ms-btn--outline" (click)="fetchDHReceipts()" [disabled]="dhLoading">Refresh</button>
+            <button type="button" class="ms-btn ms-btn--ghost" (click)="toggleDHReceipts()">Close</button>
+          </div>
+        </div>
+
+        <div class="dh-receipts-body">
+          <div class="dh-loading" *ngIf="dhLoading">Loading receipts…</div>
+          <div class="dh-empty" *ngIf="!dhLoading && dhReceipts.length === 0">No dining hall receipts found.</div>
+
+          <table class="manage-students-table dh-table" *ngIf="!dhLoading && dhReceipts.length > 0">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Surname</th>
+                <th>Name</th>
+                <th>Sex</th>
+                <th class="col-amount">DH Fee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let inv of dhReceipts">
+                <td>{{ inv.student?.studentNumber || '—' }}</td>
+                <td>{{ inv.student?.lastName || '—' }}</td>
+                <td>{{ inv.student?.firstName || '—' }}</td>
+                <td>{{ inv.student?.gender || '—' }}</td>
+                <td class="col-amount">${{ inv.diningHallAmount | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="dh-total-row">
+                <td colspan="4" class="text-right"><strong>Total DH Fees:</strong></td>
+                <td class="col-amount"><strong>${{ dhReceiptsTotal | number:'1.2-2' }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
 

@@ -1,0 +1,286 @@
+<div class="dh-page">
+  <div class="dh-toast-stack" *ngIf="error">
+    <div class="dh-toast dh-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="dh-toast__dismiss" (click)="clearAlert()" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="dh-hero">
+    <div class="dh-hero__main">
+      <div class="dh-hero-left">
+        <span class="dh-hero-icon" aria-hidden="true">🍽️</span>
+        <div>
+          <span class="dh-hero-eyebrow">Logistics · Dining Hall</span>
+          <h1>Dining Hall</h1>
+          <p class="dh-hero-sub">Students taking dining hall (DH) meals</p>
+          <p class="dh-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated {{ lastLoadedAt | date : 'medium' }}
+          </p>
+        </div>
+      </div>
+      <div class="dh-hero__actions">
+        <button
+          type="button"
+          class="dh-hero-refresh"
+          (click)="refreshStudents()"
+          [disabled]="loading"
+          title="Refresh list"
+          aria-label="Refresh dining hall students">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="dh-hero-btn dh-hero-btn--solid" (click)="toggleDHReceipts()" title="View DH receipts">
+          {{ showDHReceiptsReport ? 'Close DH Receipts' : 'DH Receipts' }}
+        </button>
+        <button type="button" class="dh-hero-btn" (click)="printReport()" [disabled]="!displayedStudents.length || loading">
+          Print
+        </button>
+        <button type="button" class="dh-hero-btn dh-hero-btn--solid" (click)="exportCsv()" [disabled]="!displayedStudents.length || loading">
+          CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="dh-hero-stats" *ngIf="!loading">
+      <article class="dh-stat">
+        <span class="dh-stat__value">{{ dashboardStats.total }}</span>
+        <span class="dh-stat__label">DH students</span>
+      </article>
+      <article class="dh-stat">
+        <span class="dh-stat__value">{{ dashboardStats.male }}</span>
+        <span class="dh-stat__label">Male</span>
+      </article>
+      <article class="dh-stat">
+        <span class="dh-stat__value">{{ dashboardStats.female }}</span>
+        <span class="dh-stat__label">Female</span>
+      </article>
+      <article class="dh-stat">
+        <span class="dh-stat__value">{{ dashboardStats.classes }}</span>
+        <span class="dh-stat__label">Classes</span>
+      </article>
+    </div>
+    <div class="dh-hero-stats" *ngIf="loading">
+      <div class="dh-skeleton-stat" *ngFor="let _ of [1,2,3,4]"></div>
+    </div>
+  </header>
+
+  <section class="dh-panel" *ngIf="!loadFailed">
+    <div class="dh-panel__head-row">
+      <div>
+        <h2 class="dh-panel__title">Filters &amp; search</h2>
+        <p class="dh-panel__intro">Find students taking DH meals by name, student ID, or class.</p>
+      </div>
+      <button type="button" class="dh-btn dh-btn--ghost" *ngIf="hasActiveFilters()" (click)="clearFilters()">
+        Clear filters
+      </button>
+    </div>
+
+    <div class="dh-filters-row">
+      <div class="dh-search-wrap">
+        <span class="dh-search-icon" aria-hidden="true">⌕</span>
+        <input
+          #dhSearch
+          type="search"
+          class="dh-search-input"
+          placeholder="Search name or student ID…"
+          [disabled]="loading"
+          (keyup.enter)="onSearchSubmit(dhSearch.value)" />
+        <button type="button" class="dh-search-btn" (click)="onSearchSubmit(dhSearch.value)" [disabled]="loading">
+          Search
+        </button>
+      </div>
+
+      <div class="dh-filter-wrap">
+        <label for="dhClassFilter">Class</label>
+        <select
+          id="dhClassFilter"
+          class="dh-select"
+          [(ngModel)]="selectedClass"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onClassChange()">
+          <option value="">All classes</option>
+          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="dh-panel dh-data-panel" *ngIf="loading">
+    <div class="dh-skeleton-table" aria-busy="true">
+      <div class="dh-skeleton-row" *ngFor="let _ of skeletonPlaceholders"></div>
+    </div>
+  </section>
+
+  <section class="dh-panel dh-empty-panel" *ngIf="!loading && loadFailed">
+    <p class="dh-empty-title">Could not load dining hall students</p>
+    <p class="dh-empty-text">Check your connection and try again.</p>
+    <div class="dh-empty-actions">
+      <button type="button" class="dh-btn dh-btn--primary" (click)="refreshStudents()">Retry</button>
+    </div>
+  </section>
+
+  <section class="dh-panel dh-empty-panel" *ngIf="!loading && !loadFailed && students.length === 0">
+    <p class="dh-empty-title">No students taking DH meals</p>
+    <p class="dh-empty-text">Students enrolled for dining hall meals will appear here. DH meals are recorded on day scholar registrations.</p>
+  </section>
+
+  <section class="dh-panel dh-data-panel" *ngIf="!loading && !loadFailed && students.length > 0">
+    <div class="dh-empty" *ngIf="displayedStudents.length === 0">
+      <p class="dh-empty-title">No matching students</p>
+      <p class="dh-empty-text">Try another search or class filter.</p>
+      <button type="button" class="dh-btn dh-btn--primary" (click)="clearFilters()">Reset filters</button>
+    </div>
+
+    <ng-container *ngIf="displayedStudents.length > 0">
+      <div class="dh-table-toolbar">
+        <h3>{{ displayedStudents.length }} student(s) taking DH meals <span class="selected-badge" *ngIf="selectedCount > 0"> · {{ selectedCount }} selected</span></h3>
+      </div>
+
+      <div class="dh-table-scroll">
+        <table class="dh-table">
+          <thead>
+            <tr>
+              <th class="col-check">
+                <input
+                  type="checkbox"
+                  [checked]="areAllVisibleSelected()"
+                  (change)="toggleSelectAllVisible($any($event.target).checked)"
+                  aria-label="Select all visible" />
+              </th>
+              <th class="sortable" (click)="setSort('studentNumber')">
+                STUDENT ID <span class="dh-sort-icon">{{ sortIndicator('studentNumber') }}</span>
+              </th>
+              <th class="sortable" (click)="setSort('lastName')">
+                SURNAME <span class="dh-sort-icon">{{ sortIndicator('lastName') }}</span>
+              </th>
+              <th class="sortable" (click)="setSort('firstName')">
+                FIRST NAME <span class="dh-sort-icon">{{ sortIndicator('firstName') }}</span>
+              </th>
+              <th class="sortable" (click)="setSort('className')">
+                CLASS <span class="dh-sort-icon">{{ sortIndicator('className') }}</span>
+              </th>
+              <th>TYPE</th>
+              <th class="sortable" (click)="setSort('gender')">
+                GENDER <span class="dh-sort-icon">{{ sortIndicator('gender') }}</span>
+              </th>
+              <th>PHONE</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let student of displayedStudents">
+              <td class="col-check">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(student.id)"
+                  (change)="toggleStudentSelection(student.id, $any($event.target).checked)"
+                  [attr.aria-label]="'Select ' + student.firstName" />
+              </td>
+              <td class="col-student-id">
+                <span class="dh-id-link" (click)="viewStudentDetails(student)">
+                  {{ student.studentNumber || '—' }}
+                </span>
+              </td>
+              <td>{{ student.lastName || '—' }}</td>
+              <td>{{ student.firstName || '—' }}</td>
+              <td>{{ getStudentClassName(student) }}</td>
+              <td>
+                <span class="type-pill" [class.type-pill--boarder]="getStudentTypeLabel(student) === 'Boarder'">
+                  {{ getStudentTypeLabel(student) }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="gender-pill"
+                  [class.gender-pill--male]="student.gender === 'Male'"
+                  [class.gender-pill--female]="student.gender === 'Female'">
+                  {{ student.gender || '—' }}
+                </span>
+              </td>
+              <td>{{ getPhone(student) }}</td>
+              <td class="col-actions">
+                <button type="button" class="dh-row-btn" (click)="viewStudentDetails(student)">View</button>
+                <button type="button" class="dh-row-btn dh-row-btn--primary" (click)="editStudent(student.id)">Edit</button>
+                <button type="button" class="dh-row-btn dh-row-btn--ghost" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </section>
+
+  <!-- DH Receipts Report Overlay -->
+  <div class="dh-receipts-overlay" *ngIf="showDHReceiptsReport">
+    <div class="dh-receipts-container">
+      <div class="dh-receipts-header">
+        <div class="dh-receipts-title-wrap">
+          <span class="dh-receipts-icon">📋</span>
+          <div>
+            <h2>Dining Hall Receipts</h2>
+            <p class="dh-receipts-sub">Financial aggregation of DH fees</p>
+          </div>
+        </div>
+        <div class="dh-receipts-actions">
+          <button type="button" class="dh-btn dh-btn--pdf" (click)="previewDHReceiptsPDF()" [disabled]="dhLoading || !dhReceipts.length">
+            <span>📄</span> Preview PDF
+          </button>
+          <button type="button" class="dh-btn dh-btn--outline" (click)="fetchDHReceipts()" [disabled]="dhLoading">
+            <span [class.spinning]="dhLoading">↻</span> Refresh
+          </button>
+          <button type="button" class="dh-btn dh-btn--ghost" (click)="toggleDHReceipts()">Close</button>
+        </div>
+      </div>
+
+      <div class="dh-receipts-body" id="dh-receipts-pdf-area">
+        <div class="dh-loading" *ngIf="dhLoading">Loading receipts…</div>
+        <div class="dh-empty" *ngIf="!dhLoading && dhReceipts.length === 0">No dining hall receipts found.</div>
+
+        <div class="receipts-print-container" *ngIf="!dhLoading && dhReceipts.length > 0">
+          <!-- Letterhead for PDF -->
+          <div class="pdf-only-header">
+            <div class="pdf-banner">
+              <img *ngIf="schoolLogo" [src]="schoolLogo" class="pdf-logo" alt="Logo" />
+              <div class="pdf-banner-text">
+                <h1>{{ schoolName || 'School Management System' }}</h1>
+                <p>Dining Hall Receipts Report</p>
+              </div>
+            </div>
+            <div class="pdf-meta">
+              <span>Generated: {{ lastLoadedAt | date:'medium' }}</span>
+            </div>
+          </div>
+
+          <table class="dh-table receipts-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Surname</th>
+                <th>First Name</th>
+                <th>Class</th>
+                <th>Sex</th>
+                <th class="col-amount">DH Fee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let inv of dhReceipts">
+                <td>{{ inv.student?.studentNumber || '—' }}</td>
+                <td>{{ inv.student?.lastName || '—' }}</td>
+                <td>{{ inv.student?.firstName || '—' }}</td>
+                <td>{{ getStudentClassName(inv.student) }}</td>
+                <td>{{ inv.student?.gender || '—' }}</td>
+                <td class="col-amount">${{ inv.diningHallAmount | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="dh-total-row">
+                <td colspan="5" class="text-right"><strong>Total DH Fees:</strong></td>
+                <td class="col-amount"><strong>${{ dhReceiptsTotal | number:'1.2-2' }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

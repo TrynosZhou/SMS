@@ -32,6 +32,8 @@ import { FinancialReportComponent } from './components/finance/financial-reports
 import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
 import { StudentLedgerReportComponent } from './components/finance/financial-reports/student-ledger-report.component';
 import { AgedDebtorsReportComponent } from './components/finance/financial-reports/aged-debtors-report.component';
+import { DiningHallComponent } from './components/finance/dining-hall/dining-hall.component';
+import { RevenueRecognitionReportComponent } from './components/finance/financial-reports/revenue-recognition-report.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -182,7 +184,7 @@ const routes: Routes = [
   { path: 'admin/fin-reports/record-payment/:studentId', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'recordPayment' } },
   { path: 'financial-reports/analytics-forecasts', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'financial-reports/class-reconciliation', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: 'financial-reports/dining-hall', component: StudentListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { logisticsMode: 'diningHall', module: 'logistics', financePage: 'reportDiningHall' } },
+  { path: 'financial-reports/dining-hall', component: DiningHallComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'logistics', financePage: 'reportDiningHall' } },
   { path: 'financial-reports/transport', component: StudentListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { logisticsMode: 'transport', module: 'logistics', financePage: 'reportTransport' } },
   // Payroll routes (removed — redirect to dashboard)
   { path: 'payroll', redirectTo: '/dashboard', pathMatch: 'prefix' },

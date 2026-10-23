@@ -10,6 +10,13 @@ import {
   buildUserSessionsFilterSummary,
   createUserSessionsPDF,
 } from '../utils/userSessionsPdfGenerator';
+import {
+  enrichParentSessionRows,
+  ensureParentSessionLogColumns,
+  resolveParentLoginSnapshot,
+} from '../utils/parentSessionLog';
+
+const USER_LOG_ROLES = ['admin', 'superadmin', 'accountant', 'parent'];
 
 function applyUserSessionFilters(
   qb: SelectQueryBuilder<UserSessionLog>,
@@ -31,11 +38,17 @@ function applyUserSessionFilters(
     qb.andWhere('LOWER(s.userId) LIKE :uid', { uid: `%${uid.toLowerCase()}%` });
   }
   if (uname) {
-    qb.andWhere('LOWER(s.username) LIKE :uname', { uname: `%${uname.toLowerCase()}%` });
+    qb.andWhere(
+      '(LOWER(s.username) LIKE :uname OR LOWER(COALESCE(s.displayName, \'\')) LIKE :uname OR LOWER(COALESCE(s.linkedChildren, \'\')) LIKE :uname)',
+      { uname: `%${uname.toLowerCase()}%` }
+    );
   }
   if (!uid && !uname && search && search !== 'undefined' && String(search).trim()) {
     const q = `%${String(search).trim().toLowerCase()}%`;
-    qb.andWhere('(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q)', { q });
+    qb.andWhere(
+      '(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q OR LOWER(COALESCE(s.displayName, \'\')) LIKE :q OR LOWER(COALESCE(s.linkedChildren, \'\')) LIKE :q)',
+      { q }
+    );
   }
 }
 
@@ -55,9 +68,12 @@ export const logActivity = async (req: AuthRequest, res: Response) => {
       order: { loginAt: 'DESC' }
     });
     if (!session) {
+      const parentSnap = await resolveParentLoginSnapshot(user);
       session = repo.create({
         userId: user.id,
         username: user.username || user.email || null,
+        displayName: parentSnap.displayName,
+        linkedChildren: parentSnap.linkedChildren,
         role: user.role,
         sessionId,
         ipAddress,
@@ -110,10 +126,11 @@ export const getUserSessions = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    await ensureParentSessionLogColumns();
     const { page = '1', limit = '20', sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
     const qb = repo.createQueryBuilder('s')
-      .where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
+      .where('LOWER(s.role) IN (:...roles)', { roles: USER_LOG_ROLES });
     applyUserSessionFilters(qb, req.query as any);
     // Sorting
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
@@ -123,6 +140,7 @@ export const getUserSessions = async (req: AuthRequest, res: Response) => {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const [rows, total] = await qb.skip((pageNum - 1) * limitNum).take(limitNum).getManyAndCount();
+    await enrichParentSessionRows(rows);
     return res.json({ data: rows, total });
   } catch (err: any) {
     console.error('getUserSessions error:', err);
@@ -139,29 +157,33 @@ export const exportUserSessionsCsv = async (req: AuthRequest, res: Response) => 
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
     const { sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
-    const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
+    const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: USER_LOG_ROLES });
     applyUserSessionFilters(qb, req.query as any);
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
     const key = allowedSort.has(String(sortKey)) ? String(sortKey) : 'loginAt';
     const dir = String(sortDir).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     qb.orderBy(`s.${key}`, dir as any);
     const rows = await qb.getMany();
+    await enrichParentSessionRows(rows);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="user_sessions.csv"');
-    const header = ['User','Role','Login Time','Last Activity','Logout Time','Time Spent (s)','Modules','Session ID','IP Address','User Agent'];
+    const header = ['Name','Username','Role','Linked Children','Date','Time of Entry','Minutes Spent','Logout Time','Modules','Session ID','IP Address'];
     res.write(header.join(',') + '\n');
     for (const s of rows) {
+      const login = s.loginAt ? new Date(s.loginAt) : null;
+      const minutes = Math.max(0, Math.round(Number(s.timeSpentSeconds || 0) / 60));
       const line = [
-        `"${((s.username || s.userId || '') as any).toString().replace(/"/g,'""')}"`,
+        `"${((s.displayName || s.username || s.userId || '') as any).toString().replace(/"/g,'""')}"`,
+        `"${((s.username || '') as any).toString().replace(/"/g,'""')}"`,
         s.role || '',
-        s.loginAt ? new Date(s.loginAt).toISOString() : '',
-        s.lastActivityAt ? new Date(s.lastActivityAt).toISOString() : '',
+        `"${(s.linkedChildren || '').replace(/"/g,'""')}"`,
+        login ? login.toISOString().slice(0, 10) : '',
+        login ? login.toISOString().slice(11, 19) : '',
+        String(minutes),
         s.logoutAt ? new Date(s.logoutAt).toISOString() : '',
-        String(s.timeSpentSeconds || 0),
         `"${(s.modules || '').replace(/"/g,'""')}"`,
         s.sessionId || '',
         s.ipAddress || '',
-        `"${(s.userAgent || '').replace(/"/g,'""')}"`
       ].join(',');
       res.write(line + '\n');
     }
@@ -181,13 +203,14 @@ export const exportUserSessionsPdf = async (req: AuthRequest, res: Response) => 
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
     const { sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
-    const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
+    const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: USER_LOG_ROLES });
     applyUserSessionFilters(qb, req.query as any);
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
     const key = allowedSort.has(String(sortKey)) ? String(sortKey) : 'loginAt';
     const dir = String(sortDir).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     qb.orderBy(`s.${key}`, dir as any);
     const rows = await qb.getMany();
+    await enrichParentSessionRows(rows);
 
     const settingsList = await AppDataSource.getRepository(Settings).find({
       order: { createdAt: 'DESC' },

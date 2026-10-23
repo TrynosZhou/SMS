@@ -12,6 +12,14 @@ export class UserSessionLog {
   @Column({ type: 'varchar', length: 128, nullable: true })
   username!: string | null;
 
+  /** Human-readable name (parent / staff) shown on the activity log. */
+  @Column({ type: 'varchar', length: 160, nullable: true })
+  displayName!: string | null;
+
+  /** Comma-separated linked children for parent logins. */
+  @Column({ type: 'text', nullable: true })
+  linkedChildren!: string | null;
+
   @Index()
   @Column({ type: 'varchar', length: 32, nullable: true })
   role!: string | null;

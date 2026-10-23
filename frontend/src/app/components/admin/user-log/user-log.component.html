@@ -13,7 +13,7 @@
         <div>
           <span class="ul-hero-eyebrow">System Admin</span>
           <h1>Activity Log</h1>
-          <p class="ul-hero-sub">Track staff login sessions, session duration, modules accessed, and sign-out activity across the system.</p>
+          <p class="ul-hero-sub">Track staff and parent login sessions — including parent name, linked children, session duration in minutes, modules accessed, and sign-out activity across the system.</p>
         </div>
       </div>
       <div class="ul-hero__actions">
@@ -93,8 +93,8 @@
           class="ul-search-input"
           [(ngModel)]="performedBy"
           (ngModelChange)="onPerformedByChange($event)"
-          placeholder="Search username…"
-          aria-label="Search username" />
+          placeholder="Search name, username or child…"
+          aria-label="Search name, username or linked child" />
       </div>
 
       <div class="ul-field">
@@ -117,6 +117,7 @@
           <option value="deputy_headmaster">Deputy Headmaster</option>
           <option value="accountant">Accountant</option>
           <option value="teacher">Teacher</option>
+          <option value="parent">Parent</option>
         </select>
       </div>
 
@@ -182,14 +183,15 @@
           <thead>
             <tr>
               <th (click)="applySort('username')" [class.ul-th--active]="sortKey === 'username'">
-                User <span class="ul-sort">{{ sortIndicator('username') }}</span>
+                Name <span class="ul-sort">{{ sortIndicator('username') }}</span>
               </th>
               <th (click)="applySort('role')" [class.ul-th--active]="sortKey === 'role'">
                 Role <span class="ul-sort">{{ sortIndicator('role') }}</span>
               </th>
+              <th>Linked children</th>
               <th>Status</th>
               <th (click)="applySort('loginAt')" [class.ul-th--active]="sortKey === 'loginAt'">
-                Login <span class="ul-sort">{{ sortIndicator('loginAt') }}</span>
+                Date &amp; time of entry <span class="ul-sort">{{ sortIndicator('loginAt') }}</span>
               </th>
               <th (click)="applySort('lastActivityAt')" [class.ul-th--active]="sortKey === 'lastActivityAt'">
                 Last activity <span class="ul-sort">{{ sortIndicator('lastActivityAt') }}</span>
@@ -213,15 +215,24 @@
             <tr *ngFor="let s of sessions">
               <td>
                 <div class="ul-user">
-                  <span class="ul-user__avatar">{{ getInitials(s.username || s.userId) }}</span>
+                  <span class="ul-user__avatar">{{ getInitials(displayName(s)) }}</span>
                   <div class="ul-user__meta">
-                    <span class="ul-user__name">{{ s.username || s.userId || '—' }}</span>
-                    <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" (click)="copy(s.username || s.userId)" title="Copy username">Copy</button>
+                    <span class="ul-user__name">{{ displayName(s) }}</span>
+                    <span class="ul-user__sub" *ngIf="s.username && s.username !== displayName(s)">{{ s.username }}</span>
+                    <button type="button" class="ul-btn ul-btn--ghost ul-btn--sm" (click)="copy(displayName(s))" title="Copy name">Copy</button>
                   </div>
                 </div>
               </td>
               <td>
                 <span class="ul-role" [ngClass]="'ul-role--' + (s.role || 'default')">{{ formatRole(s.role) }}</span>
+              </td>
+              <td>
+                <div class="ul-children" *ngIf="childList(s).length; else childrenFallback">
+                  <span class="ul-child-chip" *ngFor="let child of childList(s)">{{ child }}</span>
+                </div>
+                <ng-template #childrenFallback>
+                  <span [class.ul-children__none]="isParent(s)">{{ isParent(s) ? 'No linked children' : '—' }}</span>
+                </ng-template>
               </td>
               <td>
                 <span class="ul-status" [class.ul-status--active]="isSessionActive(s)" [class.ul-status--out]="!isSessionActive(s)">
