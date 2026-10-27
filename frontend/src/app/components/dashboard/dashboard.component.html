@@ -196,6 +196,7 @@
           ⚙️ Student Adjustments
         </button>
         <a routerLink="/system-settings" *ngIf="canAccessModule('settings')">Settings</a>
+        <a routerLink="/admin/report-cards-outreach" *ngIf="isAdmin()">Report Cards</a>
       </nav>
     </header>
 

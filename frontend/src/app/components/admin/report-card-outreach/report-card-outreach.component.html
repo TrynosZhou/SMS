@@ -1,0 +1,320 @@
+<div class="rco-page">
+  <!-- Hero -->
+  <header class="rco-hero">
+    <div class="rco-hero__content">
+      <div class="rco-hero__title-row">
+        <span class="rco-hero__icon" aria-hidden="true">📄</span>
+        <div>
+          <span class="rco-hero__eyebrow">Admin · Report Cards</span>
+          <h1 class="rco-hero__title">Report Card Outreach</h1>
+          <p class="rco-hero__subtitle">
+            Follow up with parents who haven't viewed their children's report cards and send a WhatsApp reminder.
+          </p>
+        </div>
+      </div>
+      <div class="rco-hero__actions">
+        <button
+          type="button"
+          class="rco-hero__refresh"
+          (click)="loadParents()"
+          [disabled]="loading"
+          title="Refresh"
+          aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="rco-hero-btn rco-hero-btn--solid" (click)="close()">Close</button>
+      </div>
+    </div>
+
+    <nav class="rco-cross-links" aria-label="Related pages">
+      <a routerLink="/dashboard">Dashboard</a>
+      <a routerLink="/report-cards">Report cards</a>
+      <a routerLink="/admin/parents">Parents</a>
+      <a routerLink="/students">Students</a>
+    </nav>
+
+    <div class="rco-hero__stats" *ngIf="!loading || parents.length > 0">
+      <div class="rco-stat">
+        <span class="rco-stat__value">{{ totalParents }}</span>
+        <span class="rco-stat__label">Parents to follow up</span>
+      </div>
+      <div class="rco-stat">
+        <span class="rco-stat__value">{{ totalUnviewed }}</span>
+        <span class="rco-stat__label">Unviewed report cards</span>
+      </div>
+      <div class="rco-stat">
+        <span class="rco-stat__value">{{ contactableCount }}</span>
+        <span class="rco-stat__label">With phone on file</span>
+      </div>
+    </div>
+    <div class="rco-hero__stats rco-hero__stats--skeleton" *ngIf="loading && parents.length === 0">
+      <div class="rco-skeleton rco-skeleton--stat" *ngFor="let _ of [1, 2, 3]"></div>
+    </div>
+  </header>
+
+  <!-- Error -->
+  <div class="rco-state rco-state--error" *ngIf="!loading && error">
+    <p>{{ error }}</p>
+    <button type="button" class="rco-btn rco-btn--primary" (click)="loadParents()">Try again</button>
+  </div>
+
+  <div class="rco-shell" *ngIf="!error">
+    <!-- Toolbar -->
+    <div class="rco-toolbar">
+      <div class="rco-toolbar__filters">
+        <label class="rco-field">
+          <span class="rco-field__label">Term</span>
+          <input
+            type="text"
+            class="rco-input"
+            placeholder="All terms"
+            [(ngModel)]="termFilter"
+            (keyup.enter)="onFilterChange()" />
+        </label>
+        <label class="rco-field">
+          <span class="rco-field__label">Exam type</span>
+          <select class="rco-input" [(ngModel)]="examTypeFilter" (change)="onFilterChange()">
+            <option *ngFor="let opt of examTypeOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          class="rco-btn rco-btn--primary"
+          (click)="onFilterChange()"
+          [disabled]="loading">Apply</button>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div class="rco-state rco-state--empty" *ngIf="!loading && parents.length === 0">
+      <div class="rco-empty-icon" aria-hidden="true">✅</div>
+      <h2 class="rco-empty-title">All caught up</h2>
+      <p>Every parent has viewed their children's available report cards. There is nothing to follow up on right now.</p>
+    </div>
+
+    <!-- Master / detail -->
+    <div class="rco-layout" *ngIf="loading || parents.length > 0">
+      <!-- Left: parent list -->
+      <section class="rco-panel rco-panel--list" aria-label="Parents to contact">
+        <div class="rco-panel__head">
+          <div>
+            <h2 class="rco-panel__title">Parents to contact</h2>
+            <p class="rco-panel__intro">Select a parent to view their children's unviewed report cards.</p>
+          </div>
+          <span class="rco-count-chip" *ngIf="!loading">{{ filteredParents.length }}</span>
+        </div>
+
+        <div class="rco-search">
+          <span class="rco-search__icon" aria-hidden="true">🔎</span>
+          <input
+            type="text"
+            class="rco-search__input"
+            placeholder="Search parents…"
+            [(ngModel)]="searchQuery" />
+        </div>
+
+        <div class="rco-list" *ngIf="!loading">
+          <button
+            type="button"
+            *ngFor="let parent of filteredParents"
+            class="rco-parent"
+            [class.rco-parent--selected]="parent.parentId === selectedParentId"
+            (click)="selectParent(parent.parentId)">
+            <span class="rco-avatar" aria-hidden="true">{{ initials(parent.parentName) }}</span>
+            <span class="rco-parent__meta">
+              <span class="rco-parent__name">{{ parent.parentName }}</span>
+              <span class="rco-parent__contact">
+                <ng-container *ngIf="parent.phoneNumber">📞 {{ parent.phoneNumber }}</ng-container>
+                <ng-container *ngIf="!parent.phoneNumber && parent.email">✉️ {{ parent.email }}</ng-container>
+                <ng-container *ngIf="!parent.phoneNumber && !parent.email">No contact on file</ng-container>
+              </span>
+            </span>
+            <span
+              class="rco-parent__badge"
+              [class.rco-parent__badge--none]="!parent.phoneNumber"
+              [title]="(parent.unviewedCount === 1 ? '1 unviewed report card' : parent.unviewedCount + ' unviewed report cards')">
+              {{ parent.unviewedCount }}
+            </span>
+          </button>
+          <p class="rco-list__empty" *ngIf="filteredParents.length === 0">No parents match “{{ searchQuery }}”.</p>
+        </div>
+
+        <div class="rco-list rco-list--loading" *ngIf="loading">
+          <div class="rco-skeleton rco-skeleton--row" *ngFor="let _ of [1, 2, 3, 4, 5]"></div>
+        </div>
+      </section>
+
+      <!-- Right: detail -->
+      <section class="rco-panel rco-panel--detail" aria-label="Selected parent detail">
+        <ng-container *ngIf="selectedParent as p">
+          <div class="rco-detail__head">
+            <span class="rco-avatar rco-avatar--lg" aria-hidden="true">{{ initials(p.parentName) }}</span>
+            <div class="rco-detail__head-meta">
+              <h2 class="rco-detail__name">{{ p.parentName }}</h2>
+              <p class="rco-detail__contact">
+                <ng-container *ngIf="p.phoneNumber">📞 {{ p.phoneNumber }}</ng-container>
+                <ng-container *ngIf="p.phoneNumber && p.email"> · </ng-container>
+                <ng-container *ngIf="p.email">✉️ {{ p.email }}</ng-container>
+                <ng-container *ngIf="!p.phoneNumber && !p.email">No contact information on file.</ng-container>
+              </p>
+            </div>
+          </div>
+
+          <div class="rco-detail__section-kicker">
+            {{ p.children.length }} unviewed report card<span *ngIf="p.children.length !== 1">s</span>
+          </div>
+
+          <ul class="rco-child-list">
+            <li *ngFor="let child of p.children" class="rco-child">
+              <div class="rco-child__main">
+                <span class="rco-child__name">{{ child.studentName }}</span>
+                <span class="rco-child__tags">
+                  <span class="rco-pill rco-pill--class" *ngIf="child.className">{{ child.className }}</span>
+                  <span class="rco-pill rco-pill--exam">{{ child.examTypeLabel }}</span>
+                  <span class="rco-pill rco-pill--term">{{ child.term }}</span>
+                  <span class="rco-pill rco-pill--muted" *ngIf="child.studentNumber">#{{ child.studentNumber }}</span>
+                </span>
+              </div>
+              <div class="rco-child__action">
+                <!-- Button row -->
+                <div class="rco-child__btns">
+                  <!-- Notify Via WhatsApp -->
+                  <button
+                    type="button"
+                    class="rco-btn rco-btn--whatsapp"
+                    (click)="sendViaWhatsApp(p, child)"
+                    [disabled]="getSendState(p, child).loading || getSendPdfState(p, child).loading"
+                    title="Send a WhatsApp notification to this parent">
+                    <span *ngIf="!getSendState(p, child).loading">📲 Notify Via WhatsApp</span>
+                    <span *ngIf="getSendState(p, child).loading" class="rco-spinner">Sending…</span>
+                  </button>
+
+                  <!-- Send Report Card -->
+                  <button
+                    type="button"
+                    class="rco-btn rco-btn--report-card"
+                    (click)="sendReportCard(p, child)"
+                    [disabled]="getSendPdfState(p, child).loading || getSendState(p, child).loading"
+                    title="Generate and send the report card PDF to this parent via WhatsApp">
+                    <span *ngIf="!getSendPdfState(p, child).loading">📄 Send Report Card</span>
+                    <span *ngIf="getSendPdfState(p, child).loading" class="rco-spinner">Generating…</span>
+                  </button>
+
+                  <!-- Preview PDF -->
+                  <button
+                    type="button"
+                    class="rco-btn rco-btn--preview"
+                    (click)="previewPdf(child)"
+                    title="Preview this student's report card as a PDF">
+                    🔍 Preview PDF
+                  </button>
+                </div>
+
+                <!-- Notify result -->
+                <ng-container *ngIf="getSendState(p, child).result as r">
+                  <div class="rco-result">
+                    <span class="rco-result__label">Notify:</span>
+                    <span class="rco-status rco-status--ok" *ngIf="r.sent">✓ Notification sent</span>
+                    <span class="rco-status rco-status--dry" *ngIf="r.skipped && !r.sent">Dry run — logged</span>
+                    <span class="rco-status rco-status--fail" *ngIf="!r.ok && !r.sent && !r.skipped">
+                      {{ r.message || r.error || 'Could not send notification.' }}
+                    </span>
+                    <a *ngIf="r.fallbackUrl && !r.sent"
+                       class="rco-btn rco-btn--wa-fallback"
+                       [href]="r.fallbackUrl"
+                       target="_blank"
+                       rel="noopener noreferrer">Open in WhatsApp ↗</a>
+                  </div>
+                </ng-container>
+                <div class="rco-result" *ngIf="getSendState(p, child).error">
+                  <span class="rco-result__label">Notify:</span>
+                  <span class="rco-status rco-status--fail">⚠ {{ getSendState(p, child).error }}</span>
+                </div>
+
+                <!-- Send Report Card result -->
+                <ng-container *ngIf="getSendPdfState(p, child).result as r">
+                  <div class="rco-result">
+                    <span class="rco-result__label">PDF:</span>
+                    <span class="rco-status rco-status--ok" *ngIf="r.sent">✓ Report card PDF sent</span>
+                    <span class="rco-status rco-status--dry" *ngIf="r.skipped && !r.sent">Dry run — PDF generated &amp; logged</span>
+                    <span class="rco-status rco-status--fail" *ngIf="!r.ok && !r.sent && !r.skipped">
+                      {{ r.message || r.error || 'Could not send report card PDF.' }}
+                    </span>
+                    <a *ngIf="r.fallbackUrl && !r.sent"
+                       class="rco-btn rco-btn--wa-fallback"
+                       [href]="r.fallbackUrl"
+                       target="_blank"
+                       rel="noopener noreferrer">Open in WhatsApp ↗</a>
+                  </div>
+                </ng-container>
+                <div class="rco-result" *ngIf="getSendPdfState(p, child).error">
+                  <span class="rco-result__label">PDF:</span>
+                  <span class="rco-status rco-status--fail">⚠ {{ getSendPdfState(p, child).error }}</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </ng-container>
+
+        <div class="rco-detail__placeholder" *ngIf="!selectedParent">
+          <div class="rco-detail__placeholder-icon" aria-hidden="true">👈</div>
+          <p>Select a parent on the left to view their children's unviewed report cards and send a WhatsApp reminder.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="rco-footer">
+    <button type="button" class="rco-btn rco-btn--ghost" (click)="close()">Close</button>
+  </div>
+</div>
+
+<!-- PDF Preview Modal -->
+<div class="rco-pdf-overlay" *ngIf="pdfPreview" (click)="closePdfPreview()" role="dialog" aria-modal="true"
+     [attr.aria-label]="'Report card preview for ' + pdfPreview.studentName">
+  <div class="rco-pdf-modal" (click)="$event.stopPropagation()">
+    <header class="rco-pdf-modal__header">
+      <div class="rco-pdf-modal__title-group">
+        <span class="rco-pdf-modal__eyebrow">Report Card Preview</span>
+        <h2 class="rco-pdf-modal__title">{{ pdfPreview.studentName }}</h2>
+        <p class="rco-pdf-modal__meta">{{ pdfPreview.examTypeLabel }} · {{ pdfPreview.term }}</p>
+      </div>
+      <div class="rco-pdf-modal__actions">
+        <a
+          *ngIf="pdfPreview.blobUrl"
+          class="rco-btn rco-btn--primary"
+          [href]="pdfPreview.blobUrl"
+          [download]="pdfPreview.studentName + '_' + pdfPreview.examTypeLabel + '_' + pdfPreview.term + '_ReportCard.pdf'">
+          ⬇ Download
+        </a>
+        <button type="button" class="rco-btn rco-btn--ghost rco-pdf-modal__close" (click)="closePdfPreview()" aria-label="Close preview">
+          ✕ Close
+        </button>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <div class="rco-pdf-modal__loading" *ngIf="pdfPreview.loading">
+      <div class="rco-pdf-spinner"></div>
+      <p>Generating report card PDF…</p>
+      <small>This may take a few seconds while marks, grades and rankings are assembled.</small>
+    </div>
+
+    <!-- Error -->
+    <div class="rco-pdf-modal__error" *ngIf="!pdfPreview.loading && pdfPreview.error">
+      <span class="rco-pdf-modal__error-icon" aria-hidden="true">⚠️</span>
+      <p>{{ pdfPreview.error }}</p>
+      <button type="button" class="rco-btn rco-btn--ghost" (click)="closePdfPreview()">Close</button>
+    </div>
+
+    <!-- Viewer -->
+    <div class="rco-pdf-modal__viewer" *ngIf="!pdfPreview.loading && !pdfPreview.error && pdfPreview.safeUrl">
+      <iframe
+        [src]="pdfPreview.safeUrl"
+        class="rco-pdf-modal__iframe"
+        frameborder="0"
+        title="Report card PDF preview">
+      </iframe>
+    </div>
+  </div>
+</div>

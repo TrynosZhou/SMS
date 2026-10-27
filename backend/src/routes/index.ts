@@ -21,6 +21,7 @@ import rbacRoutes from './rbac.routes';
 import appraisalRoutes from './appraisal.routes';
 import admissionRoutes from './admission.routes';
 import chatbotRoutes from './chatbot.routes';
+import reportCardViewRoutes from './reportCardView.routes';
 
 const router = Router();
 
@@ -47,6 +48,7 @@ router.use('/rbac', rbacRoutes);
 router.use('/teacher-appraisal', appraisalRoutes);
 router.use('/admissions', admissionRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use('/report-card-views', reportCardViewRoutes);
 
 export default router;
 

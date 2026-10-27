@@ -50,6 +50,7 @@ import { ManageAccountComponent } from './components/teachers/manage-account/man
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
 import { UserManagementComponent } from './components/admin/user-management/user-management.component';
 import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
+import { ReportCardOutreachComponent } from './components/admin/report-card-outreach/report-card-outreach.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
@@ -130,6 +131,7 @@ const routes: Routes = [
   { path: 'user-management', component: UserManagementComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'parents' } },
+  { path: 'admin/report-cards-outreach', component: ReportCardOutreachComponent, canActivate: [AuthGuard, AdminGuard], data: { title: 'Report Cards', pageTitle: 'Report Cards' } },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
   { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },

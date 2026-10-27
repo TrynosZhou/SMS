@@ -11,6 +11,7 @@ import { Class } from '../entities/Class';
 import { Teacher } from '../entities/Teacher';
 import { Settings } from '../entities/Settings';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
+import { ReportCardView } from '../entities/ReportCardView';
 import { Parent } from '../entities/Parent';
 import { ParentStudent } from '../entities/ParentStudent';
 import { Invoice } from '../entities/Invoice';
@@ -1922,6 +1923,39 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbol} ${termBalance.toFixed(2)} to view the report card.`,
           balance: termBalance
         });
+      }
+
+      // Record that this parent has viewed this child's report card for the
+      // given exam type + term. Used by the admin "Report Cards" outreach tool
+      // to surface parents who have not yet viewed their children's reports.
+      try {
+        const reportCardViewRepository = AppDataSource.getRepository(ReportCardView);
+        const normalizedExamTypeView = String(examType || '').trim();
+        const existingView = await reportCardViewRepository.findOne({
+          where: {
+            parentId: parent.id,
+            studentId: studentId as string,
+            examType: normalizedExamTypeView,
+            term: termValue
+          }
+        });
+        if (existingView) {
+          existingView.viewedAt = new Date();
+          existingView.viewerUserId = user?.id ?? null;
+          await reportCardViewRepository.save(existingView);
+        } else {
+          await reportCardViewRepository.save({
+            parentId: parent.id,
+            studentId: studentId as string,
+            examType: normalizedExamTypeView,
+            term: termValue,
+            viewerUserId: user?.id ?? null,
+            viewedAt: new Date()
+          });
+        }
+      } catch (viewErr: any) {
+        // Recording a view must never block the report card from rendering.
+        console.warn('[getReportCard] Failed to record report card view:', viewErr?.message || viewErr);
       }
     }
 

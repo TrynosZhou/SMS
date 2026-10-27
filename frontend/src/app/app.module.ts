@@ -45,6 +45,7 @@ import { LinkStudentsComponent } from './components/parent/link-students/link-st
 import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
 import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
+import { ReportCardOutreachComponent } from './components/admin/report-card-outreach/report-card-outreach.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { BulkMessageComponent } from './components/dashboard/bulk-message/bulk-message.component';
 import { StudentAdjustmentsModalComponent } from './components/dashboard/student-adjustments-modal/student-adjustments-modal.component';
@@ -162,6 +163,7 @@ import { SmsSuccessConfirmDirective } from './directives/sms-success-confirm.dir
     ManageAccountComponent,
     ManageAccountsComponent,
     ParentManagementComponent,
+    ReportCardOutreachComponent,
     ClassPromotionComponent,
     BulkMessageComponent,
     StudentAdjustmentsModalComponent,

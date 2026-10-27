@@ -109,3 +109,116 @@ export function buildWhatsAppWebUrl(phone: string, body: string): string | null 
   if (!to) return null;
   return `https://wa.me/${to}?text=${encodeURIComponent(body)}`;
 }
+
+/**
+ * Upload a PDF buffer to Meta WhatsApp Cloud API's Media endpoint and return the
+ * media_id. The media_id is then used to send a document message.
+ */
+export async function uploadWhatsAppMedia(
+  pdfBuffer: Buffer,
+  filename: string
+): Promise<{ mediaId: string } | { error: string }> {
+  const accessToken = String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+  const phoneNumberId = String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim();
+  const apiVersion = String(process.env.WHATSAPP_API_VERSION || 'v21.0').trim();
+  const apiBase = String(process.env.WHATSAPP_API_URL || 'https://graph.facebook.com').replace(/\/$/, '');
+
+  if (!accessToken || !phoneNumberId) {
+    return { error: 'WhatsApp credentials not configured' };
+  }
+
+  try {
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', pdfBuffer, { filename, contentType: 'application/pdf' });
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'application/pdf');
+
+    const url = `${apiBase}/${apiVersion}/${phoneNumberId}/media`;
+    const res = await axios.post(url, form, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...form.getHeaders()
+      },
+      timeout: 30000
+    });
+    const mediaId = res.data?.id;
+    if (!mediaId) return { error: 'Media upload succeeded but no id returned' };
+    return { mediaId };
+  } catch (err: any) {
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to upload media';
+    return { error: String(msg) };
+  }
+}
+
+/**
+ * Send a PDF document to a WhatsApp number via Meta Cloud API.
+ * Uploads the buffer first to get a media_id, then sends as a document message.
+ * Returns `skipped: true` in dry-run mode (same as sendWhatsAppMessage).
+ */
+export async function sendWhatsAppDocument(
+  toPhone: string,
+  pdfBuffer: Buffer,
+  filename: string,
+  caption: string
+): Promise<WhatsAppSendResult> {
+  const to = normalizeWhatsAppRecipient(toPhone);
+  if (!to) return { ok: false, error: 'Invalid phone number' };
+
+  const dryRun = isWhatsAppDryRun();
+  const accessToken = String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+  const phoneNumberId = String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim();
+  const apiVersion = String(process.env.WHATSAPP_API_VERSION || 'v21.0').trim();
+  const apiBase = String(process.env.WHATSAPP_API_URL || 'https://graph.facebook.com').replace(/\/$/, '');
+
+  if (dryRun || !accessToken || !phoneNumberId) {
+    const reason = dryRun ? 'WHATSAPP_DRY_RUN=true' : 'missing credentials';
+    console.info(`[WhatsApp dry-run doc] (${reason}) To: ${to}, file: ${filename}\n${caption}`);
+    return { ok: true, skipped: true, dryRun: true };
+  }
+
+  // Step 1: upload media
+  const uploadResult = await uploadWhatsAppMedia(pdfBuffer, filename);
+  if ('error' in uploadResult) {
+    return { ok: false, error: uploadResult.error };
+  }
+  const { mediaId } = uploadResult;
+
+  // Step 2: send document message
+  try {
+    const url = `${apiBase}/${apiVersion}/${phoneNumberId}/messages`;
+    await axios.post(
+      url,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'document',
+        document: {
+          id: mediaId,
+          caption,
+          filename
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 20000
+      }
+    );
+    return { ok: true };
+  } catch (err: any) {
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to send document message';
+    return { ok: false, error: String(msg) };
+  }
+}
