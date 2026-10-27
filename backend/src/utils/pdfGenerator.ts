@@ -66,7 +66,8 @@ function computePreRemarksGap(baseHeight: number, pageBudget: number): number {
 
 export function createReportCardPDF(
   reportCard: ReportCardData,
-  settings: Settings | null
+  settings: Settings | null,
+  skipMeasurement: boolean = false
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -77,25 +78,32 @@ export function createReportCardPDF(
       const innerW = pageW - margin * 2;
       const pageBudget = pageH - margin * 2 - footerReserve;
 
-      const measureDoc = new PDFDocument({
-        size: 'A4',
-        layout: 'portrait',
-        margin: 0,
-        autoFirstPage: true
-      });
-      measureDoc.on('data', () => {});
-      measureDoc.on('error', reject);
-      measureDoc.translate(margin, margin);
-      const baseContentHeight = renderReportCardLayout(measureDoc, reportCard, settings, {
-        cardX: 0,
-        cardY: 0,
-        cardW: innerW
-      });
-      measureDoc.end();
+      let baseContentHeight = 0;
+      let preRemarksGap = 0;
+      let scale = 1;
 
-      const preRemarksGap = computePreRemarksGap(baseContentHeight, pageBudget);
-      const contentHeight = baseContentHeight + preRemarksGap;
-      const scale = scaleForA4Portrait(contentHeight, pageBudget);
+      // Skip measurement pass for preview to improve speed
+      if (!skipMeasurement) {
+        const measureDoc = new PDFDocument({
+          size: 'A4',
+          layout: 'portrait',
+          margin: 0,
+          autoFirstPage: true
+        });
+        measureDoc.on('data', () => {});
+        measureDoc.on('error', reject);
+        measureDoc.translate(margin, margin);
+        baseContentHeight = renderReportCardLayout(measureDoc, reportCard, settings, {
+          cardX: 0,
+          cardY: 0,
+          cardW: innerW
+        });
+        measureDoc.end();
+
+        preRemarksGap = computePreRemarksGap(baseContentHeight, pageBudget);
+        const contentHeight = baseContentHeight + preRemarksGap;
+        scale = scaleForA4Portrait(contentHeight, pageBudget);
+      }
 
       const doc = new PDFDocument({
         size: 'A4',
@@ -116,7 +124,7 @@ export function createReportCardPDF(
       if (scale < 1) {
         doc.scale(scale);
       }
-      const frameHeight = scale < 1 ? contentHeight : pageBudget;
+      const frameHeight = scale < 1 ? (baseContentHeight + preRemarksGap) : pageBudget;
       renderReportCardLayout(doc, reportCard, settings, {
         cardX: 0,
         cardY: 0,

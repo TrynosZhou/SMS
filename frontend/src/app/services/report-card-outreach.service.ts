@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface UnviewedChild {
@@ -54,6 +54,9 @@ export class ReportCardOutreachService {
 
   /**
    * Fetch parents who have not yet viewed their linked children's report cards.
+   * A parent is excluded only if they have viewed ALL of their children's report cards
+   * for the selected term and exam type. If they have viewed some but not all,
+   * they will appear showing only the unviewed ones.
    * Optional term / examType filters narrow the result set.
    */
   getUnviewedParents(term?: string, examType?: string): Observable<UnviewedParentsResponse> {
@@ -86,7 +89,10 @@ export class ReportCardOutreachService {
       .set('term', term);
     return this.http
       .get(`${this.apiUrl}/report-card-views/preview-pdf`, { params, responseType: 'blob' })
-      .pipe(catchError((err) => { throw err; }));
+      .pipe(
+        timeout(60000), // 60 second timeout
+        catchError((err) => { throw err; })
+      );
   }
 
   /**

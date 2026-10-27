@@ -64,15 +64,12 @@
       <div class="rco-toolbar__filters">
         <label class="rco-field">
           <span class="rco-field__label">Term</span>
-          <input
-            type="text"
-            class="rco-input"
-            placeholder="All terms"
-            [(ngModel)]="termFilter"
-            (keyup.enter)="onFilterChange()" />
+          <select class="rco-input" [(ngModel)]="termFilter" (change)="onFilterChange()">
+            <option *ngFor="let opt of termOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
         </label>
         <label class="rco-field">
-          <span class="rco-field__label">Exam type</span>
+          <span class="rco-field__label">Exam Type</span>
           <select class="rco-input" [(ngModel)]="examTypeFilter" (change)="onFilterChange()">
             <option *ngFor="let opt of examTypeOptions" [value]="opt.value">{{ opt.label }}</option>
           </select>

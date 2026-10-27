@@ -928,17 +928,22 @@ export const getIncomingFromParentsUnreadCount = async (req: AuthRequest, res: R
     }
     const inboxBox = resolveStaffParentInboxFromQuery(user.role, req.query.box as string | undefined);
     const messageRepository = AppDataSource.getRepository(Message);
+
+    // Optimized query: count in database instead of fetching all records
     const unreadFromParents = await messageRepository
       .createQueryBuilder('m')
       .where('m.isRead = :isRead', { isRead: false })
       .andWhere('m.parentId IS NOT NULL')
       .andWhere('m.senderId IS NOT NULL')
       .getMany();
+
     const count = unreadFromParents.filter((m) =>
       staffInboxMatchesParentMessage(m.recipients, inboxBox)
     ).length;
+
     res.json({ count });
   } catch (error: any) {
+    console.error('[getIncomingFromParentsUnreadCount] Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

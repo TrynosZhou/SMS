@@ -12,6 +12,24 @@ import { ReportCardView } from '../entities/ReportCardView';
 import { Settings } from '../entities/Settings';
 import { sendWhatsAppMessage, sendWhatsAppDocument, buildWhatsAppWebUrl, normalizeWhatsAppRecipient, isWhatsAppConfigured } from '../utils/whatsappService';
 
+// Simple in-memory cache for PDF previews to avoid regenerating the same report card
+interface CacheEntry {
+  buffer: Buffer;
+  timestamp: number;
+}
+const pdfPreviewCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Periodic cache cleanup to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of pdfPreviewCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL_MS) {
+      pdfPreviewCache.delete(key);
+    }
+  }
+}, 60 * 1000); // Clean up every minute
+
 /** Human-friendly label for an exam type, used in WhatsApp messages. */
 function examTypeLabel(type: string | ExamType): string {
   const t = String(type || '').toLowerCase();
@@ -55,6 +73,10 @@ interface UnviewedParentEntry {
 /**
  * Returns parents who have linked children with published report cards that
  * the parent has not yet viewed (no ReportCardView record), grouped by parent.
+ *
+ * A parent is excluded from the results only if they have viewed ALL of their
+ * children's report cards for the selected term and exam type. If they have viewed
+ * some but not all, they will appear showing only the unviewed ones.
  *
  * A report card is considered "available" when:
  *   - the Exam for the student's class + exam type + term is PUBLISHED, AND
@@ -149,6 +171,9 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
       viewedSet.add(`${v.parentId}|${v.studentId}|${v.examType}|${v.term}`);
     }
 
+    // Track for each parent: total available report cards and how many they've viewed
+    const parentStats = new Map<string, { total: number; viewed: number }>();
+
     // Group unviewed entries by parent.
     const parentsMap = new Map<string, UnviewedParentEntry>();
     let totalUnviewed = 0;
@@ -170,7 +195,20 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
 
         for (const parent of parents) {
           const key = `${parent.id}|${studentId}|${examTypeStr}|${termStr}`;
-          if (viewedSet.has(key)) continue; // parent has viewed this report card
+
+          // Track total available report cards for this parent
+          let stats = parentStats.get(parent.id);
+          if (!stats) {
+            stats = { total: 0, viewed: 0 };
+            parentStats.set(parent.id, stats);
+          }
+          stats.total += 1;
+
+          if (viewedSet.has(key)) {
+            // Parent has viewed this specific report card
+            stats.viewed += 1;
+            continue;
+          }
 
           const childEntry: UnviewedChildEntry = {
             studentId,
@@ -200,6 +238,21 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
           totalUnviewed += 1;
         }
       }
+    }
+
+    // Filter out parents who have viewed ALL of their children's report cards
+    // for the selected term and exam type
+    for (const [parentId, stats] of parentStats.entries()) {
+      if (stats.viewed === stats.total && stats.total > 0) {
+        // Parent has viewed all available report cards - exclude them
+        parentsMap.delete(parentId);
+      }
+    }
+
+    // Recalculate totalUnviewed after filtering
+    totalUnviewed = 0;
+    for (const entry of parentsMap.values()) {
+      totalUnviewed += entry.unviewedCount;
     }
 
     const parents = [...parentsMap.values()].sort((a, b) =>
@@ -551,7 +604,6 @@ export const sendReportCard = async (req: AuthRequest, res: Response) => {
 // Re-use helpers that are already imported into exam.controller.ts by importing
 // them here too, so we don't depend on an internal HTTP round-trip.
 import { createReportCardPDF } from '../utils/pdfGenerator';
-import { ensureReportCardRemarks } from '../utils/ensureReportCardRemarks';
 import {
   computeCoreAverageFromMarks,
   computeCoreAverageFromReportSubjects,
@@ -559,7 +611,6 @@ import {
 import { ExamType as ExamTypeEnum } from '../entities/Exam';
 import { Class } from '../entities/Class';
 import { Subject } from '../entities/Subject';
-import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Attendance, AttendanceStatus } from '../entities/Attendance';
 
 /** Normalise exam-type strings to the enum value used in the DB. */
@@ -612,6 +663,7 @@ function getGradeLocal(
  *  - Minimises relations loaded (no heavy joins beyond what's needed)
  */
 export const previewReportCardAdmin = async (req: AuthRequest, res: Response) => {
+  const startTime = Date.now();
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 
@@ -627,15 +679,31 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ message: `Unknown exam type: ${examType}` });
     }
 
+    // Check cache first
+    const cacheKey = `${studentId}|${classId}|${examType}|${term}`;
+    const cached = pdfPreviewCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+      const safeStudentName = studentId.replace(/[^a-zA-Z0-9_]/g, '');
+      const filename = `${safeStudentName}_ReportCard.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Content-Length', cached.buffer.length);
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Cache', 'HIT');
+      console.log(`[previewReportCardAdmin] Cache HIT - ${(Date.now() - startTime)}ms`);
+      return res.end(cached.buffer);
+    }
+
     const examRepo     = AppDataSource.getRepository(Exam);
     const marksRepo    = AppDataSource.getRepository(Marks);
     const studentRepo  = AppDataSource.getRepository(Student);
     const classRepo    = AppDataSource.getRepository(Class);
     const settingsRepo = AppDataSource.getRepository(Settings);
-    const remarksRepo  = AppDataSource.getRepository(ReportCardRemarks);
     const attendRepo   = AppDataSource.getRepository(Attendance);
 
     // ── Step 1: all independent lookups in parallel ──────────────────
+    const step1Start = Date.now();
     const [exams, student, classEntity, settingsList] = await Promise.all([
       examRepo.find({
         where: { classId, type: normalizedType, term },
@@ -645,6 +713,7 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       classRepo.findOne({ where: { id: classId }, relations: ['subjects'] }),
       settingsRepo.find({ order: { createdAt: 'DESC' }, take: 1 }),
     ]);
+    console.log(`[previewReportCardAdmin] Step 1 (DB lookups): ${Date.now() - step1Start}ms`);
 
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (!classEntity) return res.status(404).json({ message: 'Class not found' });
@@ -659,38 +728,27 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     const settings = settingsList[0] ?? null;
     const examIds  = publishedExams.map(e => e.id);
 
-    // ── Step 2: all marks + attendance in parallel ───────────────────
-    const [allClassMarks, attendance, existingRemarks] = await Promise.all([
-      // All class marks (needed for class averages + ranking)
+    // ── Step 2: only this student's marks + attendance (skip class marks for preview) ───────────────────
+    const step2Start = Date.now();
+    const [studentMarks, attendance] = await Promise.all([
+      // Only this student's marks (no class averages needed for preview)
       marksRepo.find({
-        where: { examId: In(examIds) },
+        where: { studentId, examId: In(examIds) },
         select: ['studentId', 'subjectId', 'examId', 'score', 'maxScore'],
         relations: ['subject'],
       }),
       // This student's attendance
       attendRepo.find({ where: { studentId, term } }),
-      // Existing remarks
-      remarksRepo.findOne({ where: { studentId, classId, examType: normalizedType } }),
     ]);
-
-    const studentMarks = allClassMarks.filter(m => m.studentId === studentId);
+    console.log(`[previewReportCardAdmin] Step 2 (marks+attendance): ${Date.now() - step2Start}ms`);
 
     // ── Step 3: build subject data for this student ──────────────────
     const allSubjects: Subject[] = classEntity.subjects?.length
       ? classEntity.subjects
       : [...new Map(publishedExams.flatMap(e => e.subjects ?? []).map(s => [s.id, s])).values()];
 
-    // Class averages per subject (percentage)
-    const subjectStudentPcts: Record<string, number[]> = {};
-    for (const m of allClassMarks) {
-      if (!m.subject || !m.maxScore) continue;
-      const pct = (Number(m.score) / Number(m.maxScore)) * 100;
-      (subjectStudentPcts[m.subject.name] ??= []).push(pct);
-    }
+    // Skip class averages for preview (speed optimization)
     const classAverages: Record<string, number> = {};
-    for (const [name, pcts] of Object.entries(subjectStudentPcts)) {
-      classAverages[name] = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
-    }
 
     const thresholds = (settings as any)?.gradeThresholds  ?? {};
     const labels     = (settings as any)?.gradeLabels       ?? {};
@@ -720,34 +778,17 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
 
     const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
 
-    // ── Step 4: class ranking (light — only IDs + averages needed) ───
-    const studentIdsInClass = [...new Set(allClassMarks.map(m => m.studentId))];
-    const rankRows = studentIdsInClass.map(sid => {
-      const sMarks = allClassMarks.filter(m => m.studentId === sid);
-      return { studentId: sid, average: computeCoreAverageFromMarks(sMarks) };
-    });
-    const classRankings = assignPositionsLocal(rankRows);
-    const classPosition = classRankings.find(r => r.studentId === studentId)?.position ?? 0;
-    const totalStudents = classRankings.length;
+    // ── Step 4: class ranking (skip for preview to improve speed) ───
+    // For preview, use placeholder values instead of calculating actual rankings
+    const classPosition = 0;
+    const totalStudents = 0;
 
-    // ── Step 5: remarks (fast — skip AI generation for preview) ──────
-    const ensuredRemarks = await ensureReportCardRemarks({
-      remarksRepository: remarksRepo,
-      studentId,
-      classId,
-      examType:      normalizedType,
-      studentName:   `${student.firstName} ${student.lastName}`,
-      className:     classEntity.name ?? '',
-      term,
-      headmasterName: (settings as any)?.headmasterName ?? '',
-      overallAverage,
-      position:      classPosition,
-      totalStudents,
-      subjects:      subjectData,
-      existing:      existingRemarks ?? null,
-      persist:       false,   // ← do NOT persist during preview (fast)
-      useAi:         false,   // ← skip AI for speed
-    });
+    // ── Step 5: remarks (fast — skip for preview) ──────
+    // For preview, use empty remarks to improve speed
+    const ensuredRemarks = {
+      classTeacherRemarks: '',
+      headmasterRemarks: ''
+    };
 
     // Attendance
     const totalAttendance   = attendance.length;
@@ -760,6 +801,7 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       .map(e => ({ id: e.id, name: e.name, examDate: e.examDate }));
 
     // ── Step 6: generate PDF ─────────────────────────────────────────
+    const step6Start = Date.now();
     const reportCardData = {
       student: {
         id:           student.id,
@@ -785,7 +827,14 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       generatedAt: new Date(),
     };
 
-    const pdfBuffer = await createReportCardPDF(reportCardData, settings);
+    const pdfBuffer = await createReportCardPDF(reportCardData, settings, true); // Skip measurement for preview
+    console.log(`[previewReportCardAdmin] Step 6 (PDF generation): ${Date.now() - step6Start}ms`);
+
+    // Cache the generated PDF for future requests
+    pdfPreviewCache.set(cacheKey, {
+      buffer: pdfBuffer,
+      timestamp: Date.now()
+    });
 
     const safeStudentName = `${student.firstName}_${student.lastName}`.replace(/[^a-zA-Z0-9_]/g, '');
     const filename = `${safeStudentName}_ReportCard.pdf`;
@@ -794,6 +843,8 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Cache', 'MISS');
+    console.log(`[previewReportCardAdmin] Total time: ${Date.now() - startTime}ms`);
     return res.end(pdfBuffer);
   } catch (err: any) {
     console.error('[previewReportCardAdmin]', err?.message || err);

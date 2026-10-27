@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
@@ -43,9 +43,13 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
   readonly examTypeOptions = [
     { value: '', label: 'All exam types' },
     { value: 'mid_term', label: 'Mid-Term' },
-    { value: 'end_term', label: 'End-Term' },
-    { value: 'assignment', label: 'Assignment' },
-    { value: 'quiz', label: 'Quiz' }
+    { value: 'end_term', label: 'End-Term' }
+  ];
+  readonly termOptions = [
+    { value: '', label: 'All terms' },
+    { value: 'Term 1', label: 'Term 1' },
+    { value: 'Term 2', label: 'Term 2' },
+    { value: 'Term 3', label: 'Term 3' }
   ];
 
   // Client-side search within the loaded list
@@ -63,11 +67,13 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
   constructor(
     private outreachService: ReportCardOutreachService,
     private sanitizer: DomSanitizer,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadParents();
+    this.cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
@@ -77,6 +83,7 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
   loadParents(): void {
     this.loading = true;
     this.error = '';
+    this.cdr.detectChanges();
     this.outreachService.getUnviewedParents(this.termFilter, this.examTypeFilter).subscribe({
       next: (res) => {
         this.parents = res.parents || [];
@@ -91,10 +98,12 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
         if (!stillSelected) {
           this.selectedParentId = this.parents.length ? this.parents[0].parentId : null;
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.error = err?.error?.message || err?.message || 'Failed to load parents.';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
