@@ -756,6 +756,186 @@
   .cl-hero-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* Class teacher assignment */
+.cl-teacher-cell { position: relative; }
+
+.cl-teacher-name { color: #1e293b; }
+
+.cl-teacher-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #1e3a5f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cl-teacher-trigger:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.cl-teacher-trigger:disabled { opacity: 0.55; cursor: progress; }
+
+.cl-teacher-trigger--empty {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px dashed #fcd34d;
+}
+
+.cl-teacher-trigger--empty:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.cl-teacher-trigger__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-teacher-trigger__caret { font-size: 0.7rem; opacity: 0.8; }
+.cl-teacher-trigger--inline { padding: 2px 8px; }
+
+.cl-teacher-menu {
+  position: fixed;
+  z-index: 1200;
+  width: 300px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #94a3b8;
+  border-top: 3px solid #1e3a5f;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+}
+
+.cl-teacher-menu__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--cl-border);
+  background: #f8fafc;
+}
+
+.cl-teacher-menu__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #1e3a5f;
+}
+
+.cl-teacher-menu__class { font-size: 0.82rem; font-weight: 700; color: #0f172a; }
+
+.cl-teacher-menu__search { padding: 10px 12px 6px; }
+
+.cl-teacher-menu__input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.cl-teacher-menu__input:focus {
+  outline: none;
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+}
+
+.cl-teacher-menu__list {
+  flex: 1;
+  min-height: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 10px 8px 6px;
+  scrollbar-width: auto;
+  scrollbar-color: #1e3a5f #e2e8f0;
+}
+
+/* Custom scrollbar for teacher list — ensure visibility */
+.cl-teacher-menu__list::-webkit-scrollbar {
+  width: 10px;
+  display: block;
+}
+
+.cl-teacher-menu__list::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 5px;
+}
+
+.cl-teacher-menu__list::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+}
+
+.cl-teacher-menu__list::-webkit-scrollbar-thumb:hover {
+  background: #152a45;
+}
+
+.cl-teacher-menu__empty {
+  margin: 6px 8px;
+  font-size: 0.8rem;
+  color: var(--cl-muted);
+}
+
+.cl-teacher-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+
+.cl-teacher-option:hover:not(:disabled) { background: #eef2f7; }
+.cl-teacher-option:disabled { opacity: 0.55; cursor: progress; }
+
+.cl-teacher-option__avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cl-teacher-option__text { display: flex; flex-direction: column; min-width: 0; }
+
+.cl-teacher-option__name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl-teacher-option__id { font-size: 0.72rem; color: var(--cl-muted); }
+
 @media (max-width: 640px) {
   .cl-hero-stats { grid-template-columns: repeat(2, 1fr); }
   .cl-page { padding: 1rem; }

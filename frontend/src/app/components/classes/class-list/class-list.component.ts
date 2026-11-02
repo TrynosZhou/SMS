@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { ClassService } from '../../../services/class.service';
 import { AuthService } from '../../../services/auth.service';
+import { TeacherService } from '../../../services/teacher.service';
 
 type ClassViewMode = 'table' | 'cards';
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -27,6 +28,17 @@ export class ClassListComponent implements OnInit, OnDestroy {
   success = '';
   lastLoadedAt: Date | null = null;
   isAccountant = false;
+  isAdmin = false;
+  isSuperAdmin = false;
+
+  // Inline class teacher assignment
+  teachersList: any[] = [];
+  loadingTeachers = false;
+  teacherMenuClassId: string | null = null;
+  teacherMenuTop = 0;
+  teacherMenuLeft = 0;
+  teacherSearch = '';
+  assigningTeacherClassId: string | null = null;
 
   searchTerm = '';
   statusFilter: StatusFilter = 'all';
@@ -48,11 +60,14 @@ export class ClassListComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private authService: AuthService
+    private authService: AuthService,
+    private teacherService: TeacherService
   ) {}
 
   ngOnInit(): void {
     this.isAccountant = this.authService.hasRole('accountant');
+    this.isAdmin = this.authService.isAdmin() || this.authService.hasRole('admin');
+    this.isSuperAdmin = this.authService.isSuperAdmin();
     this.searchInput$
       .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((q) => {
@@ -133,6 +148,147 @@ export class ClassListComponent implements OnInit, OnDestroy {
     return 'Not assigned';
   }
 
+  /** Only administrators may (re)assign a class teacher. */
+  canEditClassTeacher(): boolean {
+    return this.isAdmin || this.isSuperAdmin;
+  }
+
+  isTeacherMenuOpen(classItem: any): boolean {
+    return !!classItem && this.teacherMenuClassId === this.getCleanId(classItem.id);
+  }
+
+  toggleTeacherMenu(classItem: any, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.canEditClassTeacher() || !classItem) return;
+    const id = this.getCleanId(classItem.id);
+    if (!id) return;
+    if (this.teacherMenuClassId === id) {
+      this.closeTeacherMenu();
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.teacherMenuLeft = Math.max(8, Math.min(rect.left, window.innerWidth - 320));
+    this.teacherMenuTop = rect.bottom + 4;
+    this.teacherMenuClassId = id;
+    this.teacherSearch = '';
+    this.loadTeachersIfNeeded();
+    this.cdr.markForCheck();
+  }
+
+  closeTeacherMenu(): void {
+    if (!this.teacherMenuClassId) return;
+    this.teacherMenuClassId = null;
+    this.teacherSearch = '';
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.closeTeacherMenu();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.closeTeacherMenu();
+  }
+
+  private loadTeachersIfNeeded(): void {
+    if (this.teachersList.length > 0 || this.loadingTeachers) return;
+    this.loadingTeachers = true;
+    this.teacherService.getTeachers().subscribe({
+      next: (rows: any[]) => {
+        this.teachersList = Array.isArray(rows) ? rows : [];
+        this.loadingTeachers = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.teachersList = [];
+        this.loadingTeachers = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  get filteredTeacherOptions(): any[] {
+    const q = (this.teacherSearch || '').toLowerCase().trim();
+    if (!q) return this.teachersList;
+    return this.teachersList.filter((t: any) => {
+      const name = `${t.lastName || ''} ${t.firstName || ''}`.toLowerCase();
+      const tid = String(t.teacherId || '').toLowerCase();
+      return name.includes(q) || tid.includes(q);
+    });
+  }
+
+  teacherInitial(t: any): string {
+    const first = (t?.firstName || '').charAt(0).toUpperCase();
+    const last = (t?.lastName || '').charAt(0).toUpperCase();
+    return (last + first) || 'T';
+  }
+
+  teacherFullName(t: any): string {
+    return `${t?.lastName || ''} ${t?.firstName || ''}`.trim() || t?.teacherId || 'Teacher';
+  }
+
+  assignTeacher(classItem: any, teacher: any): void {
+    if (!this.canEditClassTeacher() || !classItem || !teacher?.id) return;
+    const classId = this.getCleanId(classItem.id);
+    if (!classId) {
+      this.error = 'Invalid class ID. Cannot assign a class teacher.';
+      setTimeout(() => {
+        if (this.error === 'Invalid class ID. Cannot assign a class teacher.') this.error = '';
+        this.cdr.markForCheck();
+      }, 6000);
+      return;
+    }
+    this.assigningTeacherClassId = classId;
+
+    // Preserve any teachers already linked to the class, then ensure the new one is linked.
+    const teacherIds = new Set<string>();
+    (classItem.teachers || []).forEach((t: any) => {
+      if (t?.id) teacherIds.add(t.id);
+    });
+    teacherIds.add(teacher.id);
+
+    const payload: any = {
+      classTeacher1Id: teacher.id,
+      teacherIds: Array.from(teacherIds)
+    };
+
+    this.classService.updateClass(classId, payload).subscribe({
+      next: (resp: any) => {
+        const updated = resp?.class;
+        classItem.classTeacher1Id = teacher.id;
+        classItem.classTeacher1 =
+          updated?.classTeacher1 || {
+            id: teacher.id,
+            firstName: teacher.firstName,
+            lastName: teacher.lastName,
+            teacherId: teacher.teacherId
+          };
+        if (Array.isArray(updated?.teachers)) classItem.teachers = updated.teachers;
+        this.assigningTeacherClassId = null;
+        this.closeTeacherMenu();
+        const message = `${this.teacherFullName(teacher)} assigned as class teacher for ${classItem.name}.`;
+        this.success = message;
+        this.error = '';
+        setTimeout(() => {
+          if (this.success === message) this.success = '';
+          this.cdr.markForCheck();
+        }, 5000);
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.assigningTeacherClassId = null;
+        this.error = err?.error?.message || err?.message || 'Failed to assign class teacher';
+        setTimeout(() => {
+          this.error = '';
+          this.cdr.markForCheck();
+        }, 6000);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   get statusChips(): Array<{ id: StatusFilter; label: string; count: number }> {
     const active = this.classes.filter((c) => c.isActive).length;
     return [
@@ -180,6 +336,10 @@ export class ClassListComponent implements OnInit, OnDestroy {
 
   trackByClass(_index: number, item: any): string {
     return String(item?.id || item?.name || _index);
+  }
+
+  trackByTeacher(_index: number, item: any): string {
+    return String(item?.id || item?.teacherId || _index);
   }
 
   loadClasses(page = this.pagination.page): void {

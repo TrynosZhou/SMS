@@ -7,6 +7,46 @@
     </div>
   </div>
 
+  <!-- Class teacher assignment dropdown (anchored, shared by table + card views) -->
+  <ng-template #classTeacherMenu let-cls="cls">
+    <div
+      class="cl-teacher-menu"
+      [style.top.px]="teacherMenuTop"
+      [style.left.px]="teacherMenuLeft"
+      (click)="$event.stopPropagation()">
+      <div class="cl-teacher-menu__head">
+        <span class="cl-teacher-menu__title">Assign class teacher</span>
+        <span class="cl-teacher-menu__class">{{ cls?.name }}</span>
+      </div>
+      <div class="cl-teacher-menu__search">
+        <input
+          type="text"
+          class="cl-teacher-menu__input"
+          placeholder="Search teachers…"
+          [(ngModel)]="teacherSearch"
+          [ngModelOptions]="{ standalone: true }" />
+      </div>
+      <div class="cl-teacher-menu__list">
+        <p class="cl-teacher-menu__empty" *ngIf="loadingTeachers">Loading teachers…</p>
+        <ng-container *ngIf="!loadingTeachers">
+          <p class="cl-teacher-menu__empty" *ngIf="filteredTeacherOptions.length === 0">No teachers found</p>
+          <button
+            type="button"
+            class="cl-teacher-option"
+            *ngFor="let t of filteredTeacherOptions; trackBy: trackByTeacher"
+            [disabled]="assigningTeacherClassId === getCleanId(cls?.id)"
+            (click)="assignTeacher(cls, t)">
+            <span class="cl-teacher-option__avatar">{{ teacherInitial(t) }}</span>
+            <span class="cl-teacher-option__text">
+              <span class="cl-teacher-option__name">{{ teacherFullName(t) }}</span>
+              <span class="cl-teacher-option__id">ID: {{ t.teacherId || 'N/A' }}</span>
+            </span>
+          </button>
+        </ng-container>
+      </div>
+    </div>
+  </ng-template>
+
   <header class="cl-hero">
     <div class="cl-hero__main">
       <div class="cl-hero-left">
@@ -158,7 +198,7 @@
       <h3>Classes ({{ filteredClasses.length }})</h3>
     </div>
 
-    <div class="cl-table-scroll" *ngIf="viewMode === 'table' && filteredClasses.length">
+    <div class="cl-table-scroll" *ngIf="viewMode === 'table' && filteredClasses.length" (scroll)="closeTeacherMenu()">
       <table class="cl-table">
         <colgroup>
           <col />
@@ -209,7 +249,24 @@
             <td><span class="cl-form-pill">{{ classItem.form || '—' }}</span></td>
             <td><span class="cl-count-pill">{{ classItem.students?.length || 0 }}</span></td>
             <td><span class="cl-count-pill">{{ classItem.teachers?.length || 0 }}</span></td>
-            <td><span class="cl-teacher-name">{{ getClassTeacherName(classItem) }}</span></td>
+            <td class="cl-teacher-cell">
+              <button
+                *ngIf="canEditClassTeacher()"
+                type="button"
+                class="cl-teacher-trigger"
+                [class.cl-teacher-trigger--empty]="getClassTeacherName(classItem) === 'Not assigned'"
+                [disabled]="assigningTeacherClassId === getCleanId(classItem.id)"
+                [attr.aria-expanded]="isTeacherMenuOpen(classItem)"
+                [title]="getClassTeacherName(classItem) === 'Not assigned' ? 'Click to assign a class teacher' : 'Click to change the class teacher'"
+                (click)="toggleTeacherMenu(classItem, $event)">
+                <span class="cl-teacher-trigger__name">{{ getClassTeacherName(classItem) }}</span>
+                <span class="cl-teacher-trigger__caret" aria-hidden="true">▾</span>
+              </button>
+              <span *ngIf="!canEditClassTeacher()" class="cl-teacher-name">{{ getClassTeacherName(classItem) }}</span>
+              <ng-container *ngIf="isTeacherMenuOpen(classItem)">
+                <ng-container *ngTemplateOutlet="classTeacherMenu; context: { cls: classItem }"></ng-container>
+              </ng-container>
+            </td>
             <td><span class="cl-count-pill">{{ getSubjectCount(classItem) }}</span></td>
             <td>
               <span class="cl-status-pill" [class.cl-status-pill--active]="classItem.isActive" [class.cl-status-pill--inactive]="!classItem.isActive">
@@ -237,7 +294,24 @@
         </div>
         <p class="cl-card__form">{{ classItem.form || 'No grade set' }}</p>
         <p class="cl-card__meta" *ngIf="classItem.description">{{ classItem.description }}</p>
-        <p class="cl-card__teacher"><span class="cl-card__label">Class Teacher:</span> {{ getClassTeacherName(classItem) }}</p>
+        <p class="cl-card__teacher">
+          <span class="cl-card__label">Class Teacher:</span>
+          <button
+            *ngIf="canEditClassTeacher()"
+            type="button"
+            class="cl-teacher-trigger cl-teacher-trigger--inline"
+            [class.cl-teacher-trigger--empty]="getClassTeacherName(classItem) === 'Not assigned'"
+            [disabled]="assigningTeacherClassId === getCleanId(classItem.id)"
+            [title]="getClassTeacherName(classItem) === 'Not assigned' ? 'Click to assign a class teacher' : 'Click to change the class teacher'"
+            (click)="toggleTeacherMenu(classItem, $event)">
+            <span class="cl-teacher-trigger__name">{{ getClassTeacherName(classItem) }}</span>
+            <span class="cl-teacher-trigger__caret" aria-hidden="true">▾</span>
+          </button>
+          <span *ngIf="!canEditClassTeacher()">{{ getClassTeacherName(classItem) }}</span>
+          <ng-container *ngIf="isTeacherMenuOpen(classItem)">
+            <ng-container *ngTemplateOutlet="classTeacherMenu; context: { cls: classItem }"></ng-container>
+          </ng-container>
+        </p>
         <div class="cl-card__counts">
           <span class="cl-count-pill">{{ classItem.students?.length || 0 }} students</span>
           <span class="cl-count-pill">{{ classItem.teachers?.length || 0 }} teachers</span>

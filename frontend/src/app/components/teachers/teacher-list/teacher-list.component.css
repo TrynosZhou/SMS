@@ -803,8 +803,9 @@
   border-left: none;
 }
 
-.manage-teachers-table thead th:last-child {
+.manage-teachers-table th:last-child {
   border-right: none;
+  text-align: center;
 }
 
 .manage-teachers-table th.sortable {
@@ -977,9 +978,12 @@
 .col-actions {
   white-space: nowrap;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
   align-items: center;
+  justify-content: center;
+  min-width: 180px;
 }
 
 .manage-teachers-pagination {

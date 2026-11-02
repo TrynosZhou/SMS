@@ -343,12 +343,31 @@ router.put('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_
     if (description !== undefined) classEntity.description = description;
     if (isActive !== undefined) classEntity.isActive = isActive;
 
+    // NOTE: the class is loaded with the classTeacher1/classTeacher2 relations, so the
+    // relation object must be reassigned too — otherwise TypeORM keeps the already-loaded
+    // relation and silently ignores the changed FK column on save().
     if (classTeacher1Id !== undefined) {
-      classEntity.classTeacher1Id = classTeacher1Id || null;
+      if (classTeacher1Id) {
+        const teacherRepository = AppDataSource.getRepository(Teacher);
+        const t1 = await teacherRepository.findOne({ where: { id: classTeacher1Id } });
+        classEntity.classTeacher1 = t1;
+        classEntity.classTeacher1Id = t1 ? t1.id : null;
+      } else {
+        classEntity.classTeacher1 = null;
+        classEntity.classTeacher1Id = null;
+      }
     }
 
     if (classTeacher2Id !== undefined) {
-      classEntity.classTeacher2Id = classTeacher2Id || null;
+      if (classTeacher2Id) {
+        const teacherRepository = AppDataSource.getRepository(Teacher);
+        const t2 = await teacherRepository.findOne({ where: { id: classTeacher2Id } });
+        classEntity.classTeacher2 = t2;
+        classEntity.classTeacher2Id = t2 ? t2.id : null;
+      } else {
+        classEntity.classTeacher2 = null;
+        classEntity.classTeacher2Id = null;
+      }
     }
 
     // Update subjects if provided
