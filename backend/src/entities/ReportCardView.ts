@@ -18,7 +18,8 @@ import { Student } from './Student';
  * report cards.
  *
  * A row is created (upserted) when a PARENT requests a report card via the
- * `getReportCard` controller. One row per (parentId, studentId, examType, term).
+ * `getReportCard` (JSON) or `generateReportCardPDF` (PDF) controller.
+ * One row per (parentId, studentId, examType, term).
  */
 @Entity('report_card_views')
 @Unique(['parentId', 'studentId', 'examType', 'term'])

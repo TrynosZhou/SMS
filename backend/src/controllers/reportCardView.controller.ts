@@ -734,9 +734,9 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
 
     const examIds = publishedExams.map(e => e.id);
 
-    // ── Step 2: only this student's marks + attendance (skip class marks for preview) ───────────────────
+    // ── Step 2: this student's marks + attendance + class marks (for ranking) ───────────────────
     const step2Start = Date.now();
-    const [studentMarks, attendance] = await Promise.all([
+    const [studentMarks, attendance, allClassMarks] = await Promise.all([
       // Only this student's marks (no class averages needed for preview)
       marksRepo.find({
         where: { studentId, examId: In(examIds) },
@@ -745,6 +745,11 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       }),
       // This student's attendance
       attendRepo.find({ where: { studentId, term } }),
+      // All class marks for these exams — needed to compute the class position
+      marksRepo.find({
+        where: { examId: In(examIds) },
+        relations: ['student', 'subject'],
+      }),
     ]);
     console.log(`[previewReportCardAdmin] Step 2 (marks+attendance): ${Date.now() - step2Start}ms`);
 
@@ -789,10 +794,20 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
     console.log(`[previewReportCardAdmin] Overall Average calculated: ${overallAverage}`);
 
-    // ── Step 4: class ranking (skip for preview to improve speed) ───
-    // For preview, use placeholder values instead of calculating actual rankings
-    const classPosition = 0;
-    const totalStudents = 0;
+    // ── Step 4: class ranking (core-subject average, same as the full report path) ───
+    const classOnlyMarks = allClassMarks.filter(m => (m.student as any)?.classId === student.classId);
+    const classStudentIds = [...new Set(classOnlyMarks.map(m => m.studentId))];
+    const studentAverages: Record<string, number> = {};
+    for (const sid of classStudentIds) {
+      studentAverages[sid] = computeCoreAverageFromMarks(classOnlyMarks.filter(m => m.studentId === sid));
+    }
+    const rankingsUnsorted = Object.entries(studentAverages)
+      .map(([sid, avg]) => ({ studentId: sid, average: avg }))
+      .sort((a, b) => b.average - a.average);
+    const rankings = assignPositionsLocal(rankingsUnsorted);
+    const classPosition = rankings.find(r => r.studentId === studentId)?.position || 0;
+    const totalStudents = rankings.length;
+    console.log(`[previewReportCardAdmin] Class ranking: ${classPosition}/${totalStudents}`);
 
     // ── Step 5: remarks (fast — skip for preview) ──────
     // For preview, use empty remarks to improve speed

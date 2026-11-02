@@ -106,6 +106,51 @@ function termsRoughlyMatch(requested: string, stored: string): boolean {
   return false;
 }
 
+/**
+ * Record that a parent has viewed a specific child's report card for a given
+ * exam type + term. Consumed by the admin Report Card Outreach tool
+ * (getUnviewedParents) to surface parents who have NOT yet viewed reports.
+ *
+ * Never throws: view tracking must never block report card rendering.
+ */
+async function recordReportCardView(
+  parentId: string,
+  studentId: string,
+  examType: string,
+  term: string,
+  viewerUserId?: string | null
+): Promise<void> {
+  try {
+    const reportCardViewRepository = AppDataSource.getRepository(ReportCardView);
+    const normalizedExamType = String(examType || '').trim();
+    const normalizedTerm = String(term || '').trim();
+    const existingView = await reportCardViewRepository.findOne({
+      where: {
+        parentId,
+        studentId,
+        examType: normalizedExamType,
+        term: normalizedTerm
+      }
+    });
+    if (existingView) {
+      existingView.viewedAt = new Date();
+      existingView.viewerUserId = viewerUserId ?? null;
+      await reportCardViewRepository.save(existingView);
+    } else {
+      await reportCardViewRepository.save({
+        parentId,
+        studentId,
+        examType: normalizedExamType,
+        term: normalizedTerm,
+        viewerUserId: viewerUserId ?? null,
+        viewedAt: new Date()
+      });
+    }
+  } catch (viewErr: any) {
+    console.warn('[recordReportCardView] Failed to record report card view:', viewErr?.message || viewErr);
+  }
+}
+
 async function findExamsForReportCardScope(
   examRepository: Repository<Exam>,
   classId: string,
@@ -1955,35 +2000,13 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       // Record that this parent has viewed this child's report card for the
       // given exam type + term. Used by the admin "Report Cards" outreach tool
       // to surface parents who have not yet viewed their children's reports.
-      try {
-        const reportCardViewRepository = AppDataSource.getRepository(ReportCardView);
-        const normalizedExamTypeView = String(examType || '').trim();
-        const existingView = await reportCardViewRepository.findOne({
-          where: {
-            parentId: parent.id,
-            studentId: studentId as string,
-            examType: normalizedExamTypeView,
-            term: termValue
-          }
-        });
-        if (existingView) {
-          existingView.viewedAt = new Date();
-          existingView.viewerUserId = user?.id ?? null;
-          await reportCardViewRepository.save(existingView);
-        } else {
-          await reportCardViewRepository.save({
-            parentId: parent.id,
-            studentId: studentId as string,
-            examType: normalizedExamTypeView,
-            term: termValue,
-            viewerUserId: user?.id ?? null,
-            viewedAt: new Date()
-          });
-        }
-      } catch (viewErr: any) {
-        // Recording a view must never block the report card from rendering.
-        console.warn('[getReportCard] Failed to record report card view:', viewErr?.message || viewErr);
-      }
+      await recordReportCardView(
+        parent.id,
+        studentId as string,
+        String(examType || ''),
+        termValue,
+        user?.id ?? null
+      );
     }
 
     const marksRepository = AppDataSource.getRepository(Marks);
@@ -3036,6 +3059,17 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           balance: termBalance
         });
       }
+
+      // Record the parent's view so the child is removed from the admin
+      // Report Card Outreach list for this exam type + term. The same key is
+      // used by getUnviewedParents to determine which report cards are unviewed.
+      await recordReportCardView(
+        parent.id,
+        studentId as string,
+        String(examType || ''),
+        String(termValue || ''),
+        user?.id ?? null
+      );
     }
 
     const marksRepository = AppDataSource.getRepository(Marks);
