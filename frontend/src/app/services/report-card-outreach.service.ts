@@ -28,6 +28,7 @@ export interface UnviewedParentsResponse {
   parents: UnviewedParent[];
   totalParents: number;
   totalUnviewed: number;
+  publishedExamsCount: number;
 }
 
 export interface NotifyParentResponse {

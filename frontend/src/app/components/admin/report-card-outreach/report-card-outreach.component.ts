@@ -34,6 +34,7 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
   parents: UnviewedParent[] = [];
   totalParents = 0;
   totalUnviewed = 0;
+  publishedExamsCount = 0;
   loading = false;
   error = '';
 
@@ -89,6 +90,7 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
         this.parents = res.parents || [];
         this.totalParents = res.totalParents || 0;
         this.totalUnviewed = res.totalUnviewed || 0;
+        this.publishedExamsCount = res.publishedExamsCount || 0;
         this.loading = false;
         // Preserve the current selection if it is still present; otherwise
         // auto-select the first parent for convenience.
@@ -278,6 +280,11 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
     if (!name) return '?';
     const parts = name.trim().split(/\s+/);
     return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+  }
+
+  get examTypeFilterLabel(): string {
+    const opt = this.examTypeOptions.find(o => o.value === this.examTypeFilter);
+    return opt ? opt.label : this.examTypeFilter;
   }
 
   private childKey(parentId: string, child: UnviewedChild): string {

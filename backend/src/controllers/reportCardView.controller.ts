@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { In } from 'typeorm';
+import { In, ILike } from 'typeorm';
 import axios from 'axios';
 import { AppDataSource } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
@@ -102,7 +102,10 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
     const reportCardViewRepository = AppDataSource.getRepository(ReportCardView);
 
     const examWhere: any = { status: ExamStatus.PUBLISHED };
-    if (termFilter) examWhere.term = termFilter;
+    if (termFilter) {
+      // Use ILike to support partial matches (e.g., "Term 3" matching "Term 3 2026")
+      examWhere.term = ILike(`%${termFilter}%`);
+    }
     if (examTypeFilter) examWhere.type = examTypeFilter as ExamType;
 
     const publishedExams = await examRepository.find({
@@ -111,7 +114,12 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
     });
 
     if (publishedExams.length === 0) {
-      return res.json({ parents: [], totalParents: 0, totalUnviewed: 0 });
+      return res.json({
+        parents: [],
+        totalParents: 0,
+        totalUnviewed: 0,
+        publishedExamsCount: 0
+      });
     }
 
     const examIds = publishedExams.map((e) => e.id);
@@ -136,7 +144,12 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
 
     const allStudentIds = [...allStudentIdsSet];
     if (allStudentIds.length === 0) {
-      return res.json({ parents: [], totalParents: 0, totalUnviewed: 0 });
+      return res.json({
+        parents: [],
+        totalParents: 0,
+        totalUnviewed: 0,
+        publishedExamsCount: publishedExams.length
+      });
     }
 
     const [students, links, views] = await Promise.all([
@@ -262,7 +275,8 @@ export const getUnviewedParents = async (req: AuthRequest, res: Response) => {
     res.json({
       parents,
       totalParents: parents.length,
-      totalUnviewed
+      totalUnviewed,
+      publishedExamsCount: publishedExams.length
     });
   } catch (error: any) {
     console.error('[getUnviewedParents] Error:', error);

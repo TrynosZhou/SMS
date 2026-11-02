@@ -84,9 +84,19 @@
 
     <!-- Empty -->
     <div class="rco-state rco-state--empty" *ngIf="!loading && parents.length === 0">
-      <div class="rco-empty-icon" aria-hidden="true">✅</div>
-      <h2 class="rco-empty-title">All caught up</h2>
-      <p>Every parent has viewed their children's available report cards. There is nothing to follow up on right now.</p>
+      <ng-container *ngIf="publishedExamsCount > 0; else noPublishedResults">
+        <div class="rco-empty-icon" aria-hidden="true">✅</div>
+        <h2 class="rco-empty-title">All caught up</h2>
+        <p>Every parent has viewed their children's available report cards. There is nothing to follow up on right now.</p>
+      </ng-container>
+      <ng-template #noPublishedResults>
+        <div class="rco-empty-icon" aria-hidden="true">ℹ️</div>
+        <h2 class="rco-empty-title">No published results</h2>
+        <p>
+          Results for {{ examTypeFilterLabel || 'all exam types' }} were not published for {{ termFilter || 'any term' }}.
+        </p>
+        <p class="rco-empty-hint">Please publish exam results first to see the outreach list.</p>
+      </ng-template>
     </div>
 
     <!-- Master / detail -->
