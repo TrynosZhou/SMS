@@ -269,13 +269,16 @@ function buildGradeGetter(settings: Settings | null) {
     fail: 'UNCLASSIFIED'
   };
   return (percentage: number): string => {
-    if (percentage === 0) return gradeLabels.fail || 'UNCLASSIFIED';
-    if (percentage >= (thresholds.excellent || 90)) return gradeLabels.excellent || 'OUTSTANDING';
-    if (percentage >= (thresholds.veryGood || 80)) return gradeLabels.veryGood || 'VERY HIGH';
-    if (percentage >= (thresholds.good || 60)) return gradeLabels.good || 'HIGH';
-    if (percentage >= (thresholds.satisfactory || 40)) return gradeLabels.satisfactory || 'GOOD';
-    if (percentage >= (thresholds.needsImprovement || 20)) return gradeLabels.needsImprovement || 'ASPIRING';
-    if (percentage >= (thresholds.basic || 1)) return gradeLabels.basic || 'BASIC';
+    const p = Number(percentage) || 0;
+    if (p === 0) return gradeLabels.fail || 'UNCLASSIFIED';
+    
+    if (p >= (Number(thresholds.excellent) || 90)) return gradeLabels.excellent || 'OUTSTANDING';
+    if (p >= (Number(thresholds.veryGood)  || 80)) return gradeLabels.veryGood  || 'VERY HIGH';
+    if (p >= (Number(thresholds.good)      || 60)) return gradeLabels.good      || 'HIGH';
+    if (p >= (Number(thresholds.satisfactory) || 40)) return gradeLabels.satisfactory || 'GOOD';
+    if (p >= (Number(thresholds.needsImprovement) || 20)) return gradeLabels.needsImprovement || 'ASPIRING';
+    if (p >= (Number(thresholds.basic) || 1)) return gradeLabels.basic || 'BASIC';
+    
     return gradeLabels.fail || 'UNCLASSIFIED';
   };
 }
@@ -311,15 +314,23 @@ function drawCardOuterFrame(
   doc.restore();
 }
 
+let cachedMottoFontPath: string | null | undefined = undefined;
+
 function resolveMottoFontPath(): string | null {
+  if (cachedMottoFontPath !== undefined) return cachedMottoFontPath;
+  
   const backendRoot = path.resolve(__dirname, '../..');
   const candidates = [
     path.join(backendRoot, 'src/assets/fonts/GreatVibes-Regular.ttf'),
     path.join(__dirname, '../assets/fonts/GreatVibes-Regular.ttf'),
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {
+      cachedMottoFontPath = candidate;
+      return candidate;
+    }
   }
+  cachedMottoFontPath = null;
   return null;
 }
 
@@ -508,19 +519,19 @@ function drawBannerSchoolLogo(
     try {
       doc.save();
       doc.roundedRect(logoX, logoY, logoW, logoH, 6).fillColor('#ffffff').fill();
+      console.log(`[drawBannerSchoolLogo] Embedding logo image, buffer size: ${buffer.length}`);
       doc.image(buffer, logoX + 3, logoY + 3, {
         fit: [logoW - 6, logoH - 6],
         align: 'center',
         valign: 'center'
       });
       doc.restore();
+      console.log(`[drawBannerSchoolLogo] Logo image embedded successfully`);
       return;
-    } catch {
-      try {
-        doc.restore();
-      } catch {
-        /* ignore */
-      }
+    } catch (err) {
+      console.error('[drawBannerSchoolLogo] ERROR embedding logo image:', err);
+      doc.restore();
+      // fallback to initials
     }
   }
 

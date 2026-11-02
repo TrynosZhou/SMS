@@ -66,17 +66,22 @@ export function finalizeMarkSheetCoreTotals(
   classSubjects: Array<{ id: string; name?: string }>
 ): { totalScore: number; totalMaxScore: number; average: number } {
   let coreTotalScore = 0;
+  let coreSubjectCount = 0;
   for (const subject of classSubjects) {
     if (!isCoreSubjectName(subject.name || '')) {
       continue;
     }
+    coreSubjectCount += 1;
     const cell = subjectMarksById[subject.id];
     coreTotalScore += Math.round(Number(cell?.score) || 0);
   }
+  // Average over the core subjects the class actually offers (not a fixed 3),
+  // so classes that don't teach all three are not penalised for a missing subject.
+  const divisor = coreSubjectCount > 0 ? coreSubjectCount : MARK_SHEET_CORE_SUBJECT_COUNT;
   return {
     totalScore: coreTotalScore,
-    totalMaxScore: MARK_SHEET_CORE_MAX_TOTAL,
-    average: Number((coreTotalScore / MARK_SHEET_CORE_SUBJECT_COUNT).toFixed(2))
+    totalMaxScore: coreSubjectCount > 0 ? coreSubjectCount * 100 : MARK_SHEET_CORE_MAX_TOTAL,
+    average: Number((coreTotalScore / divisor).toFixed(2))
   };
 }
 
@@ -163,5 +168,14 @@ export function computeCoreAverageFromReportSubjects(
 
   const coreTotalScore =
     bucketScores.mathematics + bucketScores.english + bucketScores.science;
-  return Number((coreTotalScore / MARK_SHEET_CORE_SUBJECT_COUNT).toFixed(2));
+  
+  // Average over the core subjects present in the report (not a fixed 3),
+  // consistent with the mark sheet pass rate rule.
+  let coreSubjectCount = 0;
+  if (bucketScores.mathematics > 0 || subjects.some(s => coreSubjectBucket(s.subject || '') === 'mathematics')) coreSubjectCount++;
+  if (bucketScores.english > 0 || subjects.some(s => coreSubjectBucket(s.subject || '') === 'english')) coreSubjectCount++;
+  if (bucketScores.science > 0 || subjects.some(s => coreSubjectBucket(s.subject || '') === 'science')) coreSubjectCount++;
+
+  const divisor = coreSubjectCount > 0 ? coreSubjectCount : MARK_SHEET_CORE_SUBJECT_COUNT;
+  return Number((coreTotalScore / divisor).toFixed(2));
 }

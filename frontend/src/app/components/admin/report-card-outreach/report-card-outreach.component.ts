@@ -207,6 +207,7 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
             examTypeLabel: child.examTypeLabel,
             term: child.term
           };
+          this.cdr.detectChanges();
         },
         error: (err: any) => {
           let msg =
@@ -229,6 +230,17 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
                 examTypeLabel: child.examTypeLabel,
                 term: child.term
               };
+              this.cdr.detectChanges();
+            };
+            reader.onerror = () => {
+              this.pdfPreview = {
+                loading: false, blobUrl: null, safeUrl: null,
+                error: msg,
+                studentName: child.studentName,
+                examTypeLabel: child.examTypeLabel,
+                term: child.term
+              };
+              this.cdr.detectChanges();
             };
             reader.readAsText(err.error);
             return;
@@ -242,6 +254,7 @@ export class ReportCardOutreachComponent implements OnInit, OnDestroy {
             examTypeLabel: child.examTypeLabel,
             term: child.term
           };
+          this.cdr.detectChanges();
         }
       });
   }

@@ -642,13 +642,17 @@ function getGradeLocal(
   thresholds: any,
   labels: any
 ): string {
-  if (percentage === 0) return labels?.fail || 'F';
-  if (percentage >= (thresholds?.excellent ?? 90)) return labels?.excellent || 'A+';
-  if (percentage >= (thresholds?.veryGood  ?? 80)) return labels?.veryGood  || 'A';
-  if (percentage >= (thresholds?.good      ?? 70)) return labels?.good      || 'B';
-  if (percentage >= (thresholds?.satisfactory ?? 60)) return labels?.satisfactory || 'C';
-  if (percentage >= (thresholds?.needsImprovement ?? 50)) return labels?.needsImprovement || 'D';
-  if (percentage >= (thresholds?.basic ?? 1)) return labels?.basic || 'E';
+  const p = Number(percentage) || 0;
+  if (p === 0) return labels?.fail || 'F';
+  
+  // Use || 0 to handle null values from the DB gracefully
+  if (p >= (Number(thresholds?.excellent) || 90)) return labels?.excellent || 'A+';
+  if (p >= (Number(thresholds?.veryGood)  || 80)) return labels?.veryGood  || 'A';
+  if (p >= (Number(thresholds?.good)      || 70)) return labels?.good      || 'B';
+  if (p >= (Number(thresholds?.satisfactory) || 60)) return labels?.satisfactory || 'C';
+  if (p >= (Number(thresholds?.needsImprovement) || 50)) return labels?.needsImprovement || 'D';
+  if (p >= (Number(thresholds?.basic) || 1)) return labels?.basic || 'E';
+  
   return labels?.fail || 'F';
 }
 
@@ -698,35 +702,37 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     const examRepo     = AppDataSource.getRepository(Exam);
     const marksRepo    = AppDataSource.getRepository(Marks);
     const studentRepo  = AppDataSource.getRepository(Student);
-    const classRepo    = AppDataSource.getRepository(Class);
     const settingsRepo = AppDataSource.getRepository(Settings);
     const attendRepo   = AppDataSource.getRepository(Attendance);
 
     // ── Step 1: all independent lookups in parallel ──────────────────
     const step1Start = Date.now();
-    const [exams, student, classEntity, settingsList] = await Promise.all([
+    const [publishedExams, student, settingsList] = await Promise.all([
       examRepo.find({
-        where: { classId, type: normalizedType, term },
+        where: { classId, type: normalizedType, term, status: ExamStatus.PUBLISHED },
         relations: ['subjects'],
       }),
-      studentRepo.findOne({ where: { id: studentId }, relations: ['classEntity'] }),
-      classRepo.findOne({ where: { id: classId }, relations: ['subjects'] }),
+      studentRepo.findOne({ 
+        where: { id: studentId }, 
+        relations: ['classEntity', 'classEntity.subjects'] 
+      }),
+      // findOne() requires selection conditions; use find()+take to get the latest settings row
       settingsRepo.find({ order: { createdAt: 'DESC' }, take: 1 }),
     ]);
+    const settings = settingsList[0] ?? null;
     console.log(`[previewReportCardAdmin] Step 1 (DB lookups): ${Date.now() - step1Start}ms`);
 
     if (!student) return res.status(404).json({ message: 'Student not found' });
+    const classEntity = student.classEntity;
     if (!classEntity) return res.status(404).json({ message: 'Class not found' });
 
-    const publishedExams = exams.filter(e => e.status === ExamStatus.PUBLISHED);
     if (publishedExams.length === 0) {
       return res.status(404).json({
         message: `No published ${examType} exams found for ${term}. The results may not have been published yet.`
       });
     }
 
-    const settings = settingsList[0] ?? null;
-    const examIds  = publishedExams.map(e => e.id);
+    const examIds = publishedExams.map(e => e.id);
 
     // ── Step 2: only this student's marks + attendance (skip class marks for preview) ───────────────────
     const step2Start = Date.now();
@@ -734,7 +740,7 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       // Only this student's marks (no class averages needed for preview)
       marksRepo.find({
         where: { studentId, examId: In(examIds) },
-        select: ['studentId', 'subjectId', 'examId', 'score', 'maxScore'],
+        select: ['studentId', 'subjectId', 'examId', 'score', 'maxScore', 'createdAt', 'updatedAt'],
         relations: ['subject'],
       }),
       // This student's attendance
@@ -743,6 +749,7 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     console.log(`[previewReportCardAdmin] Step 2 (marks+attendance): ${Date.now() - step2Start}ms`);
 
     // ── Step 3: build subject data for this student ──────────────────
+    console.log(`[previewReportCardAdmin] Step 3 start`);
     const allSubjects: Subject[] = classEntity.subjects?.length
       ? classEntity.subjects
       : [...new Map(publishedExams.flatMap(e => e.subjects ?? []).map(s => [s.id, s])).values()];
@@ -753,11 +760,13 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     const thresholds = (settings as any)?.gradeThresholds  ?? {};
     const labels     = (settings as any)?.gradeLabels       ?? {};
 
-    // Best mark per subject for this student (latest exam wins for duplicates)
+    // Best mark per subject for this student (latest mark wins for duplicates)
     const bestBySubject = new Map<string, Marks>();
     for (const m of studentMarks) {
       const prev = bestBySubject.get(m.subjectId);
-      if (!prev || new Date(m.examId) > new Date(prev.examId)) bestBySubject.set(m.subjectId, m);
+      const mDate = m.updatedAt || m.createdAt || new Date(0);
+      const pDate = prev ? (prev.updatedAt || prev.createdAt || new Date(0)) : new Date(0);
+      if (!prev || mDate > pDate) bestBySubject.set(m.subjectId, m);
     }
 
     const subjectData = allSubjects.map(sub => {
@@ -775,8 +784,10 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
         grade:        getGradeLocal(pct, thresholds, labels),
       };
     });
+    console.log(`[previewReportCardAdmin] Step 3 complete, subjects: ${subjectData.length}`);
 
     const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
+    console.log(`[previewReportCardAdmin] Overall Average calculated: ${overallAverage}`);
 
     // ── Step 4: class ranking (skip for preview to improve speed) ───
     // For preview, use placeholder values instead of calculating actual rankings
@@ -827,8 +838,9 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
       generatedAt: new Date(),
     };
 
+    console.log(`[previewReportCardAdmin] Step 6 start (PDF generation), skipMeasurement=true`);
     const pdfBuffer = await createReportCardPDF(reportCardData, settings, true); // Skip measurement for preview
-    console.log(`[previewReportCardAdmin] Step 6 (PDF generation): ${Date.now() - step6Start}ms`);
+    console.log(`[previewReportCardAdmin] Step 6 (PDF generation) COMPLETE: ${Date.now() - step6Start}ms, size: ${pdfBuffer.length}`);
 
     // Cache the generated PDF for future requests
     pdfPreviewCache.set(cacheKey, {
@@ -847,7 +859,10 @@ export const previewReportCardAdmin = async (req: AuthRequest, res: Response) =>
     console.log(`[previewReportCardAdmin] Total time: ${Date.now() - startTime}ms`);
     return res.end(pdfBuffer);
   } catch (err: any) {
-    console.error('[previewReportCardAdmin]', err?.message || err);
-    return res.status(500).json({ message: err?.message || 'Server error generating report card preview' });
+    console.error('[previewReportCardAdmin] CRITICAL ERROR:', err);
+    return res.status(500).json({ 
+      message: err?.message || 'Server error generating report card preview',
+      stack: process.env.NODE_ENV === 'development' ? err?.stack : undefined
+    });
   }
 };

@@ -70,6 +70,11 @@ export function createReportCardPDF(
   skipMeasurement: boolean = false
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    // 30-second safety timeout to prevent hanging the event loop if PDFKit gets stuck
+    const timeout = setTimeout(() => {
+      reject(new Error('PDF generation timed out after 30 seconds'));
+    }, 30000);
+
     try {
       const margin = 24;
       const footerReserve = 18;
@@ -115,9 +120,13 @@ export function createReportCardPDF(
 
       doc.on('data', buffers.push.bind(buffers));
       doc.on('end', () => {
+        clearTimeout(timeout);
         resolve(Buffer.concat(buffers));
       });
-      doc.on('error', reject);
+      doc.on('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
 
       doc.save();
       doc.translate(margin, margin);

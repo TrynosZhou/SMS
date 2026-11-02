@@ -190,6 +190,33 @@ async function loadPassRateInclusionForStudents(
   return map;
 }
 
+/**
+ * Class teacher name shown on the mark sheet.
+ * Prefers "Class Teacher 1", then "Class Teacher 2", then any teacher linked to the class.
+ */
+function resolveClassTeacherName(classEntity: any): string {
+  const pick = (teacher: any): string => {
+    if (!teacher) return '';
+    const full = `${teacher.lastName ?? ''} ${teacher.firstName ?? ''}`.trim();
+    return full || String(teacher.teacherId ?? '').trim();
+  };
+
+  const assigned = pick(classEntity?.classTeacher1) || pick(classEntity?.classTeacher2);
+  if (assigned) {
+    return assigned;
+  }
+
+  const linked = Array.isArray(classEntity?.teachers) ? classEntity.teachers : [];
+  for (const teacher of linked) {
+    const name = pick(teacher);
+    if (name) {
+      return name;
+    }
+  }
+
+  return 'Not assigned';
+}
+
 async function upsertPassRateInclusionAcrossExamScope(
   examId: string,
   studentId: string,
@@ -4038,11 +4065,8 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
     const markSheetWithTies = assignPositionsWithTies(markSheetData);
     const markSheetDataWithPositions = markSheetWithTies.map(row => ({ ...row, position: row.position }));
 
-    // Class teacher name: strictly use the assigned classTeacher1 (Home class teacher)
-    const t1 = classEntity.classTeacher1;
-    const classTeacherName = t1
-      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
-      : 'Not assigned';
+    // Class teacher name: Class Teacher 1, then Class Teacher 2, then any linked teacher
+    const classTeacherName = resolveClassTeacherName(classEntity);
 
     res.json({
       class: {
@@ -4259,11 +4283,8 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Class teacher name: strictly use Class.classTeacher1 (Home class teacher)
-    const t1 = classEntity.classTeacher1;
-    const classTeacherName = t1
-      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
-      : 'Not assigned';
+    // Class teacher name: Class Teacher 1, then Class Teacher 2, then any linked teacher
+    const classTeacherName = resolveClassTeacherName(classEntity);
 
     // Prepare data for PDF
     const pdfData = {
@@ -4471,11 +4492,8 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
     const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Class teacher name: strictly use Class.classTeacher1 (Home class teacher)
-    const t1 = classEntity.classTeacher1;
-    const classTeacherName = t1
-      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
-      : 'Not assigned';
+    // Class teacher name: Class Teacher 1, then Class Teacher 2, then any linked teacher
+    const classTeacherName = resolveClassTeacherName(classEntity);
 
     const excelData = {
       class: { id: classEntity.id, name: classEntity.name, form: classEntity.form, classTeacherName },
